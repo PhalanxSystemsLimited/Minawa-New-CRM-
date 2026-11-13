@@ -125,3 +125,18 @@ export async function autoSweep() {
     return (await sweepSafepay(null)).paid;
   } catch (e) { console.error('safepay sweep', (e as Error).message); return 0; }
 }
+
+/** The daily run without a scheduler: while anyone has the CRM open (checked from /api/live), each live project is run
+ *  once a day (bills on the 25th, reminders on the 3rd and 7th, fines, notices and flags), catching up any days that
+ *  were missed. What it makes waits in To do and Send on WhatsApp, to be sent by hand. Checked at most every 15 minutes. */
+export async function autoDaily() {
+  try {
+    const store = await getStore(), today = todayPKT();
+    if (!(await store.throttle(`daily-check-${today}`, 900))) return 0;
+    const due = [];
+    for (const p of await liveProjects()) { const s = await load(p.id, null); if ((s.settings.lastRun || '') < today) due.push(p.id); }
+    if (!due.length) return 0;
+    await runDailyAll(null);
+    return due.length;
+  } catch (e) { console.error('daily run', (e as Error).message); return 0; }
+}

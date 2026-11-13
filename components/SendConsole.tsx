@@ -20,8 +20,8 @@ const VARS = '{{name}} {{apt}} {{block}} {{total}} {{due}} {{project}}';
 /** wa.me numbers: digits only, 03xx… → 923xx… */
 const digits = (p: string) => { let d = p.replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0') && d.length === 11) d = '92' + d.slice(1); return d; };
 
-export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, waiting }: {
-  pid: string; rows: SendRow[]; blocks: string[]; types: { key: SendType; label: string; hint: string }[]; start: SendType; ids: string[]; go: boolean; notice: string; waiting: number;
+export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, waiting, only = '' }: {
+  pid: string; rows: SendRow[]; blocks: string[]; types: { key: SendType; label: string; hint: string }[]; start: SendType; ids: string[]; go: boolean; notice: string; waiting: number; only?: string;
 }) {
   const router = useRouter();
   const [type, setType] = useState<SendType>(start);
@@ -54,18 +54,18 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
   const toggleAll = () => setPicked(p => { const n = new Set(p); for (const r of list) allTicked ? n.delete(r.id) : n.add(r.id); return n; });
 
   async function begin(forIds = chosen.map(r => r.id)) {
-    if (!forIds.length && !(type === 'queue' && notice)) return;
+    if (!forIds.length && !(type === 'queue' && (notice || only))) return;
     if (type === 'custom' && !text.trim()) { setErr('Write the message first.'); return; }
     setBusy(true); setErr('');
     try {
-      const r = await prepareSendAction({ pid, type, ids: forIds, title, text, pay, notice: notice || undefined });
+      const r = await prepareSendAction({ pid, type, ids: forIds, title, text, pay, notice: notice || undefined, only: only || undefined });
       setItems(r.items); setLeft(r.left); setTest(r.test); setI(0); setOpened(false); setEdits({}); setDone({});
       setStep(r.items.length ? 'run' : 'done');
       if (!r.items.length && !r.left.length) setErr('Nothing to send for these owners.');
     } catch (e) { setErr((e as Error).message || 'Something went wrong. Try again.'); }
     setBusy(false);
   }
-  useEffect(() => { if (go) begin(type === 'queue' && notice ? [] : ids); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (go) begin(type === 'queue' && (notice || only) ? [] : ids); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const it = items[i], body = it ? (edits[it.key] ?? it.text) : '';
   const to = it ? (test || digits(it.to || it.phone)) : '';

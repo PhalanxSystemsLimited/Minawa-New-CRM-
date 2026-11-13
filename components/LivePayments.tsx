@@ -16,8 +16,8 @@ export function LivePayments({ counts }: { counts: Record<string, number> }) {
       try {
         const r = await fetch('/api/live', { cache: 'no-store' });
         if (r.ok) {
-          const j = await r.json() as { counts: Record<string, number>; recorded: number };
-          const changed = j.recorded > 0 || Object.keys(j.counts).some(k => (j.counts[k] || 0) !== (last.current[k] || 0));
+          const j = await r.json() as { counts: Record<string, number>; recorded: number; ran?: number };
+          const changed = j.recorded > 0 || (j.ran || 0) > 0 || Object.keys(j.counts).some(k => (j.counts[k] || 0) !== (last.current[k] || 0));
           if (changed) router.refresh();
         }
       } catch { /* offline: try again next time */ }

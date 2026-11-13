@@ -175,10 +175,9 @@ export async function rulesAction(fdata: FormData) {
   const n = (k: string, lo: number, hi: number, def: number) => { const v = Math.round(+S(fdata, k)); return Number.isFinite(v) && v >= lo && v <= hi ? v : def; };
   const r = await attempt(() => mutate(pid, staff, s => {
     const r0 = s.settings.rules;
-    const remindDays = [...new Set(S(fdata, 'remindDays').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x > 0 && x < 60))].sort((x, y) => y - x);
+    const remindOn = [...new Set(S(fdata, 'remindOn').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x >= 1 && x <= 28))].sort((x, y) => x - y);
     const utilities = [...new Set(S(fdata, 'utilities').split(',').map(x => x.trim()).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1)))];
-    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 60, r0.dueDays), remindDays, flagDays: n('flagDays', 1, 120, r0.flagDays), utilities };
-    c.remindDays = c.remindDays.filter(x => x < c.dueDays);
+    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 60, r0.dueDays), remindOn, flagDays: n('flagDays', 1, 120, r0.flagDays), utilities };
     return changeOrRequest(null, 'rules', c, S(fdata, 'why'));
   }, { send: false }));
   go(back, failed(r) ? r.error : r.text);

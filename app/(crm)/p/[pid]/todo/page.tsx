@@ -1,7 +1,8 @@
 // To do (the demo's viewFollow): the only things that need a person.
 import { cur, ownerById, failedList, fixWaiting } from '@/lib/engine';
 import { ResendButton } from '@/components/ResendChat';
-import { fd, rs } from '@/lib/fmt';
+import { toDoGroups } from '@/lib/manual-send';
+import { fd, fds, rs } from '@/lib/fmt';
 import { Go } from '@/components/client';
 import { Submit } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
@@ -14,12 +15,17 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
   const { pid } = await params, sp = await searchParams;
   return projectPage(pid, sp, () => {
     const S = cur();
-    const pr = S.proofs.filter(p => p.status === 'pending'), fl = failedList(), al = S.alerts.filter(a => !a.done);
+    const pr = S.proofs.filter(p => p.status === 'pending'), fl = failedList(), al = S.alerts.filter(a => !a.done), ts = toDoGroups(), tsN = ts.reduce((a, g) => a + g.n, 0);
     const hid = (id: string) => <><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={id} /></>;
-    const head = <div className="page-head"><div><h2>To do</h2><p>The only things that need a person. Everything else runs on its own.</p></div></div>;
-    if (!pr.length && !fl.length && !al.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
+    const head = <div className="page-head"><div><h2>To do</h2><p>What needs a person. Bills go out on the 25th and reminders on the 3rd and 7th of every month: the CRM makes them, and they wait here for you to send one by one on WhatsApp.</p></div></div>;
+    if (!tsN && !pr.length && !fl.length && !al.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
     return <>
       {projHead('follow')}{head}
+      {tsN ? <div className="card"><div className="card-row"><h3>Send on WhatsApp <small>{tsN} owner{tsN === 1 ? '' : 's'} waiting · one by one</small></h3><Go href={`/p/${pid}/send?type=queue&kind=all&go=1`} className="btn sm wa">Send all, one by one</Go></div>
+        <div className="list">{ts.map(g => <div className="li" key={g.key}><div className="t"><div className="a">{g.label} · <span className="num">{g.n}</span> owner{g.n === 1 ? '' : 's'}</div><div className="b">{g.hint} · waiting since {fds(g.since)}</div></div>
+          <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa">Send {g.n === 1 ? 'it' : 'one by one'}</Go></div>)}</div>
+        <p className="cell-sub" style={{ margin: '10px 0 0' }}>Each owner&apos;s chat opens with the message and Pay Now link typed in. When you come back you confirm it was sent, and they leave this list.</p>
+      </div> : null}
       {pr.length ? <div className="card"><h3>Check these bank transfers <small>owners sent a screenshot</small></h3>
         <div className="list">{pr.map(p => { const o = ownerById(p.ownerId); return <div className="li" key={p.id}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span></div><div className="b">{o.name} · sent {fd(p.d)}</div></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

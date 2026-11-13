@@ -19,7 +19,7 @@ export interface Rate { id: string; project: string; type: string; from: ISODate
 export interface Rules {
   billDay: number;          // day of the month bills go out (25)
   dueDays: number;          // due date = bill day + dueDays (15)
-  remindDays: number[];     // more reminders, this many days before the due date ([7, 3])
+  remindOn: number[];       // more reminders on these days of the month, while the bill is unpaid and not yet due ([3, 7])
   feePct: number;           // fine, % of the unpaid bills (and old arrears if fineArrears) while a bill is overdue; set by accountants (10)
   flagDays: number;         // flag for disconnection this many days after the due date (15)
   sendHour: number;         // hour (PKT) the daily run goes out (11)
@@ -27,11 +27,14 @@ export interface Rules {
   /** Fine old arrears (opening balances from before go-live) too. Off: the fine is only on the system's own bills. */
   fineArrears: boolean;
 }
-export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindDays: [7, 3], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false };
+export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
   const x = { ...DEFAULT_RULES, ...r } as Rules & { autoSend?: unknown };
   delete x.autoSend;   // from before: WhatsApp is only sent by hand now
-  if (!Array.isArray(x.remindDays)) x.remindDays = typeof x.remindDays === 'number' && x.remindDays > 0 ? [x.remindDays] : [];
+  // Reminders used to be "days before the due date" (remindDays); now they are days of the month (3rd and 7th).
+  delete (x as { remindDays?: unknown }).remindDays;
+  if (!Array.isArray(x.remindOn)) x.remindOn = [...DEFAULT_RULES.remindOn];
+  x.remindOn = [...new Set(x.remindOn.map(Number).filter(n => n >= 1 && n <= 28))].sort((a, b) => a - b);
   if (!Array.isArray(x.utilities)) x.utilities = [];
   x.fineArrears = x.fineArrears === true;
   return x;

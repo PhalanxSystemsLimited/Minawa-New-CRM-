@@ -1,6 +1,6 @@
 // The billing engine, ported from the demo (demo/minawa-maintenance-demo.html) and moved to Minawa's calendar:
 // every flat is billed on the 25th (billDay) in advance for its plan's months (the 25 Nov bill is for December;
-// quarterly and annual plans for the coming quarter or year) plus the utility bills the accountant entered; due `dueDays` later, with reminders `remindDays` before the due date. The day after
+// quarterly and annual plans for the coming quarter or year) plus the utility bills the accountant entered; due `dueDays` later (the 10th), with reminders on the `remindOn` days of the month (the 3rd and 7th) while it is unpaid. The day after
 // the due date the fine (`feePct`% of the unpaid bills, and of old arrears only if `fineArrears`; set by the accountant) is added and a final notice goes out;
 // `flagDays` after the due date unpaid flats are flagged. Billing starts at possession (first month prorated).
 // Promises to pay pause notices; payments pay the fine in proportion and dues oldest first.
@@ -356,6 +356,12 @@ function flag(o: Owner, d: string) {
   o.flagged = true; o.flaggedOn = d;
   log(d, '11:00', 'flag', `${o.apt} flagged for disconnection: ${rs(balance(o))} unpaid after the final deadline`, o.id);
 }
+/** A reminder for this bill today: today is one of the reminder days of the month (3rd, 7th), after the bill and
+ *  before its due date, and it hasn't had that reminder yet. */
+export function remindToday(b: Bill, d: string) {
+  const dom = +d.slice(8);
+  return R().remindOn.includes(dom) && d > b.billDate && d < b.dueDate && !b.reminders.includes(dom);
+}
 export function runDaily(d: string) {
   const c = { bills: 0, fines: 0, notices: 0, flags: 0, alerts: 0, paused: 0, reminders: 0 };
   if (d.slice(8) === '01') setTarget(d.slice(0, 7), d);
@@ -365,9 +371,7 @@ export function runDaily(d: string) {
     if (o.status !== 'active' || o.exempt) continue;
     if (isBillingDay(o, d)) { box(o.id).bill = createBill(o, d); c.bills++; }
     for (const b of billsOf(o)) {
-      for (const rd of R().remindDays) {
-        if (rd > 0 && !b.reminders.includes(rd) && addDays(b.dueDate, -rd) === d && unpaidMaint(b) > 0 && !promiseOn(o, d) && d > b.billDate) { b.reminders.push(rd); box(o.id).remind = b; }
-      }
+      if (remindToday(b, d) && unpaidMaint(b) > 0 && !promiseOn(o, d)) { b.reminders.push(+d.slice(8)); box(o.id).remind = b; }
       if (addDays(b.dueDate, 1) === d && !b.fined && unpaidMaint(b) > 0) {
         b.fined = true;
         if (promiseOn(o, d)) { b.noticeSkipped = true; c.paused++; log(d, '11:00', 'job', `Disconnection notice for ${o.apt} paused: promise to pay until ${fd(o.promiseUntil!)}`, o.id); }
@@ -503,7 +507,7 @@ export function eventsOn(d: string): Ev[] {
     if (o.status !== 'active' || o.exempt) continue;
     if (isBillingDay(o, d)) ev.push({ kind: 'bill', text: `Bill for ${o.apt}`, o });
     for (const b of billsOf(o)) {
-      for (const rd of R().remindDays) if (rd > 0 && !b.reminders.includes(rd) && addDays(b.dueDate, -rd) === d && unpaidMaint(b) > 0 && !promiseOn(o, d)) ev.push({ kind: 'remind', text: `Reminder for ${o.apt} (due ${fds(b.dueDate)})`, o });
+      if (remindToday(b, d) && unpaidMaint(b) > 0 && !promiseOn(o, d)) ev.push({ kind: 'remind', text: `Reminder for ${o.apt} (due ${fds(b.dueDate)})`, o });
       if (addDays(b.dueDate, 1) === d && !b.fined && unpaidMaint(b) > 0) ev.push({ kind: 'fine', text: promiseOn(o, d) ? `Fine for ${o.apt} (notice paused)` : `Fine and final notice for ${o.apt}`, o });
       if (b.finalDate === d && unpaid(b) > 0 && !o.flagged) ev.push({ kind: 'flag', text: promiseOn(o, d) ? `Final deadline for ${o.apt} (paused)` : `${o.apt} flagged for disconnection`, o });
     }
@@ -541,7 +545,10 @@ export function failedList() {
   }
   return out;
 }
-export const followCount = () => S.proofs.filter(p => p.status === 'pending').length + failedList().length + S.alerts.filter(a => !a.done).length;
+/** Owners with WhatsApp messages waiting to be sent by hand (bills, reminders, notices, receipts…). */
+export const toSendOwners = () => new Set(S.messages.filter(m => m.status === 'pending' && m.from === 'biz').map(m => m.ownerId)).size;
+/** Everything in To do: messages to send by hand, bank transfers to check, numbers to fix, promises not kept. */
+export const followCount = () => toSendOwners() + S.proofs.filter(p => p.status === 'pending').length + failedList().length + S.alerts.filter(a => !a.done).length;
 export const sortedPayments = () => [...S.payments].sort((a, b) => (b.d + b.t).localeCompare(a.d + a.t));
 export function duesBreakdown(o: Owner): Breakdown {
   const rows: Breakdown['rows'] = [];

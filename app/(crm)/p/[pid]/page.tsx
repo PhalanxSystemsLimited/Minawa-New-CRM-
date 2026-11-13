@@ -1,6 +1,6 @@
 // A project's Overview (the demo's viewDash).
 import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillDate, apartments, isBillingDay, billsOf, unpaidMaint, billDateOf, sheetStats } from '@/lib/engine';
-import { addDays, nextMonth, prevMonth, hour12 } from '@/lib/fmt';
+import { addDays, nextMonth, prevMonth, hour12, ord } from '@/lib/fmt';
 import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short } from '@/lib/fmt';
 import { spInfo } from '@/lib/docdata';
 import { pendingCount } from '@/lib/manual-send';
@@ -66,13 +66,13 @@ export default async function Overview({ params, searchParams }: { params: Promi
         const flats = apartments().filter(o => o.status === 'active' && o.possession <= next);
         const toBill = flats.filter(o => isBillingDay(o, next)).length;
         const ut = r.utilities[0], utDone = ut ? flats.filter(o => S.charges.some(c => c.ownerId === o.id && c.period === np && c.kind === ut && c.amount)).length : 0;
-        const rem = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => unpaidMaint(b) > 0 && r.remindDays.some(d => addDays(b.dueDate, -d) > S.today)).length;
+        const rem = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => unpaidMaint(b) > 0 && b.dueDate > S.today && b.reminders.length < r.remindOn.length).length;
         const fineDay = S.bills.filter(b => unpaidMaint(b) > 0 && addDays(b.dueDate, 1) > S.today).map(b => addDays(b.dueDate, 1)).sort()[0];
         return <div className="card"><div className="card-row"><h3>Billing desk <small>{fm(nextMonth(np))} bills go out on {fd(next)} at {hour12(r.sendHour)}</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
           <div className="desk">
             <div><div className="l">Next bills</div><div className="v num">{toBill}</div><div className="cell-sub">flats on {fds(next)}, due {fds(addDays(next, r.dueDays))}</div></div>
             {ut ? <div><div className="l">{ut} entered</div><div className="v num">{utDone} <span className="muted" style={{ fontSize: 14 }}>of {flats.length}</span></div><div className="cell-sub">for {fm(np)}</div></div> : <div><div className="l">Utility bills</div><div className="v num">–</div><div className="cell-sub">not used here</div></div>}
-            <div><div className="l">Reminders to come</div><div className="v num">{rem}</div><div className="cell-sub">{r.remindDays.length ? `${r.remindDays.join(' and ')} days before due` : 'off'}</div></div>
+            <div><div className="l">Reminders to come</div><div className="v num">{rem}</div><div className="cell-sub">{r.remindOn.length ? `on the ${r.remindOn.map(ord).join(' and ')}` : 'off'}</div></div>
             <div><div className="l">Next fine day</div><div className="v num">{fineDay ? fds(fineDay) : '–'}</div><div className="cell-sub">fine {r.feePct}% on what&apos;s unpaid</div></div>
           </div>
           <div className="desk-acts">

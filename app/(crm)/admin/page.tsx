@@ -74,7 +74,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         {row('WhatsApp', true, `Sent by hand: staff open each owner's chat from Send on WhatsApp and confirm it was sent${waTestNumber() ? ` · testing: chats open with +${waTestNumber()}` : ' · chats open with the owners'}`, waTestNumber() ? 'warn' : 'By hand')}
         {row('Safepay', safepayConfigured(), safepayConfigured() ? (safepayMode() === 'live' ? 'Live: real card payments' : 'Sandbox: test payments only (set SAFEPAY_ENV=production to go live)') : 'Set SAFEPAY_SECRET_KEY. Until then Pay Now opens a simulated checkout.', safepayMode() === 'live' ? 'Live' : 'warn')}
         {row('Safepay webhook', !!process.env.SAFEPAY_WEBHOOK_SECRET, `${app || 'https://your-crm'}/api/safepay/webhook`)}
-        {row('Daily run', !!process.env.CRON_SECRET, 'Supabase pg_cron calls /api/cron/daily at 11:00 AM and /api/cron/dispatch every 10 minutes (supabase/migrations/0002_schedule.sql).')}
+        {row('Daily run', true, 'Runs by itself once a day, as soon as anyone has the CRM open: bills on the 25th, reminders on the 3rd and 7th, the fine and final notice after the due date. What it makes waits in To do, to be sent by hand.', 'Automatic')}
         {row('Address for Pay Now buttons', !!app, app ? `${app}/pay/…` : 'Set APP_URL to the CRM\'s public address.')}
       </div></div>
       <div className="card"><h3>Before go-live <small>from Minawa&apos;s checklist</small></h3><ul className="rules">

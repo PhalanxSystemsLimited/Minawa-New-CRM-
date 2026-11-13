@@ -10,7 +10,7 @@ import { safepayConfigured } from './safepay';
 import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting } from './engine';
 import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
-import { compose, composeQueued, cantSend, pendingGroups, type SendItem, type SendType } from './manual-send';
+import { compose, composeQueued, cantSend, pendingGroups, toDoKinds, type SendItem, type SendType } from './manual-send';
 
 const who = (o: Owner) => `Apt ${o.apt} · ${o.name} (${o.phone || 'no number'})`;
 const owes = (o: Owner) => { const b = balance(o); return b > 0 ? `; balance ${rs(b)}` : b < 0 ? `; credit ${rs(-b)}` : '; paid up'; };
@@ -32,7 +32,7 @@ const TYPES: SendType[] = ['queue', 'link', 'bill', 'reminder', 'notice', 'recei
 export interface Prepared { items: SendItem[]; left: { apt: string; why: string }[]; test: string | null }
 
 /** Writes the messages with today's figures and creates the payment links they need. Nothing is sent. */
-export async function prepareSendAction(input: { pid: string; type: SendType; ids: string[]; title?: string; text?: string; pay?: boolean; notice?: string }): Promise<Prepared> {
+export async function prepareSendAction(input: { pid: string; type: SendType; ids: string[]; title?: string; text?: string; pay?: boolean; notice?: string; only?: string }): Promise<Prepared> {
   const staff = await requireStaff();
   const type = TYPES.includes(input.type) ? input.type : 'link';
   const ids = new Set((input.ids || []).map(String));
@@ -41,7 +41,10 @@ export async function prepareSendAction(input: { pid: string; type: SendType; id
     const d = s.today, t = at(15), items: SendItem[] = [], left: Prepared['left'] = [];
     if (type === 'queue') {
       const nt = input.notice ? s.notices.find(n => n.id === input.notice) : null;
-      const groups = pendingGroups(m => (!ids.size || ids.has(m.ownerId)) && (!nt || (m.kind === 'alert' && m.d === nt.d && m.t === nt.t)));
+      // To do › one kind of message ("all bills", "all reminders"…): the owners whose latest waiting message is of that kind.
+      const only = input.only && input.only !== 'all' ? toDoKinds(input.only) : null;
+      const groups = pendingGroups(m => (!ids.size || ids.has(m.ownerId)) && (!nt || (m.kind === 'alert' && m.d === nt.d && m.t === nt.t)))
+        .filter(g => !only || only.includes(g.msg.kind));
       // Receipts first (people who just paid), then by apartment order as the owners were listed.
       groups.sort((a, b) => +(b.msg.kind === 'receipt') - +(a.msg.kind === 'receipt'));
       for (const g of groups) {

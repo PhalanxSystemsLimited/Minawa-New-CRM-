@@ -165,6 +165,26 @@ export function pendingGroups(filter?: (m: Message) => boolean) {
     return { msg: list[list.length - 1], older: list.slice(0, -1) };
   });
 }
+/** To do: the messages waiting to be sent by hand, in groups (the 25th's bills, the reminders on the 3rd and 7th…). */
+export const TODO_GROUPS: { key: string; label: string; hint: string; kinds: string[] }[] = [
+  { key: 'bill', label: 'Monthly bills', hint: 'First alert: the bill made on the 25th, with the Pay Now link', kinds: ['bill'] },
+  { key: 'reminder', label: 'Reminders', hint: 'Unpaid bills, on the 3rd and 7th of the month', kinds: ['reminder'] },
+  { key: 'notice', label: 'Final notices', hint: 'Unpaid after the due date: the fine is added', kinds: ['notice'] },
+  { key: 'receipt', label: 'Payment receipts', hint: 'Owners who have paid', kinds: ['receipt'] },
+  { key: 'link', label: 'Payment links', hint: 'Updated dues with a fresh Pay Now link', kinds: ['link'] },
+  { key: 'other', label: 'Notices and messages', hint: 'Maintenance notices and announcements', kinds: ['alert', 'announcement', 'info', 'statement', 'reply'] }
+];
+export const toDoKinds = (key: string) => TODO_GROUPS.find(g => g.key === key)?.kinds || [key];
+/** For To do: how many owners are waiting for each group, and since when. */
+export function toDoGroups() {
+  const by = new Map<string, { n: number; since: string }>();
+  for (const g of pendingGroups()) {
+    const grp = TODO_GROUPS.find(x => x.kinds.includes(g.msg.kind))?.key || 'other';
+    const first = [g.msg, ...g.older].map(m => m.d).sort()[0], cur0 = by.get(grp);
+    by.set(grp, { n: (cur0?.n || 0) + 1, since: cur0 && cur0.since < first ? cur0.since : first });
+  }
+  return TODO_GROUPS.filter(g => by.has(g.key)).map(g => ({ ...g, ...by.get(g.key)! }));
+}
 /** How many owners have something waiting to be sent by hand (the tab's badge). */
 export const pendingCount = () => new Set(pendingGroups().map(g => g.msg.ownerId)).size;
 

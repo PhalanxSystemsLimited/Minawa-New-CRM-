@@ -17,7 +17,7 @@ export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announc
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
 
 type Disc = { kind: 'pct' | 'fixed' | 'none'; value: number; until: string | null };
-type RulesChange = Pick<Rules, 'billDay' | 'dueDays' | 'remindDays' | 'flagDays' | 'utilities'>;
+type RulesChange = Pick<Rules, 'billDay' | 'dueDays' | 'remindOn' | 'flagDays' | 'utilities'>;
 const num = (x: unknown) => Math.round(Number(x) || 0);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -34,7 +34,7 @@ function rulesDiff(c: RulesChange) {
   const r = cur().settings.rules, out: [string, string][] = [];
   if (c.billDay !== r.billDay) out.push([`bills on the ${ord(r.billDay)}`, `bills on the ${ord(c.billDay)}`]);
   if (c.dueDays !== r.dueDays) out.push([`due ${r.dueDays} days after the bill`, `due ${c.dueDays} days after the bill`]);
-  if (c.remindDays.join(',') !== r.remindDays.join(',')) out.push([`reminders ${r.remindDays.join(' and ') || 'off'}${r.remindDays.length ? ' days before' : ''}`, `reminders ${c.remindDays.join(' and ') || 'off'}${c.remindDays.length ? ' days before' : ''}`]);
+  if (c.remindOn.join(',') !== r.remindOn.join(',')) out.push([`reminders on the ${r.remindOn.map(ord).join(' and ') || 'none'}`, `reminders on the ${c.remindOn.map(ord).join(' and ') || 'none'}`]);
   if (c.flagDays !== r.flagDays) out.push([`flag ${r.flagDays} days after the due date`, `flag ${c.flagDays} days after the due date`]);
   if (c.utilities.join(',') !== r.utilities.join(',')) out.push([`utilities: ${r.utilities.join(', ') || 'none'}`, `utilities: ${c.utilities.join(', ') || 'none'}`]);
   return out;
@@ -123,9 +123,8 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
     }
     case 'rules': {
       const next = { ...S.settings.rules, ...(c as unknown as RulesChange) };
-      next.remindDays = next.remindDays.filter(x => x < next.dueDays);
       S.settings.rules = next;
-      log(d, t, 'admin', `Billing schedule changed by ${who}: bills on the ${ord(next.billDay)}, due ${next.dueDays} days later, reminders ${next.remindDays.length ? next.remindDays.join(' and ') + ' days before' : 'off'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}. New bills use them.`);
+      log(d, t, 'admin', `Billing schedule changed by ${who}: bills on the ${ord(next.billDay)}, due ${next.dueDays} days later, reminders on the ${next.remindOn.map(ord).join(' and ') || 'none'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}. New bills use them.`);
       return 'Billing schedule saved. It applies to new bills.';
     }
     case 'fine': {

@@ -35,7 +35,7 @@ export default async function SendPage({ params, searchParams }: { params: Promi
       <div className="page-head"><div><h2>Send on WhatsApp</h2><p>Choose what to send and who gets it. Each owner&apos;s chat then opens in WhatsApp Web with the message already typed: check it and press Send in WhatsApp. When you come back to the CRM it asks <b>Did you send the message?</b>, and your answer goes on the owner&apos;s history and in staff activity.</p></div></div>
       {waTestNumber() ? <div className="callout warn" style={{ marginBottom: 14 }}><div><b>Testing:</b> every chat opens with the test number +{waTestNumber()} (WHATSAPP_TEST_NUMBER), not the owner&apos;s. Remove that setting to message owners.</div></div> : null}
       {localApp ? <div className="callout" style={{ marginBottom: 14 }}><div>Pay Now links point to <b>{app || '(APP_URL not set)'}</b>, which owners can&apos;t open from their phones. They will work once the CRM is online and APP_URL is its public address.</div></div> : null}
-      <SendConsole pid={pid} rows={rows} blocks={blocks} types={SEND_TYPES} start={start} ids={sp.ids ? sp.ids.split(',') : []} go={sp.go === '1'} notice={sp.notice || ''} waiting={groups.length} />
+      <SendConsole pid={pid} rows={rows} blocks={blocks} types={SEND_TYPES} start={start} ids={sp.ids ? sp.ids.split(',') : []} go={sp.go === '1'} notice={sp.notice || ''} only={sp.kind || ''} waiting={groups.length} />
     </>;
   });
 }
