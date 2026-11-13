@@ -664,8 +664,7 @@ main .page-head h2{display:none}
   --r-sm:0px; --r-md:0px; --r-lg:0px; --r-xl:0px;
 }
 body{background:var(--stone);color:#3A4045}
-/* square corners everywhere, like the site; only true circles stay round */
-*,*::before,*::after{border-radius:0 !important}
+/* (square corners were removed in the Nov 2026 refresh: see minawa-refresh.css) circles stay round */
 .av,.wa-mini,.wa-to .wa-logo,.hchip .live,.tg-sw .sw,.tg-sw .sw::after,.doc .rs-ic,.pill::before,.dot-n{border-radius:50% !important}
 .tg-sw .sw{border-radius:22px !important}
 .chart rect,.mb span{rx:0;ry:0}
