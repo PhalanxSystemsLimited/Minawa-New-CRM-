@@ -386,3 +386,49 @@ main>*:nth-child(n+6){animation-delay:.2s}
   *,*::before,*::after{animation:none !important;transition:none !important}
   .btn:hover,.pcard:hover,.kpi:hover,.chipbtn:hover,.icon-btn:hover,.side-i:hover,.side-p:hover{transform:none}
 }
+
+/* ---------- activity lists (Staff activity, Activity log, dashboard): easier to read, not oversized ---------- */
+.ev,.act-ev{grid-template-columns:76px minmax(0,1fr);gap:4px 12px;padding:12px 0;font-size:14px;border-bottom-color:#ECEAE3}
+.ev .tm{font-size:12.5px;font-weight:600;color:#334155;padding-top:3px}
+.ev-day{font-size:11.5px;letter-spacing:.12em;color:#0F172A;padding:18px 0 6px}
+.act-who{gap:4px 9px;margin-bottom:4px}
+.act-who b{font-size:14.5px;color:#0F172A}
+.act-who .cell-sub,.ev .cell-sub{font-size:12.5px;color:#475569}
+.act-av{width:26px;height:26px;border-radius:8px;font-size:10.5px}
+.act-text{font-size:14px;line-height:1.5;color:#1E293B}
+.k.abadge{font-size:11px;padding:3px 8px}
+.act-open{font-size:12.5px;font-weight:600}
+
+/* ---------- readability across the system: a touch larger, darker secondary text ---------- */
+.cell-sub{font-size:12.5px;color:#475569}
+td{font-size:13.5px;color:#1E293B}
+.page-head p{font-size:14px;color:#475569}
+.card h3 small,.card-row h3 small{font-size:12.5px;color:#475569}
+.callout{font-size:13.5px;color:#1E293B}
+.li .t .a{font-size:14px;color:#0F172A}
+.li .t .b{font-size:12.5px;color:#475569}
+.tag{font-size:11.5px}
+.form-row label{font-size:11.5px}
+.stat-rows{font-size:13px}
+.stat-rows div{color:#334155}
+.stat-rows b{color:#0F172A}
+.kpi .cell-sub{font-size:12.5px;color:#475569}
+.sec-row .muted{color:#334155}
+
+/* ---------- dashboard project cards: aligned rows, clearer figures ---------- */
+.pc-name{font-size:16.5px}
+.pc-top .cell-sub{font-size:12.5px;color:#475569;margin-top:2px}
+.chip-t{font-size:12px}
+.pc-target .l{font-size:11.5px;color:#334155}
+.pc-target .v{font-size:21px}
+.pc-target .v span{font-size:14px;color:#475569}
+.pc-target .cell-sub{font-size:12.5px;color:#334155}
+.pcard .stat-rows{font-size:13.5px}
+.pcard .stat-rows div{color:#334155;padding:9px 0}
+.pcard .stat-rows b{font-size:14px;color:#0F172A}
+/* the office sheet block lines up with the rows above it */
+.pc-sheet{margin:4px 20px 8px;padding-top:14px;border-top:1px solid #E6E3DA}
+.pc-sheet>.l{font-size:11.5px;letter-spacing:.08em;color:#334155;margin-bottom:2px}
+.pc-sheet .stat-rows{padding:0;flex:none}
+.pc-sheet .stat-rows small{font-size:11.5px;color:#475569;font-weight:600}
+.pcard:hover{transform:translateY(-2px)}
