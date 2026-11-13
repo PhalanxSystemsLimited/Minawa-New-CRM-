@@ -149,6 +149,8 @@ export interface State {
   /** Changes to an owner's charges that an accountant asked for, waiting for (or decided by) an admin. */
   approvals: Approval[];
   company?: Company;
+  /** Screens only (not saved): when the signed-in person last opened Payments here, for the "new payments" badge. */
+  paySeen?: string | null;
   log: LogEntry[];          // new entries only (written on save)
   seq: Record<string, number>;
 }

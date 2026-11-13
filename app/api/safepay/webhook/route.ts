@@ -6,6 +6,7 @@ import { load } from '@/lib/ops';
 import { use, payLink, payStaleLink, log } from '@/lib/engine';
 import { dispatch } from '@/lib/dispatch';
 import { verifySignature, getQuickLink, safepayMode } from '@/lib/safepay';
+import { sweepSafepay, staffLog } from '@/lib/ops';
 import { nowPKT } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,13 @@ export async function POST(req: Request) {
   const store = await getStore();
   let hit: { project: string; id: string } | null = null;
   for (const id of ids(body)) { hit = await store.locate(id.startsWith('PL-') ? { linkId: id } : { spLinkId: id }); if (hit) break; }
-  if (!hit) return NextResponse.json({ ok: true, note: 'no matching payment link' });
+  const what = (body && typeof body === 'object' ? String((body as Record<string, unknown>).type || (body as Record<string, unknown>).event || '') : '') || 'notification';
+  if (!hit) {
+    // Not matched to a link by its ids: ask Safepay about every open link instead, so a payment is never missed.
+    const sw = await sweepSafepay(null);
+    await staffLog(null, `Safepay webhook (${what}${signed ? ', signed' : ', signature not verified'}): no payment link in it, so every open link was checked: ${sw.paid ? `${sw.paid} payment${sw.paid === 1 ? '' : 's'} recorded` : 'none paid yet'}`, { kind: 'webhook' });
+    return NextResponse.json({ ok: true, note: 'swept open links', paid: sw.paid });
+  }
   const result = await store.withLock(async () => {
     const s = await load(hit!.project, null), l = s.links.find(x => x.id === hit!.id);
     if (!l || !l.sp || l.spSettled) return 'nothing to do';

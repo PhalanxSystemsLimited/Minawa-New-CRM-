@@ -260,3 +260,20 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 /* To do › fixed number: the message ready to send */
 .wa-ready { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface-2) }
 .wa-ready pre { margin: 6px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; font: 12.5px/1.45 inherit; font-family: inherit }
+
+/* Payments: new-payments badge, expandable rows with every detail */
+.tab-b.tab-new { background: var(--bad, #b0241c) }
+.pay-table .pay-row { cursor: pointer }
+.pay-table .pay-row:hover td { background: var(--surface-2) }
+.pay-table .pay-row.pay-new td { background: color-mix(in srgb, var(--good-soft) 55%, transparent) }
+.pay-table .pay-row.open td { border-bottom-color: transparent }
+.pay-x-cell { width: 28px; padding-right: 0 !important }
+.pay-x { border: 0; background: none; cursor: pointer; font-size: 13px; color: var(--muted, #667); padding: 2px 4px }
+.pay-detail td { background: var(--surface-2); padding-top: 4px !important }
+.pd { display: grid; gap: 12px; padding: 4px 0 8px }
+.pd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 18px }
+.pd-i .l, .pd-app .l { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted, #667) }
+.pd-i .v { font-size: 13.5px; word-break: break-word }
+.pd-app ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; max-width: 460px }
+.pd-app li { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px }
+.pd-act { display: flex; gap: 8px; flex-wrap: wrap }

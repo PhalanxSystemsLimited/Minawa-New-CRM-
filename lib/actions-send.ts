@@ -5,7 +5,8 @@ import type { Owner, WaLog, Staff } from './types';
 import { getStore } from './store';
 import { intl } from './dispatch';
 import { requireStaff, staffName } from './session';
-import { mutate } from './ops';
+import { mutate, load } from './ops';
+import { safepayConfigured } from './safepay';
 import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting, sendPaymentLink } from './engine';
 import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
@@ -69,7 +70,19 @@ export async function prepareSendAction(input: { pid: string; type: SendType; id
     }
     return { items, left };
   });
-  return { ...out, test: waTestNumber() || null };
+  return { items: await safepayLinks(input.pid, staff, out.items), left: out.left, test: waTestNumber() || null };
+}
+
+/** The Pay Now link in each message: Safepay's own card payment page for that link (made when the message was
+ *  prepared), so the owner goes straight to entering card details. Falls back to the CRM's /pay/… address if Safepay
+ *  isn't set up or the link couldn't be made. */
+async function safepayLinks(pid: string, staff: Staff, items: SendItem[]): Promise<SendItem[]> {
+  if (!safepayConfigured() || !items.some(i => i.linkId && i.payUrl)) return items;
+  const s = await load(pid, staff);
+  return items.map(it => {
+    const url = it.linkId ? s.links.find(l => l.id === it.linkId && l.status === 'active')?.sp?.url : null;
+    return url && it.payUrl && url !== it.payUrl ? { ...it, text: it.text.split(it.payUrl).join(url), payUrl: url } : it;
+  });
 }
 
 /** The accountant has sent this message in WhatsApp: record it on the owner's history. */
@@ -168,7 +181,8 @@ export async function fixNumberSendAction(input: { pid: string; oid: string; pho
     }, { send: true });
     if (r.auto) return { ok: true, toast: r.owes ? 'Number saved and the latest balance sent on WhatsApp' : 'Number saved. Nothing is owed, so nothing was sent.' };
     if (!r.ready) return { ok: true, toast: 'Number saved. Nothing is owed, so there is nothing to resend.' };
-    return { ok: true, toast: 'Number saved. Send the message in WhatsApp, then come back here and confirm it was sent.', ...r.ready };
+    const [item] = await safepayLinks(input.pid, staff, [r.ready.item]);
+    return { ok: true, toast: 'Number saved. Send the message in WhatsApp, then come back here and confirm it was sent.', item, to: r.ready.to };
   } catch (e) { return { ok: false, error: (e as Error).message }; }
 }
 
@@ -180,9 +194,10 @@ export async function resendFixedAction(input: { pid: string; oid: string }): Pr
       const o = ownerById(input.oid);
       if (!o || o.status !== 'active' || o.invalidPhone) throw new Error('Add the WhatsApp number first');
       return resendItem(o, s.today, at(15), x => pendingDues(s, x));
-    }, { send: false });
+    });
     if (!ready) return { ok: true, toast: 'Nothing is owed now, so there is nothing to send.' };
-    return { ok: true, toast: 'Send the message in WhatsApp, then come back here and confirm it was sent.', ...ready };
+    const [item] = await safepayLinks(input.pid, staff, [ready.item]);
+    return { ok: true, toast: 'Send the message in WhatsApp, then come back here and confirm it was sent.', item, to: ready.to };
   } catch (e) { return { ok: false, error: (e as Error).message }; }
 }
 

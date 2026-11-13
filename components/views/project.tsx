@@ -6,6 +6,8 @@ import { use } from '@/lib/engine';
 import { pendingCount } from '@/lib/manual-send';
 import { requireStaff } from '@/lib/session';
 import { load, projects as listProjects } from '@/lib/ops';
+import { cookies } from 'next/headers';
+import { addDays } from '@/lib/fmt';
 import { Go, A } from '../client';
 import { DocModal, OwnerModal, SendPickModal, TargetModal, PossessionModal } from './modals';
 
@@ -13,14 +15,22 @@ export type Tab = 'dashboard' | 'owners' | 'payments' | 'utilities' | 'notices' 
 const TABS: [Tab, string, string][] = [['dashboard', 'Overview', ''], ['owners', 'Apartments', '/apartments'], ['payments', 'Payments', '/payments'], ['utilities', 'Utility bills', '/utilities'], ['notices', 'Notices', '/notices'], ['generator', 'Generator charges', '/generator'], ['send', 'Send on WhatsApp', '/send'], ['follow', 'To do', '/todo'], ['messages', 'Messages', '/messages'], ['settings', 'Settings', '/settings']];
 export const TITLES: Record<Tab, string> = { dashboard: 'Overview', owners: 'Apartments', payments: 'Payments', utilities: 'Utility bills', notices: 'Notices', generator: 'Generator charges', send: 'Send on WhatsApp', follow: 'To do', messages: 'Messages', settings: 'Settings' };
 
+/** Payments recorded since the signed-in person last opened this project's Payments (the last 7 days on a first visit). */
+export const payKey = (p: { d: string; t: string; id: string }) => `${p.d}T${p.t}~${p.id}`;
+export const paySeenCookie = (staffId: string, pid: string) => `mpay_${staffId.replace(/[^a-z0-9-]/gi, '')}_${pid}`;
+export function newPayments() {
+  const S = cur(), since = S.paySeen || addDays(S.today, -7) + 'T00:00';
+  return S.payments.filter(p => payKey(p) > since);
+}
+
 export function projHead(tab: Tab, ownerTitle?: string) {
-  const S = cur(), p = S.proj, n = followCount(), w = pendingCount();
+  const S = cur(), p = S.proj, n = followCount(), w = pendingCount(), np = newPayments().length;
   const t = ownerTitle || TITLES[tab] || 'Overview';
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
     <nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
-      <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : null}</Go>)}</nav>
+      <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-b tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`}>{np} new</span></> : null}</Go>)}</nav>
   </>;
 }
 
@@ -31,6 +41,7 @@ export async function projectPage(pid: string, sp: Record<string, string | undef
   if (!proj) return <div className="card allclear"><div className="big">No such project</div><Go href="/" className="btn">Back to the dashboard</Go></div>;
   if (!proj.live) return notSetUp(proj.id, proj.name, proj.place, proj.kind, staff.role === 'admin');
   const s = await load(pid, staff);
+  try { s.paySeen = (await cookies()).get(paySeenCookie(staff.id, pid))?.value || null; } catch { s.paySeen = null; }
   return use(s, () => {
     const body = render(s);
     let modal: React.ReactNode = null;

@@ -79,3 +79,23 @@ export async function dispatchAll() {
   }
   return out;
 }
+
+/** Asks Safepay about every open payment link (all live projects) and records the ones that were paid. Used by the
+ *  "Check Safepay payments" button and when a Safepay webhook can't be matched to a link. */
+export async function sweepSafepay(staff: Staff | null) {
+  const store = await getStore(), report: string[] = [];
+  let paid = 0;
+  for (const p of await liveProjects()) {
+    paid += await store.withLock(async () => {
+      const s = await load(p.id, staff);
+      s.staffId = null;
+      const ids = await checkSafepay(s, report);
+      if (!ids.length) return 0;
+      await store.saveState(s);
+      await dispatch(s);
+      await store.saveState(s);
+      return ids.length;
+    });
+  }
+  return { paid, report };
+}

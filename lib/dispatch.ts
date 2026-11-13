@@ -106,18 +106,19 @@ export async function dispatch(s: State) {
 }
 
 /** Safety net for missed webhooks: asks Safepay about open links (and links replaced in the last 30 days). */
-export async function checkSafepay(s: State) {
+export async function checkSafepay(s: State, report?: string[]) {
   if (!safepayConfigured()) return [];
   const since = addDays(s.today, -30), paid: string[] = [];
   const open = s.links.filter(l => l.sp && !l.spSettled && (l.status === 'active' || (l.status === 'cancelled' && (l.cancelledOn || '') >= since)));
   for (const l of open) {
     try {
       const sp = await getQuickLink(l.sp!.id);
+      report?.push(`${l.id} (${rs(l.amount)}): ${sp.isPaid ? 'paid' : (sp.status || 'not paid').toLowerCase()}`);
       if (!sp.isPaid || l.spSettled) continue;
       l.sp!.tracker = sp.tracker || l.sp!.tracker;
       const p = use(s, () => l.status === 'active' ? payLink(l, 'Card', s.today, nowPKT(), safepayMode()) : payStaleLink(l, s.today, nowPKT(), safepayMode()));
       paid.push(p.id);
-    } catch { /* Safepay unreachable: try again next time */ }
+    } catch (e) { report?.push(`${l.id}: Safepay didn't answer (${(e as Error).message})`); /* try again next time */ }
   }
   return paid;
 }

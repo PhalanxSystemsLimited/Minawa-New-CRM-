@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Owner, State } from './types';
 import { requireStaff, requireAdmin, roleName, staffName } from './session';
-import { mutate, runDailyAll, load, staffLog } from './ops';
+import { mutate, runDailyAll, load, staffLog, sweepSafepay } from './ops';
+import { safepayConfigured } from './safepay';
 import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, cancelLinks, unitOf, log, at, nid, rateTypes,
@@ -318,4 +319,14 @@ export async function inviteAction(fdata: FormData) {
   await store.saveStaff({ id, email, name, role, active: true });
   await staffLog(me, `${name} (${email}) added as ${role === 'admin' ? 'an admin' : 'an accountant'} by ${staffName(me)}`);
   go('/admin', `${name} can now sign in as ${role === 'admin' ? 'an admin' : 'an accountant'}`);
+}
+
+/** Payments › Check Safepay payments: asks Safepay about every open payment link and records what was paid. */
+export async function checkSafepayAction(fdata: FormData) {
+  const staff = await requireStaff(), back = S(fdata, 'back') || '/';
+  if (!safepayConfigured()) go(back, 'Safepay is not set up (SAFEPAY_SECRET_KEY)');
+  const r = await sweepSafepay(staff);
+  const notPaid = r.report.filter(x => !/: paid$/.test(x));
+  await staffLog(staff, `${staffName(staff)} checked Safepay: ${r.paid ? `${r.paid} payment${r.paid === 1 ? '' : 's'} recorded` : 'no new payments'} (${r.report.length} open link${r.report.length === 1 ? '' : 's'} checked)`, { kind: 'webhook' });
+  go(back, r.paid ? `${r.paid} Safepay payment${r.paid === 1 ? '' : 's'} recorded` : r.report.length ? `No new payments. Safepay says: ${notPaid.slice(0, 4).join('; ')}${notPaid.length > 4 ? ` and ${notPaid.length - 4} more` : ''}` : 'No open Safepay payment links');
 }

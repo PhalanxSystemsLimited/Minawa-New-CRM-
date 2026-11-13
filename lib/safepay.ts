@@ -24,11 +24,15 @@ function linkFrom(payload: Record<string, unknown>) {
   if (data && typeof data.link === 'object' && data.link) data = data.link as Record<string, unknown>;
   return data && data.id ? data : null;
 }
+const PAID = /^(paid|completed|complete|success|succeeded|captured|settled)$/i;
 function brief(link: Record<string, unknown>): SpBrief {
   const meta = ((link.metadata as Record<string, unknown>[]) || [{}])[0] || {};
-  const pay = ((link.payment as Record<string, unknown>[]) || [{}])[0] || {};
-  return { id: String(link.id), url: String(meta.recipient_view_url || ''), tracker: (pay.sp_tracker as string) || null, status: String(link.status || ''),
-    isPaid: !!pay.is_paid || link.status === 'PAID', isExpired: !!link.is_expired, total: Number(link.total || 0), reference: (link.reference as string) || null };
+  const pays = Array.isArray(link.payment) ? link.payment as Record<string, unknown>[] : link.payment && typeof link.payment === 'object' ? [link.payment as Record<string, unknown>] : [];
+  // Any payment on the link that Safepay marks as paid (the first entry is not always the successful one).
+  const ok = pays.find(p => p.is_paid === true || PAID.test(String(p.state || p.status || '')));
+  const pay = ok || pays[0] || {};
+  return { id: String(link.id), url: String(meta.recipient_view_url || ''), tracker: (pay.sp_tracker as string) || (pay.tracker as string) || null, status: String(link.status || ''),
+    isPaid: !!ok || PAID.test(String(link.status || '')), isExpired: !!link.is_expired, total: Number(link.total || 0), reference: (link.reference as string) || null };
 }
 function errOf(json: Record<string, unknown>, status: number) {
   const s = json.status as { message?: string; errors?: string[] } | undefined;
