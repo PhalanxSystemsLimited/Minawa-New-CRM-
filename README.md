@@ -2,7 +2,7 @@
 
 Minawa Group ERP, Phase 1: maintenance dues. Built by Phalanx Systems.
 
-- **Billing:** every flat is billed **in advance on the 25th at 11:00 AM** (the 25 Nov bill is for December). That bill is the 1st reminder, and it's due 15 days later, on the 10th. Two more reminders follow, 7 and 3 days before the due date.
+- **Billing:** every flat is billed **on the 25th at 11:00 AM for that month** (after use: the 25 Nov bill is for November). That bill is the 1st reminder, and it's due 15 days later, on the 10th of the next month. The 2nd and 3rd reminders go out on the 3rd and 7th while it's unpaid.
   - **After the due date:** the day after, the **fine** is added. It's a % set by the accountant. Owners get a final notice with their updated dues, and flats still unpaid 15 days later are flagged for disconnection.
   - **Plans:** each owner is on a **monthly**, **quarterly** (billed 25 Dec, Mar, Jun and Sep for the next quarter) or **annual** (billed 25 Dec for the next year) plan.
   - **Possession:** billing starts on the possession date. The first month is charged from that day, on the first bill after possession.

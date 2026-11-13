@@ -1,6 +1,6 @@
 // The billing engine, ported from the demo (demo/minawa-maintenance-demo.html) and moved to Minawa's calendar:
-// every flat is billed on the 25th (billDay) in advance for its plan's months (the 25 Nov bill is for December;
-// quarterly and annual plans for the coming quarter or year) plus the utility bills the accountant entered; due `dueDays` later (the 10th), with reminders on the `remindOn` days of the month (the 3rd and 7th) while it is unpaid. The day after
+// every flat is billed on the 25th (billDay) for the month it is in, after use (the 25 Nov bill is for November;
+// quarterly plans on the 25th of the quarter's last month, annual plans on 25 December for that year) plus the utility bills the accountant entered; due `dueDays` later (the 10th), with reminders on the `remindOn` days of the month (the 3rd and 7th) while it is unpaid. The day after
 // the due date the fine (`feePct`% of the unpaid bills, and of old arrears only if `fineArrears`; set by the accountant) is added and a final notice goes out;
 // `flagDays` after the due date unpaid flats are flagged. Billing starts at possession (first month prorated).
 // Promises to pay pause notices; payments pay the fine in proportion and dues oldest first.
@@ -10,7 +10,7 @@
 // recorded here; lib/dispatch.ts creates the Safepay links and sends the WhatsApp messages afterwards.
 import type { State, Owner, Bill, PayLink, Message, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
 import { PLAN_MONTHS } from './types';
-import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, prevMonth, nowPKT } from './fmt';
+import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT } from './fmt';
 
 let S: State = null as unknown as State;
 let SEEDING = false, QUIET = false;
@@ -50,7 +50,10 @@ export const activeLink = (o: Owner) => S.links.find(l => l.ownerId === o.id && 
 export const isAdmin = () => S.role === 'admin';
 export const goLive = () => S.goLive;
 /** Opening balances (arrears from the accountant's sheet) fall due with the first bill, not on go-live day. */
-export const openingDue = () => addDays(billDateOf(prevMonth(S.goLive.slice(0, 7))), R().dueDays);
+/** The first bill day: the bill day of the go-live month (billing is for the month just used). */
+export const firstBillDate = () => billDateOf(S.goLive.slice(0, 7));
+/** Old arrears fall due with the first bill, so nothing is fined or flagged before billing starts. */
+export const openingDue = () => addDays(firstBillDate(), R().dueDays);
 
 export const rateTypes = () => [...new Set(S.rates.map(r => r.type))];
 export function rateFor(type: string, d: string) {
@@ -97,14 +100,14 @@ export function planEnd(o: Owner, p: string) {
   const end = Math.ceil(m / n) * n;
   return `${y}-${String(end).padStart(2, '0')}`;
 }
-/** Months to bill on bill day d. Maintenance is billed in advance: the bill on 25 Nov is for December.
- *  Every month not billed yet from possession (or go-live) to the end of the plan period of the coming month.
- *  Monthly on 25 Nov: December. Quarterly on 25 Dec: Jan–Mar. Annual on 25 Dec: the next year.
- *  Possessed 5 Nov: on 25 Nov, November (prorated) and December. Possessed 28 Nov: on 25 Dec, Nov (3 days), Dec and Jan. */
+/** Months to bill on bill day d. Maintenance is billed after use: the bill on 25 Nov is for November.
+ *  Every month not billed yet, from possession (or go-live) up to this month, whose plan period ends by this month.
+ *  Monthly on 25 Nov: November. Quarterly on 25 Mar: Jan–Mar (nothing on 25 Jan or 25 Feb). Annual on 25 Dec: that year.
+ *  Possessed 5 Nov: on 25 Nov, November (prorated). Possessed 28 Nov: on 25 Dec, Nov (3 days) and Dec. */
 export function monthsToBill(o: Owner, d: string) {
   if (o.possession > d) return [];
-  const ahead = nextMonth(d.slice(0, 7)), startP = [o.possession.slice(0, 7), S.goLive.slice(0, 7)].sort()[1], out: string[] = [];
-  for (let m = startP; m <= planEnd(o, ahead); m = nextMonth(m)) if (!covered(o, m)) out.push(m);
+  const cur = d.slice(0, 7), startP = [o.possession.slice(0, 7), S.goLive.slice(0, 7)].sort()[1], out: string[] = [];
+  for (let m = startP; m <= cur; m = nextMonth(m)) if (!covered(o, m) && planEnd(o, m) <= cur) out.push(m);
   return out;
 }
 /** One month's maintenance: the rate card (or the flat's own rate), prorated in the month of possession. */
@@ -583,8 +586,8 @@ export function projStats() {
   const act = S.owners.filter(o => o.status === 'active' && !o.exempt), owe = act.filter(o => balance(o) > 0), mon = S.today.slice(0, 7);
   const coll = S.payments.filter(p => p.d.slice(0, 7) === mon).reduce((s, p) => s + p.amount, 0), target = getTarget(mon).total;
   const arrears = act.reduce((s, o) => s + (o.openingLeft || 0), 0), arrearsOwing = act.filter(o => o.openingLeft > 0).length;
-  // Before the first bill: when billing starts (the bill day of the month before go-live, for the go-live month).
-  const firstBill = S.goLive.slice(0, 7) > mon ? billDateOf(prevMonth(S.goLive.slice(0, 7))) : null;
+  // Before the first bill: when billing starts (the bill day of the go-live month, for that month).
+  const fb = firstBillDate(), firstBill = S.today <= fb && (S.settings.lastRun || '') < fb ? fb : null;
   return { flats: act.length, owing: owe.length, outstanding: owe.reduce((s, o) => s + balance(o), 0), fees: act.reduce((s, o) => s + (o.feeDue || 0), 0),
     flagged: act.filter(o => o.flagged).length, coll, target, pct: target ? Math.round(100 * coll / target) : 0, todo: followCount(), arrears, arrearsOwing, firstBill, ...sheetStats() };
 }

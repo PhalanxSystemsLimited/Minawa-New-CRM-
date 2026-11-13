@@ -1,6 +1,6 @@
 // A project's Overview (the demo's viewDash).
-import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillDate, apartments, isBillingDay, billsOf, unpaidMaint, billDateOf, sheetStats } from '@/lib/engine';
-import { addDays, nextMonth, prevMonth, hour12, ord } from '@/lib/fmt';
+import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillDate, apartments, isBillingDay, billsOf, unpaidMaint, firstBillDate, sheetStats } from '@/lib/engine';
+import { addDays, hour12, ord } from '@/lib/fmt';
 import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short } from '@/lib/fmt';
 import { spInfo } from '@/lib/docdata';
 import { pendingCount } from '@/lib/manual-send';
@@ -24,7 +24,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
     const dimN = dim(+mon.slice(0, 4), +mon.slice(5, 7)), daysLeft = dimN - dom + 1, perDay = Math.ceil(tgLeft / Math.max(1, daysLeft));
     const pace = Math.round(100 * (dom - 1) / dimN);
     const arrears = act.reduce((s, o) => s + (o.openingLeft || 0), 0), arrearsOwing = act.filter(o => o.openingLeft > 0).length;
-    const firstBill = S.goLive.slice(0, 7) > mon ? billDateOf(prevMonth(S.goLive.slice(0, 7))) : null;
+    const fb = firstBillDate(), firstBill = S.today <= fb && (S.settings.lastRun || '') < fb ? fb : null;
     const co = collections(), coT = co.map(([p]) => getTarget(p).total), coMax = Math.max(1, ...co.map(x => x[1]), ...coT);
     const bw = Math.min(56, Math.floor(300 / Math.max(1, co.length)) - 14);
     const recent = sortedPayments().slice(0, 5);
@@ -39,7 +39,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
         <div className="hero-chips"><span className="hchip"><span className="live"></span>Auto-billing on · sending by hand</span>{pendingCount() ? <Go href={`/p/${S.project}/send`} className="hchip">{pendingCount()} to send on WhatsApp</Go> : null}{ne ? <span className="hchip">Next: {fds(ne.d)} · {ne.ev[0].text}</span> : null}</div>
         <h2>Collections · <span>{monName}</span></h2>
         <p>{rs(outstanding)} is still to collect from {owe.length} apartment{owe.length === 1 ? '' : 's'}{fees ? `, including ${rs(fees)} in fines` : ''}{arrears ? ` (${rs(arrears)} of it is old arrears from before ${fm(S.goLive.slice(0, 7))})` : ''}. {todo ? `${todo} thing${todo > 1 ? 's' : ''} need${todo > 1 ? '' : 's'} you today.` : 'Nothing needs you today.'}</p>
-        {firstBill && !tg.total ? <div className="htg">
+        {firstBill ? <div className="htg">
           <div className="htg-top"><span className="l">Billing starts</span><b className="num">{fd(firstBill)}</b></div>
           <div className="htg-sub">The first bill goes out automatically on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}. Until then, payments go to old arrears ({rs(arrears)} from {arrearsOwing} flat{arrearsOwing === 1 ? '' : 's'}).</div>
         </div> : <div className="htg">
@@ -68,7 +68,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
         const ut = r.utilities[0], utDone = ut ? flats.filter(o => S.charges.some(c => c.ownerId === o.id && c.period === np && c.kind === ut && c.amount)).length : 0;
         const rem = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => unpaidMaint(b) > 0 && b.dueDate > S.today && b.reminders.length < r.remindOn.length).length;
         const fineDay = S.bills.filter(b => unpaidMaint(b) > 0 && addDays(b.dueDate, 1) > S.today).map(b => addDays(b.dueDate, 1)).sort()[0];
-        return <div className="card"><div className="card-row"><h3>Billing desk <small>{fm(nextMonth(np))} bills go out on {fd(next)} at {hour12(r.sendHour)}</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
+        return <div className="card"><div className="card-row"><h3>Billing desk <small>{fm(np)} bills go out on {fd(next)} at {hour12(r.sendHour)}</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
           <div className="desk">
             <div><div className="l">Next bills</div><div className="v num">{toBill}</div><div className="cell-sub">flats on {fds(next)}, due {fds(addDays(next, r.dueDays))}</div></div>
             {ut ? <div><div className="l">{ut} entered</div><div className="v num">{utDone} <span className="muted" style={{ fontSize: 14 }}>of {flats.length}</span></div><div className="cell-sub">for {fm(np)}</div></div> : <div><div className="l">Utility bills</div><div className="v num">–</div><div className="cell-sub">not used here</div></div>}

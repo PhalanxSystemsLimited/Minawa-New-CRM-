@@ -4,7 +4,7 @@ import type { Store } from './store';
 import { staffName } from './session';
 import { load } from './ops';
 import { use, nid, log, runDaily, setTarget, quietly, at, billDateOf, rateFor } from './engine';
-import { addDays, fd, rs, todayPKT, prevMonth } from './fmt';
+import { addDays, fd, rs, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import type { ImportRow } from './importer';
 
@@ -50,8 +50,8 @@ export async function importOwners(store: Store, proj: Project, staff: Staff, ro
       // A go-live date in the past: make the bills and fees for those days, without sending anything for them.
       if (first) {
         const last = addDays(today, -1);
-        // Billing is in advance: the first bill (for the go-live month) goes out on the bill day of the month before.
-        const firstRun = billDateOf(prevMonth(goLive.slice(0, 7)));
+        // Billing is after use: the first bill (for the go-live month) goes out on that month's bill day.
+        const firstRun = billDateOf(goLive.slice(0, 7));
         quietly(() => { for (let d = firstRun; d <= last; d = addDays(d, 1)) { s.today = d; runDaily(d); } });
         s.today = today; setTarget(today.slice(0, 7));
         s.settings.lastRun = last;   // from today the daily run carries on (the first bill goes out on firstRun)
