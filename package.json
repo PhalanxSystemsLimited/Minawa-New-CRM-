@@ -1,0 +1,36 @@
+{
+  "name": "minawa-new-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minawa Group ERP: maintenance billing CRM with WhatsApp reminders and Safepay payments",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx scripts/seed.ts",
+    "daily": "tsx scripts/daily.ts",
+    "wa:bridge": "tsx scripts/wa-bridge.ts",
+    "dev:test": "node scripts/dev-test.mjs",
+    "dev:live": "node scripts/dev-live.mjs"
+  },
+  "dependencies": {
+    "@react-pdf/renderer": "4.3.0",
+    "@supabase/ssr": "0.6.1",
+    "@supabase/supabase-js": "2.49.4",
+    "next": "15.5.28",
+    "react": "19.1.10",
+    "react-dom": "19.1.10"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "@whiskeysockets/baileys": "6.7.21",
+    "dotenv": "16.5.0",
+    "pino": "^8.21.0",
+    "qrcode-terminal": "^0.12.0",
+    "tsx": "4.19.4",
+    "typescript": "5.8.3"
+  }
+}

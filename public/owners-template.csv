@@ -1,0 +1,4 @@
+Apartment,Block,Type,Owner,WhatsApp,Possession,Opening balance,Plan,Email,Own rate,Discount,Exempt
+A-101,A,2-Bed,Owner Name,+92 300 1234567,2023-03-05,0,Monthly,,,,
+A-102,A,3-Bed,Owner Name,+92 301 1234567,17/11/2022,15000,Quarterly,owner@example.com,,500,
+A-301,A,Penthouse,Director Name,+92 302 1234567,2021-06-01,0,Annual,,,,Director

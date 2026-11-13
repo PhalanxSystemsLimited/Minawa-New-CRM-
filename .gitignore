@@ -1,0 +1,18 @@
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+data/
+*.tsbuildinfo
+next-env.d.ts
+
+# local WhatsApp test bridge session (your WhatsApp login)
+.wa-bridge/
+
+# update bundles and backups made while building
+*.tar.gz
+*.before-*
+
+# real residents' data (names, phone numbers, balances): keep out of git
+supabase/data/
