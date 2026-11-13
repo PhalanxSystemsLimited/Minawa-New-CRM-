@@ -42,7 +42,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
           </tbody></table></div>
           {why('why-rates')}
           <div className="m-actions" style={{ marginTop: 10 }}><span className="muted" style={{ fontSize: 12, marginRight: 'auto', alignSelf: 'center' }}>New rates apply to bills from that date. Advance credit pays the new rate.</span><Submit>{save('Save rates')}</Submit></div></form>
-          <div className="card" id="fine"><h3>Fine after the due date <small>{ad ? 'accountants\' changes come to you for approval' : 'needs approval'}</small></h3>
+        </div>
+        <div className="card" id="fine"><h3>Fine after the due date <small>{ad ? 'accountants\' changes come to you for approval' : 'needs approval'}</small></h3>
           <form action={fineAction} className="rules-form">{hid}
             <div className="rule"><label htmlFor="fn-p">Fine</label><div className="rule-in"><input id="fn-p" name="feePct" type="number" min="0" max="50" step="0.5" defaultValue={r.feePct} /><span>% of the unpaid bills, added the day after the due date</span></div></div>
             <label className="cb"><input type="checkbox" name="fineArrears" defaultChecked={r.fineArrears} /> Also fine old arrears (opening balances from before {fm(S.goLive.slice(0, 7))})</label>
@@ -53,7 +54,6 @@ export default async function Settings({ params, searchParams }: { params: Promi
             <div className="m-actions"><Submit>{save('Save fine')}</Submit></div>
           </form>
         </div>
-            </div>
       </div>
         <div className="card"><h3>Billing schedule <small>new bills use these</small></h3>
           <form action={rulesAction} className="rules-form">{hid}
