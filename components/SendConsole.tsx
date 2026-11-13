@@ -15,7 +15,7 @@ export interface SendRow {
 }
 type Scope = 'all' | 'owing' | 'overdue' | 'pick' | `block:${string}`;
 type Done = 'saving' | 'sent' | 'skipped' | 'aside' | 'error' | 'notsent';
-const VARS = '{{name}} {{apt}} {{total}} {{due}} {{project}}';
+const VARS = '{{name}} {{apt}} {{block}} {{total}} {{due}} {{project}}';
 
 /** wa.me numbers: digits only, 03xx… → 923xx… */
 const digits = (p: string) => { let d = p.replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0') && d.length === 11) d = '92' + d.slice(1); return d; };

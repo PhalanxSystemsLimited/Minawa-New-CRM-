@@ -5,6 +5,12 @@ import { useMemo, useState } from 'react';
 import { Submit } from './client';
 import { Wa } from './icons';
 
+/** WhatsApp's own formatting in the preview: *bold* and _italic_. */
+function waFormat(text: string) {
+  return text.split(/(\*[^*\n]+\*|_[^_\n]+_)/g).map((x, i) => x.startsWith('*') && x.endsWith('*') && x.length > 2 ? <b key={i}>{x.slice(1, -1)}</b>
+    : x.startsWith('_') && x.endsWith('_') && x.length > 2 ? <i key={i}>{x.slice(1, -1)}</i> : x);
+}
+
 interface Preset { key: string; label: string; title: string; text: string }
 interface Flat { id: string; apt: string; block: string; name: string; noPhone: boolean }
 
@@ -19,7 +25,10 @@ export function NoticeComposer({ presets, flats, blocks, project, pid, action, t
   const choose = (k: string) => { const pr = presets.find(x => x.key === k)!; setKind(k); setTitle(pr.title); setEdited(k === 'custom'); setText(k === 'custom' ? '' : auto(pr)); };
   const count = useMemo(() => aud === 'all' ? flats.length : aud.startsWith('block:') ? flats.filter(f => f.block === aud.slice(6)).length : picked.length, [aud, picked, flats]);
   const noPhone = (aud === 'all' ? flats : aud.startsWith('block:') ? flats.filter(f => f.block === aud.slice(6)) : flats.filter(f => picked.includes(f.id))).filter(f => f.noPhone).length;
-  const preview = `Maintenance notice from Minawa Group, ${project}:\n\n${title}\n${body}\n\nFor help, reply to this message.`;
+  // The same layout as the message each owner gets (their own apartment, block and name go in the brackets).
+  const preview = hand
+    ? `*Minawa Group · Maintenance*\n_🔧 Maintenance notice_\n\nDear [owner's name],\nPlease note the following maintenance update for your building.\n\n📍 *Project:* ${project}\n🏢 *Apartment:* [apartment]\n🧱 *Block:* [block]\n👤 *Owner:* [owner's name]\n\n*${title}*\n${body}\n\nFor any questions, just reply to this message.\n\nThank you,\n*Minawa Group*\n_Maintenance Department_`
+    : `Maintenance notice from Minawa Group, ${project}:\n\n${title}\n${body}\n\nFor help, reply to this message.`;
   return <form action={action} className="nc">
     <input type="hidden" name="pid" value={pid} /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="text" value={body} /><input type="hidden" name="aud" value={aud} />
     {picked.map(id => <input key={id} type="hidden" name="apt" value={id} />)}
@@ -48,7 +57,7 @@ export function NoticeComposer({ presets, flats, blocks, project, pid, action, t
       </div>
       <div>
         <div className="form-row"><label>WhatsApp preview</label></div>
-        <div className="wa-bubble"><div className="wa-bubble-in">{preview}</div><div className="wa-bubble-t">Minawa Group · now</div></div>
+        <div className="wa-bubble"><div className="wa-bubble-in">{waFormat(preview)}</div><div className="wa-bubble-t">Minawa Group · now</div></div>
         <p className="cell-sub" style={{ margin: '8px 0 0' }}>{hand ? 'Next, each owner\'s chat opens in WhatsApp Web with this message typed in; you press Send for each one.' : <>Goes out as the approved &quot;Maintenance notice&quot; template, so it reaches owners even if they haven&apos;t messaged recently.</>}</p>
       </div>
     </div>

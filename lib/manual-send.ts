@@ -3,8 +3,8 @@
 // Bills, fines and balances still update automatically; only the sending is by hand (rules.autoSend off).
 // Everything here runs inside the engine (use(s, …)).
 import type { Message, Owner } from './types';
-import { cur, balance, activeLink, createLink, duesBreakdown, bdVars, billsOf, unpaidMaint, periodLabel, ownerById } from './engine';
-import { first, rs, fd, fill, addDays } from './fmt';
+import { cur, balance, activeLink, createLink, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct } from './engine';
+import { rs, fd, fill, addDays } from './fmt';
 import { intl } from './dispatch';
 
 export type SendType = 'link' | 'bill' | 'reminder' | 'notice' | 'receipt' | 'custom' | 'queue';
@@ -64,51 +64,92 @@ function linkFor(o: Owner, d: string, t: string) {
   return l && l.amount === bal ? l : createLink(o, d, t, bal, 'replaced by a new payment link');
 }
 
-/** WhatsApp Web can't attach the PDF or show a Pay Now button, so: no "attached", and the link goes in the text. */
-export function forHand(text: string, url: string | null) {
-  let out = text.replace(/Your statement is attached\. */g, '').replace(/ *Your receipt is attached\./g, '').replace(/[ \t]+\n/g, '\n').replace(/ +$/gm, '');
-  let placed = false;
-  out = out.replace(/Tap Pay Now to pay by debit or credit card\. */g, () => { placed = !!url; return url ? `Pay by debit or credit card here:\n${url}\n\n` : ''; });
-  out = out.replace(/Tap Pay Now to pay the rest\./g, () => { placed = !!url; return url ? `Pay the rest here: ${url}` : ''; });
-  if (url && !placed && !out.includes(url)) out += `\n\nPay Now: ${url}`;
-  return out.replace(/\n +/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+/* ---------- the WhatsApp text (sent by hand from WhatsApp Web) ----------
+ * Every message has the same layout: a heading, a greeting, the flat's details (project, apartment, block, owner),
+ * the message itself, the amounts as a list, the Pay Now link, and a sign-off. *bold* and _italic_ are WhatsApp's own
+ * formatting. Amounts are worked out again at send time, so they are always today's figures. */
+/** "MRS. ROBINA SHAHID" → "Mrs. Robina Shahid"; names already in mixed case are kept as written. */
+export function niceName(n: string) {
+  const s = String(n || '').replace(/\s+/g, ' ').trim();
+  if (!s || /[a-z]/.test(s)) return s;
+  return s.toLowerCase().replace(/(^|[\s(/&-])([a-z])/g, (_, a, c) => a + c.toUpperCase());
+}
+const RULE = '──────────────';
+const lines = (...xs: (string | null | false | undefined)[]) => xs.filter(x => x !== null && x !== false && x !== undefined).join('\n');
+function head(o: Owner, subtitle: string, intro: string, greet = true) {
+  return lines(`*Minawa Group · Maintenance*`, `_${subtitle}_`, greet ? '' : null, greet ? `Dear ${niceName(o.name)},` : null, intro || null);
+}
+function details(o: Owner) {
+  const S = cur();
+  return lines('', `📍 *Project:* ${S.proj.name}`, `🏢 *Apartment:* ${o.apt}`, o.block ? `🧱 *Block:* ${o.block}` : null, `👤 *Owner:* ${niceName(o.name)}`);
+}
+function duesList(o: Owner, total: number) {
+  const bd = duesBreakdown(o);
+  return lines('', '*Your dues*', ...bd.rows.map(r => `• ${r.label}: ${rs(r.amount)}${r.sub ? ` _(${r.sub})_` : ''}`),
+    bd.fee ? `• Late fine (${feePct()}%): ${rs(bd.fee)}` : null, RULE, `*Total to pay: ${rs(total)}*`);
+}
+function payBlock(url: string | null, exact = true) {
+  if (!url) return lines('', '💳 To pay, reply to this message and we will share the payment details.');
+  return lines('', '💳 *Pay online by debit or credit card*', `👉 ${url}`, exact ? '_The link is for the exact amount above._' : null);
+}
+const foot = () => lines('', 'For any questions, just reply to this message.', '', 'Thank you,', '*Minawa Group*', '_Maintenance Department_');
+
+/** A maintenance notice (water, electricity, lift…) for one flat. */
+function noticeText(o: Owner, title: string, text: string) {
+  return lines(head(o, '🔧 Maintenance notice', 'Please note the following maintenance update for your building.'), details(o), '', `*${title}*`, text, foot());
 }
 
 interface Opts { title?: string; text?: string; pay?: boolean }
+type Item = Omit<SendItem, 'key' | 'fromMsg' | 'replaces'>;
 /** Writes one message of this type for the owner with today's figures. Creates the payment link it needs. */
-export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t: string, opts: Opts = {}, billId?: string): Omit<SendItem, 'key' | 'fromMsg' | 'replaces'> | null {
-  const S = cur(), f = ownerFacts(o), T = S.templates, bal = f.bal;
+export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t: string, opts: Opts = {}, billId?: string, payId?: string): Item | null {
+  const S = cur(), f = ownerFacts(o), bal = f.bal;
   const base = { ownerId: o.id, apt: o.apt, name: o.name, phone: o.phone, to: intl(o.phone) };
-  const out = (kind: string, title: string, raw: string, linkId: string | null, pdf: Message['pdf']) => {
-    const payUrl = payUrlOf(linkId);
-    return { ...base, kind, title, text: forHand(raw, payUrl), linkId, payUrl, pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null };
-  };
+  const out = (kind: string, title: string, text: string, linkId: string | null, pdf: Message['pdf']): Item =>
+    ({ ...base, kind, title, text, linkId, payUrl: payUrlOf(linkId), pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null });
   if (type === 'custom') {
     const l = opts.pay ? linkFor(o, d, t) : null;
-    const v = { name: first(o.name), apt: o.apt, project: S.proj.name, total: rs(Math.max(0, bal)), dues: rs(Math.max(0, bal)), due: f.bill ? fd(f.bill.dueDate) : '' };
-    return out('announcement', opts.title || 'Message', fill(opts.text || '', v), l?.id || null, null);
+    const v = { name: niceName(o.name), apt: o.apt, block: o.block || '', project: S.proj.name, total: rs(Math.max(0, bal)), dues: rs(Math.max(0, bal)), due: f.bill ? fd(f.bill.dueDate) : '' };
+    const title = opts.title || 'Message', body = fill(opts.text || '', v).trim(), greeted = /^(dear|hi|hello|assalam|salam|aoa)\b/i.test(body);
+    // A message that starts with its own greeting puts the flat's details after it instead of adding a second "Dear …".
+    return out('announcement', title, lines(head(o, title, '', false), greeted ? '' : null, greeted ? null : `\nDear ${niceName(o.name)},`, greeted ? body : null, details(o), greeted ? null : '', greeted ? null : body, l ? lines('', `*Amount due: ${rs(bal)}*`) : null, l ? payBlock(payUrlOf(l.id)) : null, foot()), l?.id || null, null);
   }
   if (type === 'receipt') {
-    const p = f.lastPay; if (!p) return null;
-    const after = p.balAfter;
-    const v = { name: first(o.name), paid: rs(p.amount), apt: o.apt, date: fd(p.d), balance: after > 0 ? rs(after) : after < 0 ? `Rs 0 (credit ${rs(-after)})` : 'Rs 0' };
-    const l = after > 0 && bal > 0 ? linkFor(o, d, t) : null;   // "pay the rest" only if this payment left something owing
-    return out('receipt', 'Payment received', fill(T.receipt.text, v) + (l ? '\nTap Pay Now to pay the rest.' : ''), l?.id || null, { kind: 'receipt', id: p.id });
+    const p = (payId && S.payments.find(x => x.id === payId)) || f.lastPay; if (!p) return null;
+    const after = p.balAfter, l = after > 0 && bal > 0 ? linkFor(o, d, t) : null;   // "pay the rest" only if this payment left something owing
+    const text = lines(head(o, '✅ Payment received', 'Thank you! We have received your maintenance payment.'), details(o), '',
+      '*Payment details*', `• Amount received: *${rs(p.amount)}*`, `• Date: ${fd(p.d)}`, `• Receipt no: ${p.receipt}`, p.method ? `• Paid by: ${p.method}` : null, RULE,
+      `*Remaining balance: ${after > 0 ? rs(after) : after < 0 ? `Rs 0 (advance credit ${rs(-after)})` : 'Rs 0, all paid up'}*`,
+      l ? payBlock(payUrlOf(l.id)) : null, foot());
+    return out('receipt', 'Payment received', text, l?.id || null, { kind: 'receipt', id: p.id });
   }
   const b = (billId && S.bills.find(x => x.id === billId)) || f.bill;
   if (type === 'bill' && b && bal <= 0) {
-    const v = { name: first(o.name), month: periodLabel(b), amount: rs(b.net), apt: o.apt, credit: rs(-bal) };
-    return out('bill', `Bill · ${periodLabel(b)}`, fill(T.credit.text, v), null, { kind: 'bill', id: b.id });
+    const text = lines(head(o, `🧾 Maintenance bill · ${periodLabel(b)}`, `Your maintenance bill for *${periodLabel(b)}* has been paid from your advance credit. Nothing is due.`), details(o), '',
+      '*Bill details*', `• ${periodLabel(b)}: ${rs(b.net)}`, RULE, `*Advance credit left: ${rs(-bal)}*`, foot());
+    return out('bill', `Bill · ${periodLabel(b)}`, text, null, { kind: 'bill', id: b.id });
   }
   if (bal <= 0) return null;
-  const l = linkFor(o, d, t)!, bd = duesBreakdown(o), v0 = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal) };
-  if (type === 'bill' && b) return out('bill', `Bill · ${periodLabel(b)}`, fill(T.bill.text, { ...v0, month: periodLabel(b), amount: rs(b.net), due: fd(b.dueDate) }), l.id, { kind: 'bill', id: b.id });
-  if (type === 'reminder') return out('reminder', 'Reminder', fill(T.reminder.text, { ...v0, due: f.bill ? fd(f.bill.dueDate) : fd(addDays(d, 7)) }), l.id, { kind: 'statement', id: o.id });
+  const l = linkFor(o, d, t)!, url = payUrlOf(l.id);
+  if (type === 'bill' && b) {
+    const text = lines(head(o, `🧾 Maintenance bill · ${periodLabel(b)}`, `Your maintenance bill for *${periodLabel(b)}* is ready: *${rs(b.net)}*, due by *${fd(b.dueDate)}*.`),
+      details(o), duesList(o, bal), payBlock(url), foot());
+    return out('bill', `Bill · ${periodLabel(b)}`, text, l.id, { kind: 'bill', id: b.id });
+  }
+  if (type === 'reminder') {
+    const due = f.bill ? fd(f.bill.dueDate) : fd(addDays(d, 7));
+    const text = lines(head(o, '⏰ Payment reminder', `This is a friendly reminder that your maintenance is due on *${due}*.`), details(o), duesList(o, bal), payBlock(url),
+      '', '_If you have already paid, please ignore this message._', foot());
+    return out('reminder', 'Reminder', text, l.id, { kind: 'statement', id: o.id });
+  }
   if (type === 'notice') {
     const nb = f.late || f.bill, final = nb && nb.finalDate >= d ? nb.finalDate : addDays(d, 7);
-    return out('notice', 'Final notice', fill(T.notice.text, { ...v0, month: nb ? periodLabel(nb) : '', final: fd(final) }), l.id, nb ? { kind: 'bill', id: nb.id } : { kind: 'statement', id: o.id });
+    const text = lines(head(o, '⚠️ Final notice', 'Your maintenance dues are overdue.'), details(o), duesList(o, bal), '',
+      `❗ *Please pay by ${fd(final)}*, otherwise your utilities will be disconnected.`, payBlock(url), foot());
+    return out('notice', 'Final notice', text, l.id, nb ? { kind: 'bill', id: nb.id } : { kind: 'statement', id: o.id });
   }
-  return out('link', 'Payment link', fill(T.link.text, v0), l.id, { kind: 'statement', id: o.id });
+  const text = lines(head(o, '💳 Payment link', 'Here is your maintenance payment link.'), details(o), duesList(o, bal), payBlock(url), foot());
+  return out('link', 'Payment link', text, l.id, { kind: 'statement', id: o.id });
 }
 
 /** Messages the CRM prepared that are waiting to be sent by hand, grouped per owner: the newest dues message (bill,
@@ -132,12 +173,13 @@ export function composeQueued(m: Message, d: string, t: string): Omit<SendItem, 
   const S = cur(), o = ownerById(m.ownerId);
   if (!o) return null;
   if (isDues(m)) return compose(o, m.kind as 'bill' | 'reminder' | 'notice' | 'link', d, t, {}, m.kind === 'bill' ? m.pdf?.id : undefined);
-  let linkId = m.linkId;
-  if (m.kind === 'receipt') linkId = /Tap Pay Now/.test(m.text) && balance(o) > 0 ? linkFor(o, d, t)?.id || null : null;
-  else if (linkId && S.links.find(l => l.id === linkId)?.status !== 'active') linkId = null;
-  const payUrl = payUrlOf(linkId);
-  // A maintenance notice or announcement: the full approved wording (the history keeps a short version).
-  const tpl = m.tpl && m.vars && m.kind !== 'receipt' ? S.templates[m.tpl] : null, raw = tpl ? fill(tpl.text, m.vars!) : m.text;
-  return { ownerId: o.id, apt: o.apt, name: o.name, phone: o.phone, to: intl(o.phone), kind: m.kind, title: m.title, text: forHand(raw, payUrl), linkId, payUrl,
+  if (m.kind === 'bill') return compose(o, 'bill', d, t, {}, m.pdf?.id);   // a bill paid from credit
+  if (m.kind === 'receipt') return { ...compose(o, 'receipt', d, t, {}, undefined, m.pdf?.id)!, kind: m.kind, title: m.title };
+  const linkId = m.linkId && S.links.find(l => l.id === m.linkId)?.status === 'active' ? m.linkId : null;
+  // A maintenance notice: its title and text in the full layout, with this flat's details.
+  const v = m.vars || {};
+  const text = m.kind === 'alert' && v.title ? noticeText(o, v.title, v.text || '')
+    : lines(head(o, m.title || 'Message', ''), details(o), '', m.text.trim(), linkId ? payBlock(payUrlOf(linkId), false) : null, foot());
+  return { ownerId: o.id, apt: o.apt, name: o.name, phone: o.phone, to: intl(o.phone), kind: m.kind, title: m.title, text, linkId, payUrl: payUrlOf(linkId),
     pdf: m.pdf, pdfHref: m.pdf ? `/api/pdf/${S.project}/${m.pdf.kind}/${encodeURIComponent(m.pdf.id)}` : null };
 }
