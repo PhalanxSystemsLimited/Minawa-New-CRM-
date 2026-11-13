@@ -22,9 +22,10 @@ function write(a: Await | null) {
   try { if (a) sessionStorage.setItem(KEY, JSON.stringify(a)); else sessionStorage.removeItem(KEY); } catch { /* storage blocked */ }
 }
 
-/** Called when a chat is opened: ask about this message when they come back. */
-export function awaitReturn(pid: string, item: SendItem, to: string) {
-  write({ pid, item, to, at: Date.now(), left: false });
+/** Called when a chat is opened: ask about this message when they come back. `away`: the WhatsApp tab is already open
+ *  and in front (it was opened before the message was ready), so coming back to the CRM asks straight away. */
+export function awaitReturn(pid: string, item: SendItem, to: string, away = false) {
+  write({ pid, item, to, at: Date.now(), left: away });
   window.dispatchEvent(new CustomEvent('minawa:wa-await'));
 }
 /** The message was answered another way (e.g. "Mark as sent" or Skip): don't ask. */

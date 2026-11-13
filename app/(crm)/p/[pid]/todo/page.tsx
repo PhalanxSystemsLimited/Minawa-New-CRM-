@@ -1,5 +1,6 @@
 // To do (the demo's viewFollow): the only things that need a person.
-import { cur, ownerById, failedList } from '@/lib/engine';
+import { cur, ownerById, failedList, fixWaiting } from '@/lib/engine';
+import { ResendButton } from '@/components/ResendChat';
 import { fd, rs } from '@/lib/fmt';
 import { Go } from '@/components/client';
 import { Submit } from '@/components/client';
@@ -27,7 +28,10 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
           </div></div>; })}</div>
       </div> : null}
       {fl.length ? <div className="card"><h3>Messages that didn&apos;t arrive</h3>
-        <div className="list">{fl.map(m => { const o = ownerById(m.ownerId); return <div className="li" key={m.id}><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name} · {o.noPhone ? 'no WhatsApp number on file' : `${o.phone} is not on WhatsApp`}</div></div><Go href={ownerHref(o, '?m=fix')} className="btn sm">{o.noPhone ? 'Add number' : 'Fix number'}</Go></div>; })}</div>
+        <div className="list">{fl.map(m => { const o = ownerById(m.ownerId), fixed = !o.invalidPhone && fixWaiting(m);
+          return <div className="li" key={m.id}><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name} · {fixed ? <>number saved ({o.phone}); <b>message not sent yet</b>. It leaves To do once you confirm it was sent.</> : o.noPhone ? 'no WhatsApp number on file' : `${o.phone} is not on WhatsApp`}</div></div>
+            {fixed ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Go href={ownerHref(o, '?m=fix&from=todo')} className="btn sm">Change number</Go><ResendButton pid={pid} oid={o.id} /></div>
+              : <Go href={ownerHref(o, '?m=fix&from=todo')} className="btn sm">{o.noPhone ? 'Add number' : 'Fix number'}</Go>}</div>; })}</div>
       </div> : null}
       {al.length ? <div className="card"><h3>Promises not kept</h3>
         <div className="list">{al.map(a => { const o = ownerById(a.ownerId); return <div className="li" key={a.id}><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name} · {a.text}</div></div><div style={{ display: 'flex', gap: 6 }}><Go href={ownerHref(o)} className="btn sm">Open</Go><form action={alertDoneAction}>{hid(a.id)}<Submit className="btn sm ghost">Done</Submit></form></div></div>; })}</div>

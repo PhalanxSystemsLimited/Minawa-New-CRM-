@@ -6,8 +6,8 @@ import { getStore } from './store';
 import { intl } from './dispatch';
 import { requireStaff, staffName } from './session';
 import { mutate } from './ops';
-import { ownerById, balance, log, at, nid } from './engine';
-import { nowPKT, fd, rs } from './fmt';
+import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting, sendPaymentLink } from './engine';
+import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
 import { compose, composeQueued, cantSend, pendingGroups, type SendItem, type SendType } from './manual-send';
 
@@ -93,6 +93,8 @@ export async function recordSentAction(input: { pid: string; item: SendItem; via
         const x = s.messages.find(y => y.id === id && y.status === 'pending');
         if (x) { x.status = 'skipped'; x.error = `Replaced by the message sent by hand on ${fd(s.today)}`; }
       }
+      // A message that didn't arrive because of the number is done with once something reaches the fixed number.
+      for (const x of s.messages) if (x.ownerId === o.id && fixWaiting(x)) x.error = `Number fixed; sent by hand to the new number on ${fd(s.today)}`;
       // Staff activity (the admin sees it): who sent what to which owner, with the owner's details.
       log(s.today, t, 'whatsapp', `${staffName(staff)} sent "${it.title}" on WhatsApp to ${who(o)}${owes(o)}${input.via === 'prompt' ? '. Confirmed on returning to the CRM' : ''}${test ? ` (testing: went to +${test})` : ''}`, o.id);
       return waRow(staff, o, { ...it, linkId: m.linkId }, 'sent', input.via || 'button', m.id, s.today, t);
@@ -128,4 +130,63 @@ export async function recordNotSentAction(input: { pid: string; item: SendItem }
     await saveWa(row);
     return { ok: true };
   } catch { return { ok: false }; }
+}
+
+/* ---------- To do: a message that didn't arrive (no number, or not on WhatsApp) ---------- */
+export interface ResendResult { ok: boolean; error?: string; toast?: string; item?: SendItem; to?: string }
+
+/** The latest balance with a fresh payment link, ready to send by hand (nothing is sent yet). Inside mutate. */
+function resendItem(o: Owner, d: string, t: string, replacesOf: (o: Owner) => string[]): { item: SendItem; to: string } | null {
+  if (balance(o) <= 0) return null;
+  const it = compose(o, 'link', d, t, {});
+  if (!it) return null;
+  return { item: { ...it, key: `link:${o.id}`, fromMsg: null, replaces: replacesOf(o) }, to: waTestNumber() || intl(o.phone) };
+}
+
+/** Save the owner's fixed or new WhatsApp number. Sending by hand: the message stays in To do and its WhatsApp chat
+ *  opens; it leaves To do only once the accountant confirms it was sent. Sending automatically: it is resent now. */
+export async function fixNumberSendAction(input: { pid: string; oid: string; phone: string }): Promise<ResendResult> {
+  const staff = await requireStaff(), phone = String(input.phone || '').trim();
+  if (waDigits(phone).length < 10) return { ok: false, error: 'That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.' };
+  try {
+    const r = await mutate(input.pid, staff, s => {
+      const o = ownerById(input.oid);
+      if (!o || o.status !== 'active') throw new Error('Apartment not found');
+      const was = o.noPhone ? 'none' : o.phone, t = at(15);
+      o.phone = phone; o.invalidPhone = false; o.noPhone = false;
+      o.notes.push({ d: s.today, by: staffName(staff), text: `WhatsApp number ${was === 'none' ? 'added' : 'corrected'}: ${phone}.` });
+      if (s.settings.rules.autoSend) {
+        log(s.today, t, 'admin', `Number fixed for ${o.apt} by ${staffName(staff)} (${was} → ${phone}); latest balance resent`, o.id);
+        if (balance(o) > 0) sendPaymentLink(o, s.today, t);
+        return { auto: true, owes: balance(o) > 0, ready: null };
+      }
+      const ready = resendItem(o, s.today, t, x => pendingDues(s, x));
+      // Until it is sent, the message stays in To do.
+      if (ready) for (const m of s.messages) if (m.ownerId === o.id && m.status === 'failed') m.error = FIX_WAIT + phone;
+      log(s.today, t, 'admin', `Number fixed for ${o.apt} by ${staffName(staff)} (${was} → ${phone})${ready ? '; WhatsApp chat opened to send the latest balance' : '; nothing owed, so nothing to resend'}`, o.id);
+      return { auto: false, owes: !!ready, ready };
+    }, { send: true });
+    if (r.auto) return { ok: true, toast: r.owes ? 'Number saved and the latest balance sent on WhatsApp' : 'Number saved. Nothing is owed, so nothing was sent.' };
+    if (!r.ready) return { ok: true, toast: 'Number saved. Nothing is owed, so there is nothing to resend.' };
+    return { ok: true, toast: 'Number saved. Send the message in WhatsApp, then come back here and confirm it was sent.', ...r.ready };
+  } catch (e) { return { ok: false, error: (e as Error).message }; }
+}
+
+/** To do: open the chat again for an owner whose number was fixed but whose message wasn't sent yet. */
+export async function resendFixedAction(input: { pid: string; oid: string }): Promise<ResendResult> {
+  const staff = await requireStaff();
+  try {
+    const ready = await mutate(input.pid, staff, s => {
+      const o = ownerById(input.oid);
+      if (!o || o.status !== 'active' || o.invalidPhone) throw new Error('Add the WhatsApp number first');
+      return resendItem(o, s.today, at(15), x => pendingDues(s, x));
+    }, { send: false });
+    if (!ready) return { ok: true, toast: 'Nothing is owed now, so there is nothing to send.' };
+    return { ok: true, toast: 'Send the message in WhatsApp, then come back here and confirm it was sent.', ...ready };
+  } catch (e) { return { ok: false, error: (e as Error).message }; }
+}
+
+/** Dues messages still waiting in Send on WhatsApp for this owner: the message sent now replaces them. */
+function pendingDues(s: { messages: import('./types').Message[] }, o: Owner) {
+  return s.messages.filter(m => m.ownerId === o.id && m.status === 'pending' && m.from === 'biz' && ['bill', 'reminder', 'notice', 'link'].includes(m.kind) && m.tpl !== 'credit').map(m => m.id);
 }

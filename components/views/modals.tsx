@@ -3,6 +3,7 @@
 import type { Owner } from '@/lib/types';
 import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
 import { PLAN_LABEL } from '@/lib/types';
+import { FixNumberForm } from '@/components/ResendChat';
 import { possessionAction, adjustAction } from '@/lib/actions-desk';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
 import { addDays, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
@@ -112,7 +113,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <div className="form-row"><label htmlFor="tr-d">Transfer and possession date</label><input id="tr-d" name="d" type="date" required defaultValue={S.today} min={addDays(S.today, -90)} max={S.today} /></div>
         <div className="m-actions"><CloseBtn /><Submit>Transfer and open buyer account</Submit></div></form></ModalShell>;
     case 'disconnect': return <ModalShell title="Record disconnection"><form action={act.disconnectAction} style={col}>{hidden(o)}<div className="form-row"><label htmlFor="ds">Service disconnected</label><select id="ds" name="service">{SERVICES.map(s => <option key={s}>{s}</option>)}</select></div><div className="callout">Recorded against {o.apt} with today&apos;s date. Restoration is recorded once dues are paid.</div><div className="m-actions"><CloseBtn /><Submit className="btn danger">Record disconnection</Submit></div></form></ModalShell>;
-    case 'fix': return <ModalShell title={o.noPhone ? 'Add WhatsApp number' : 'Fix WhatsApp number'}><form action={act.fixNumberAction} style={col}>{hidden(o)}<div className="form-row"><label htmlFor="fx">{o.noPhone ? 'WhatsApp number' : 'Correct number'} for {o.name}</label><input id="fx" name="phone" type="tel" required placeholder="+92 3xx xxx xxxx" defaultValue={o.noPhone ? '' : o.phone} /></div><div className="callout">Saving resends the latest balance with a fresh payment link.</div><div className="m-actions"><CloseBtn /><Submit>Save and resend</Submit></div></form></ModalShell>;
+    case 'fix': return <ModalShell title={o.noPhone ? 'Add WhatsApp number' : 'Fix WhatsApp number'}><FixNumberForm pid={o.project} oid={o.id} name={o.name} phone={o.phone} noPhone={o.noPhone} hand={!cur().settings.rules.autoSend} owes={bal > 0} /></ModalShell>;
     case 'edit': return <ModalShell title={`Edit apartment ${o.apt}`}><form action={act.editOwnerAction} style={col}>{hidden(o)}
       <div className="form-row"><label htmlFor="eo-n">Owner&apos;s name</label><input id="eo-n" name="name" required defaultValue={o.name} /></div>
       <div className="form-row"><label htmlFor="eo-p">WhatsApp number</label><input id="eo-p" name="phone" type="tel" defaultValue={o.phone} placeholder="+92 3xx xxx xxxx" /></div>

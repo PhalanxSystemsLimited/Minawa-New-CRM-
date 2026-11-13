@@ -529,11 +529,15 @@ export function collections() {
   }
   return months.slice(-8).map(p => [p, S.payments.filter(x => x.d.slice(0, 7) === p).reduce((s, x) => s + x.amount, 0)] as [string, number]);
 }
+/** Marks an undelivered message whose owner's number was fixed but the message wasn't re-sent yet (sending by hand):
+ *  it stays in To do until a message to the new number is confirmed sent. */
+export const FIX_WAIT = 'Number fixed, not sent yet: ';
+export const fixWaiting = (m: Message) => m.status === 'failed' && (m.error || '').startsWith(FIX_WAIT);
 export function failedList() {
   const seen = new Set<string>(), out: Message[] = [];
   for (const m of [...S.messages].reverse()) {
     const o = ownerById(m.ownerId);
-    if (m.status === 'failed' && o && o.status === 'active' && o.invalidPhone && !seen.has(o.id)) { seen.add(o.id); out.push(m); }
+    if (m.status === 'failed' && o && o.status === 'active' && (o.invalidPhone || (fixWaiting(m) && balance(o) > 0)) && !seen.has(o.id)) { seen.add(o.id); out.push(m); }
   }
   return out;
 }
