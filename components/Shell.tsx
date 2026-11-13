@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Ic } from './icons';
 import { Go, GlobalSearch } from './client';
 
-export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number }
+export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number; pays?: number }
 
 export function Sidebar({ projects, admin, approvals = 0 }: { projects: NavProject[]; admin: boolean; approvals?: number }) {
   const path = usePathname();
@@ -23,7 +23,7 @@ export function Sidebar({ projects, admin, approvals = 0 }: { projects: NavProje
         <div className="side-sub" id="navMaint" hidden={!open}>
           {projects.map(p => (
             <Go key={p.id} href={`/p/${p.id}`} className={'side-p' + (p.live ? '' : ' off')} current={pid === p.id}>
-              <span className="side-l">{p.name}<small>{p.place}{p.live ? '' : ' · not set up'}</small></span>{p.todo ? <span className="side-b" title={`${p.todo} to do`}>{p.todo}</span> : null}
+              <span className="side-l">{p.name}<small>{p.place}{p.live ? '' : ' · not set up'}</small></span>{p.pays && !path.startsWith(`/p/${p.id}/payments`) ? <span className="side-pay" title={`${p.pays} new payment${p.pays === 1 ? '' : 's'}: open Payments to see them`}>{p.pays}</span> : null}{p.todo ? <span className="side-b" title={`${p.todo} to do`}>{p.todo}</span> : null}
             </Go>))}
         </div>
         <div className="side-h">System</div>

@@ -160,6 +160,16 @@ export class SupabaseStore implements Store {
   }
   async saveTemplates(t: Record<string, Template>) { await this.upsert('templates', Object.values(t).map(x => toRow(x as unknown as Record<string, unknown>)), 'key'); }
   async saveSettings(st: ProjectSettings) { await this.upsert('project_settings', [toRow(st as unknown as Record<string, unknown>)], 'project'); }
+  async throttle(name: string, seconds: number) {
+    const { data, error } = await this.db.rpc('acquire_lock', { p_name: name, p_holder: randomUUID(), p_ttl: seconds });
+    if (error) throw new Error(error.message);
+    return !!data;   // not released: the lock expiring is the throttle
+  }
+  async paymentsSince(project: string, since: string) {
+    const { data, error } = await this.db.from('payments').select('id,d,t').eq('project', project).gte('d', since).limit(1000);
+    if (error) throw new Error(error.message);
+    return (data || []).map(r => ({ id: String(r.id), d: String(r.d), t: String(r.t) }));
+  }
   async getCompany() { const { data } = await this.db.from('company').select('*').eq('id', 1).limit(1); const r = data?.[0]; if (!r) return { ...DEFAULT_COMPANY }; const c = fromRow<Company & { id?: number }>(r); delete c.id; return { ...DEFAULT_COMPANY, ...c }; }
   async saveCompany(c: Company) { await this.upsert('company', [{ id: 1, ...toRow(c as unknown as Record<string, unknown>) }], 'id'); }
 }

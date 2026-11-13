@@ -83,6 +83,15 @@ export class LocalStore implements Store {
     flush();
     snapshot(s);
   }
+  async throttle(name: string, seconds: number) {
+    const t = (g as unknown as { __minawaThrottle?: Record<string, number> }), now = Date.now();
+    t.__minawaThrottle = t.__minawaThrottle || {};
+    if ((t.__minawaThrottle[name] || 0) > now) return false;
+    t.__minawaThrottle[name] = now + seconds * 1000; return true;
+  }
+  async paymentsSince(project: string, since: string) {
+    return (db().payments as { id: string; project: string; d: string; t: string }[]).filter(p => p.project === project && p.d >= since).map(p => ({ id: p.id, d: p.d, t: p.t }));
+  }
   async withLock<T>(fn: () => Promise<T>): Promise<T> {
     const prev = g.__minawaLock || Promise.resolve();
     let done!: () => void;

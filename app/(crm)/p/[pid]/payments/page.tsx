@@ -9,9 +9,7 @@ import { projectPage, projHead, newPayments, payKey, paySeenCookie } from '@/com
 import { PayRows, MarkPaymentsSeen } from '@/components/PayRows';
 import { when, viaHtml, ownerHref } from '@/components/views/bits';
 
-import { checkSafepayAction } from '@/lib/actions';
 import { safepayConfigured } from '@/lib/safepay';
-import { Submit } from '@/components/client';
 export const dynamic = 'force-dynamic';
 const FAMS = ['Card', 'Bank'] as const;
 const FAM_LABEL: Record<string, string> = { Card: 'Safepay received (Pay Now)', Bank: 'Bank (recorded by staff)' };
@@ -26,10 +24,11 @@ export default async function Payments({ params, searchParams }: { params: Promi
     const fresh = new Set(newPayments().map(p => p.id)), latest = S.payments.map(payKey).sort().pop() || null;
     const qs = (o: Record<string, string>) => { const u = new URLSearchParams({ per, fam, ...(sp.q ? { q: sp.q } : {}), ...o }); if (u.get('fam') === 'all') u.delete('fam'); return `${P}?${u}`; };
     const callout = (() => { if (per === 'all') return null; const p = per === 'month' ? mon : lm, t = getTarget(p), got = S.payments.filter(x => x.d.slice(0, 7) === p).reduce((s, x) => s + x.amount, 0), pc = t.total ? Math.round(100 * got / t.total) : 0;
+      if (!t.total) return <div className="callout" style={{ marginBottom: 14 }}><Ic n="target" s={18} /><div><b>{rs(got)} collected in {fm(p)}</b>. There is no target for {fm(p)}: billing hasn&apos;t started yet, so these payments go against earlier dues.</div></div>;
       return <div className={`callout ${pc >= 100 ? 'good' : ''}`} style={{ marginBottom: 14 }}><Ic n="target" s={18} /><div><b>{fm(p)} target {rs(t.total)}</b> · {rs(got)} collected, {pc}%{pc >= 100 ? ', target met' : `, ${rs(t.total - got)} to go`}. <A href={`${P}?per=${per}&m=target`}>See how it&apos;s made up</A></div></div>; })();
     return <>
       {projHead('payments')}
-      <div className="page-head"><div><h2>Payments</h2><p>Every payment: who paid, how much, how and when. Pay Now payments show <b>Safepay received</b> once Safepay confirms them. Click a payment to see all its details.</p></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{safepayConfigured() ? <form action={checkSafepayAction}><input type="hidden" name="back" value={`/p/${pid}/payments`} /><Submit className="btn" pendingText="Checking…">Check Safepay payments</Submit></form> : null}<a className="btn" href={`/api/export/payments?project=${pid}&per=${per}&fam=${fam}&q=${encodeURIComponent(sp.q || '')}`}>Export CSV</a></div></div>
+      <div className="page-head"><div><h2>Payments</h2><p>Every payment: who paid, how much, how and when. Pay Now payments show <b>Safepay received</b> once Safepay confirms them{safepayConfigured() ? <>; new card payments appear here by themselves, within a minute</> : null}. Click a payment to see all its details.</p></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><a className="btn" href={`/api/export/payments?project=${pid}&per=${per}&fam=${fam}&q=${encodeURIComponent(sp.q || '')}`}>Export CSV</a></div></div>
       <MarkPaymentsSeen cookie={paySeenCookie(S.staffId || 'x', pid)} latest={latest} seen={S.paySeen || null} />
       {fresh.size ? <div className="callout good" style={{ marginBottom: 14 }}><div><b>{fresh.size} new payment{fresh.size === 1 ? '' : 's'}</b> since you last opened Payments. They&apos;re marked <b>New</b> below. Click a payment to see all its details.</div></div> : null}
       {callout}

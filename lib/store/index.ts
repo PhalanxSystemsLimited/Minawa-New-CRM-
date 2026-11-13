@@ -32,6 +32,10 @@ export interface Store {
   replaceProjectData(pid: string, s: State): Promise<void>;
   saveTemplates(t: Record<string, Template>): Promise<void>;
   saveSettings(s: ProjectSettings): Promise<void>;
+  /** True at most once per `seconds` for this name, across all servers (e.g. how often Safepay is checked). */
+  throttle(name: string, seconds: number): Promise<boolean>;
+  /** Payments on or after a date (id, day and time only): for the "new payments" badges. */
+  paymentsSince(project: string, since: string): Promise<{ id: string; d: string; t: string }[]>;
   getCompany(): Promise<Company>;
   saveCompany(c: Company): Promise<void>;
 }

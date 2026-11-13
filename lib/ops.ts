@@ -1,9 +1,10 @@
 // Loading a project for a screen, and changing it safely (lock, load, change, save, send).
 import type { State, Staff, Project, LogEntry } from './types';
 import { getStore } from './store';
-import { use, runDaily, setTarget, log, at } from './engine';
+import { use, runDaily, setTarget, log, at, payLink, payStaleLink } from './engine';
+import { safepayConfigured, safepayMode, getQuickLink } from './safepay';
 import { dispatch, checkSafepay } from './dispatch';
-import { todayPKT, addDays, nowPKT } from './fmt';
+import { todayPKT, addDays, nowPKT, rs } from './fmt';
 import { staffName } from './session';
 
 export async function projects(): Promise<Project[]> { return (await getStore()).listProjects(); }
@@ -80,22 +81,47 @@ export async function dispatchAll() {
   return out;
 }
 
-/** Asks Safepay about every open payment link (all live projects) and records the ones that were paid. Used by the
- *  "Check Safepay payments" button and when a Safepay webhook can't be matched to a link. */
+/** Asks Safepay about the open payment links of every live project and records the ones that were paid. Safepay is
+ *  asked outside the lock (several links at a time), so other work isn't held up; only recording a payment locks. */
 export async function sweepSafepay(staff: Staff | null) {
-  const store = await getStore(), report: string[] = [];
+  const report: string[] = [];
+  if (!safepayConfigured()) return { paid: 0, report };
+  const store = await getStore();
   let paid = 0;
   for (const p of await liveProjects()) {
+    const s0 = await load(p.id, staff), since = addDays(s0.today, -30);
+    const open = s0.links.filter(l => l.sp && !l.spSettled && (l.status === 'active' || (l.status === 'cancelled' && (l.cancelledOn || '') >= since)));
+    const hits = new Map<string, string | null>();
+    for (let i = 0; i < open.length; i += 6) {
+      await Promise.all(open.slice(i, i + 6).map(async l => {
+        try { const sp = await getQuickLink(l.sp!.id); report.push(`${l.id} (${rs(l.amount)}): ${sp.isPaid ? 'paid' : (sp.status || 'not paid').toLowerCase()}`); if (sp.isPaid) hits.set(l.id, sp.tracker); }
+        catch (e) { report.push(`${l.id}: Safepay didn't answer (${(e as Error).message})`); }
+      }));
+    }
+    if (!hits.size) continue;
     paid += await store.withLock(async () => {
       const s = await load(p.id, staff);
-      s.staffId = null;
-      const ids = await checkSafepay(s, report);
-      if (!ids.length) return 0;
-      await store.saveState(s);
-      await dispatch(s);
-      await store.saveState(s);
-      return ids.length;
+      s.staffId = null;   // recorded by the system, as confirmed by Safepay
+      let n = 0;
+      for (const [id, tracker] of hits) {
+        const l = s.links.find(x => x.id === id);
+        if (!l || !l.sp || l.spSettled) continue;
+        l.sp.tracker = tracker || l.sp.tracker;
+        use(s, () => l.status === 'active' ? payLink(l, 'Card', s.today, nowPKT(), safepayMode()) : payStaleLink(l, s.today, nowPKT(), safepayMode()));
+        n++;
+      }
+      if (n) { await store.saveState(s); await dispatch(s); await store.saveState(s); }
+      return n;
     });
   }
   return { paid, report };
+}
+
+/** Called while anyone has the CRM open (and by Safepay's webhook): checks Safepay at most once a minute. */
+export async function autoSweep() {
+  if (!safepayConfigured()) return 0;
+  try {
+    if (!(await (await getStore()).throttle('safepay-sweep', 60))) return 0;
+    return (await sweepSafepay(null)).paid;
+  } catch (e) { console.error('safepay sweep', (e as Error).message); return 0; }
 }

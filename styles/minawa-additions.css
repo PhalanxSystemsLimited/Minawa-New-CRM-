@@ -277,3 +277,6 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .pd-app ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; max-width: 460px }
 .pd-app li { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px }
 .pd-act { display: flex; gap: 8px; flex-wrap: wrap }
+/* small red count: new payments (Payments tab, project in the menu) */
+.tab-new, .side-pay { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px !important; background: #d92d20; color: #fff; font-size: 10.5px; font-weight: 800; line-height: 1; vertical-align: 1px }
+.side-pay { margin-right: 4px; box-shadow: 0 0 0 2px rgba(217, 45, 32, .25) }
