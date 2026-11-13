@@ -1,9 +1,10 @@
 // One apartment (the demo's viewOwner): the flat, its owner, and bills, payments, history, notes and messages.
-import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf } from '@/lib/engine';
+import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator } from '@/lib/engine';
+import { toggleGeneratorAction } from '@/lib/actions-generator';
 import { getStore } from '@/lib/store';
 import type { WaLog } from '@/lib/types';
 import { PLAN_LABEL } from '@/lib/types';
-import { fd, fds, fm, ord, rs, diff } from '@/lib/fmt';
+import { fd, fds, fm, ord, rs, diff, t12 } from '@/lib/fmt';
 import { Go, A } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
 import { pill, when, viaHtml, waBtn, ownerSince } from '@/components/views/bits';
@@ -53,7 +54,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       {closed ? null : <div style={{ marginBottom: 12 }}><Go href={m('note')} className="btn sm">+ Add note</Go></div>}
       {notes.length ? <div className="notes">{notes.map((n, i) => <div className="note" key={i}><div>{n.text}</div><div className="by">{n.by} · {fd(n.d)}{many ? ` · owner then: ${n.owner}` : ''}</div></div>)}</div> : <p className="empty">No notes yet. Add what the owner said on a call.</p>}
       <h3 style={{ marginTop: 20 }}>Messages sent</h3>
-      {msgs.length ? <div className="list">{msgs.map(x => <div className="li" key={x.id}><div className="t"><div className="a">{x.title}</div><div className="b">{fd(x.d)} · {x.t}{many ? ` · to ${ownerById(x.ownerId).name}` : ''}{x.error ? ` · ${x.error}` : ''}</div></div>{msgTag(x)}</div>)}</div> : <p className="empty">No messages yet.</p>}
+      {msgs.length ? <div className="list">{msgs.map(x => <div className="li" key={x.id}><div className="t"><div className="a">{x.title}</div><div className="b">{fd(x.d)} · {t12(x.t)}{many ? ` · to ${ownerById(x.ownerId).name}` : ''}{x.error ? ` · ${x.error}` : ''}</div></div>{msgTag(x)}</div>)}</div> : <p className="empty">No messages yet.</p>}
       {susp.length ? <><h3 style={{ marginTop: 20 }}>Disconnections</h3><div className="list">{susp.map((s, i) => <div className="li" key={i}><div className="t"><div className="a">{s.service}</div><div className="b">Disconnected {fd(s.from)}{s.to ? ' · restored ' + fd(s.to) : ''}</div></div>{s.to ? <span className="tag good">Restored</span> : <span className="tag bad">Active</span>}</div>)}</div></> : null}
     </>;
     const tabBtn = (k: string, label: string) => <Go href={`${base}?tab=${k}`} current={tab === k ? 'true' : 'false'} replace>{label}</Go>;
@@ -66,7 +67,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <div>
             <h2>Apartment {o.apt}</h2>
             <div className="meta-row"><span>Block {o.block}{o.floor ? ` · ${o.floor}` : ''} · {o.type} · {S.proj.name}</span>{o.exempt ? <span>{o.exemptWhy ? 'Not billed' : 'Exempt'}</span> : closed ? <span>No current owner since {fd(o.closedOn!)}</span> : <span>{PLAN_LABEL[o.plan || 'monthly']} billing · next bill {fd(nextBillFor(o))}{o.possessionKnown === false ? ' (no possession date yet)' : ''}</span>}</div>
-            <div className="tags">{pill(st)}{o.promiseUntil ? <span className="tag warn">Promised by {fds(o.promiseUntil)} · reminders paused</span> : null}{activeSusp.map((s, i) => <span key={i} className="tag bad">{s.service} cut {fds(s.from)}</span>)}{o.invalidPhone ? <span className="tag bad">{o.noPhone ? 'No WhatsApp number' : 'Not on WhatsApp'}</span> : null}{o.rate ? <span className="tag warn">Own rate {rs(o.rate)}</span> : null}{o.discount && o.discount.value ? <span className="tag good">{o.discount.kind === 'pct' ? o.discount.value + '%' : rs(o.discount.value)} discount</span> : null}{o.abroad ? <span className="tag info">Owner lives abroad</span> : null}</div>
+            <div className="tags">{pill(st)}{o.promiseUntil ? <span className="tag warn">Promised by {fds(o.promiseUntil)} · reminders paused</span> : null}{activeSusp.map((s, i) => <span key={i} className="tag bad">{s.service} cut {fds(s.from)}</span>)}{o.invalidPhone ? <span className="tag bad">{o.noPhone ? 'No WhatsApp number' : 'Not on WhatsApp'}</span> : null}{o.rate ? <span className="tag warn">Own rate {rs(o.rate)}</span> : null}{o.generator ? <span className="tag info">Generator charges</span> : null}{o.discount && o.discount.value ? <span className="tag good">{o.discount.kind === 'pct' ? o.discount.value + '%' : rs(o.discount.value)} discount</span> : null}{o.abroad ? <span className="tag info">Owner lives abroad</span> : null}</div>
             <div className="owner-box">
               <div className="ob-row"><span className="ob-l">{closed ? 'Last owner' : 'Owner'}</span><span className="ob-n">{o.name}{o.director ? <> <span className="tag">Director</span></> : null}</span></div>
               <div className="cell-sub">{o.phone ? o.phone : 'No WhatsApp number'} · {ownerSince(o)}</div>
@@ -84,6 +85,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             <Go href={m('note')}>Add note</Go>
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
             <Go href={m('adjust')}>Adjustment (charge or credit)</Go>
+            {hasGenerator() ? <form action={toggleGeneratorAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><input type="hidden" name="on" value={o.generator ? '0' : '1'} /><button type="submit">{o.generator ? 'Remove generator charges' : 'Add generator charges'}</button></form> : null}
             {bal > 0 ? null : <Go href={m('recpay')}>Record payment</Go>}
             <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>
             {adminItem('discount', 'Discount')}
@@ -107,7 +109,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           </div></div>; })()}
       {wa.length ? <div className="card"><div className="card-row"><h3>WhatsApp sent by hand</h3><Go href="/whatsapp" className="btn sm">WhatsApp log</Go></div>
         <div className="tbl-wrap"><table><thead><tr><th>When</th><th>By</th><th>Message</th><th>Number</th><th>Answer</th></tr></thead><tbody>{wa.map(e =>
-          <tr key={e.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(e.d)}, {e.t}</td><td>{e.staffName}<div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td><td>{e.title}<div className="cell-sub">Balance then {rs(e.amount)}</div></td>
+          <tr key={e.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(e.d)}, {t12(e.t)}</td><td>{e.staffName}<div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td><td>{e.title}<div className="cell-sub">Balance then {rs(e.amount)}</div></td>
             <td className="num">+{e.sentTo}{e.test ? <div className="cell-sub">test number</div> : null}</td><td>{e.answer === 'sent' ? <span className="tag good">Sent</span> : <span className="tag warn">Not sent</span>}</td></tr>)}</tbody></table></div></div> : null}
       <div className="card">
         <div className="ptabs" role="tablist">

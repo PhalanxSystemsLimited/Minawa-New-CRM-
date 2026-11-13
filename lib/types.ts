@@ -57,6 +57,8 @@ export interface Owner {
   notes: Note[]; suspensions: Suspension[]; prevOwnerId: string | null;
   /** The office's 2026 sheet for this flat (before the CRM), for the paid / due figures on the dashboards. */
   sheet?: SheetSummary | null;
+  /** On the project's Generator Charges List: billed on the "<type> + generator" rate card (e.g. Royal Enclave 15,000 instead of 12,000). */
+  generator?: boolean;
   plan: Plan;               // billing plan the owner chose: monthly, quarterly or annual
   floor: string;            // e.g. LGF, GF (Oakwood); empty where the sheet has none
 }

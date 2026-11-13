@@ -6,8 +6,8 @@ import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
 import { GoSelect, Go, LiveSearch } from '@/components/client';
 import { Ic } from '@/components/icons';
-import { initialsOf } from '@/components/views/activity';
-import { fd, rs, todayPKT, addDays, dow } from '@/lib/fmt';
+import { initialsOf, WaAnswerBadges } from '@/components/views/activity';
+import { fd, rs, todayPKT, addDays, dow, t12 } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,12 +50,12 @@ export default async function WhatsAppLog({ searchParams }: { searchParams: Prom
         <div className="tbl-wrap"><table className="wl-table"><thead><tr><th>Time</th><th>Sent by</th><th>To</th><th>Message</th><th className="r">Balance then</th><th>Answer</th></tr></thead><tbody>
           {list.map(e => { const h = e.d !== day ? (day = e.d, <tr key={e.id + 'h'} className="wl-day"><td colSpan={6}>{dow(e.d)} {fd(e.d)}</td></tr>) : null;
             return [h, <tr key={e.id}>
-              <td className="num" style={{ whiteSpace: 'nowrap' }}>{e.t}</td>
+              <td className="num" style={{ whiteSpace: 'nowrap' }}>{t12(e.t)}</td>
               <td><div className="act-who"><span className={`act-av${e.staffRole === 'admin' ? ' admin' : ''}`} aria-hidden="true">{initialsOf(e.staffName)}</span><b>{e.staffName}</b></div><div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td>
               <td><Go href={`/p/${e.project}/apartments/${e.ownerId}`} className="apt-a">{e.apt}</Go><div className="cell-sub">{e.ownerName}</div><div className="cell-sub num">+{e.sentTo}{e.test ? ' · test number' : ''}</div><div className="cell-sub">{pname(e.project)}</div></td>
               <td><div>{e.title}</div><details className="wl-msg"><summary className="cell-sub">Show the message</summary><p>{e.text}</p></details>{e.payUrl ? <div className="cell-sub">Pay Now link {e.linkId}</div> : null}</td>
               <td className="r num">{e.amount > 0 ? rs(e.amount) : e.amount < 0 ? `${rs(-e.amount)} credit` : 'Paid up'}</td>
-              <td>{e.answer === 'sent' ? <span className="tag good">Sent</span> : <span className="tag warn">Not sent</span>}{e.test ? <> <span className="tag">Test</span></> : null}<div className="cell-sub">{e.via === 'prompt' ? 'Answered on return' : 'Marked by hand'}</div></td>
+              <td><WaAnswerBadges sent={e.answer === 'sent'} test={e.test} /><div className="cell-sub">{e.via === 'prompt' ? 'Answered on return' : 'Marked by hand'}</div></td>
             </tr>]; })}
         </tbody></table></div>}
     </div>

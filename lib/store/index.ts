@@ -39,7 +39,7 @@ export const DEFAULT_COMPANY: Company = { legalName: 'Minawa (Pvt) Ltd', address
 
 /** Fills fields added after the first version, so older saved data still loads. */
 export function normalizeState(s: State) {
-  for (const o of s.owners) { if (!o.plan) o.plan = 'monthly'; if (o.floor == null) o.floor = ''; if (o.sheet === undefined) o.sheet = null; }
+  for (const o of s.owners) { if (!o.plan) o.plan = 'monthly'; if (o.floor == null) o.floor = ''; if (o.sheet === undefined) o.sheet = null; if (o.generator == null) o.generator = false; }
   for (const b of s.bills as (State['bills'][number] & { reminded?: boolean })[]) {
     if (!Array.isArray(b.reminders)) b.reminders = [];
     if (!Array.isArray(b.lines)) b.lines = [{ kind: 'maintenance', label: `Maintenance, ${b.period}`, amount: b.amount }];

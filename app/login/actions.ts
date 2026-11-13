@@ -27,7 +27,7 @@ export async function signIn(fd: FormData) {
 
 export async function signOut() {
   const me = await currentStaff();
-  if (me) await staffLog(me, `${me.name} signed out`, { kind: 'signin' });
+  if (me) await staffLog(me, `${me.name} signed out`, { kind: 'signout' });
   if (supabaseOn()) { const sb = await supabaseServer(); await sb.auth.signOut(); }
   (await cookies()).delete(LOCAL_COOKIE);
   redirect('/login');

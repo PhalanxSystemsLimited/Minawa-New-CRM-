@@ -2,13 +2,13 @@
 import type { Payment, Owner } from '@/lib/types';
 import { cur, type OwnerStatus } from '@/lib/engine';
 import { spInfo } from '@/lib/docdata';
-import { addDays, fd, fds } from '@/lib/fmt';
+import { addDays, fd, fds, t12 } from '@/lib/fmt';
 import { Ic, Wa } from '../icons';
 import { Go, A } from '../client';
 
 export const STATUS_LABEL: Record<string, string> = { paid: 'Paid', due: 'Due', overdue: 'Overdue', flagged: 'Flagged', exempt: 'Exempt', transferred: 'Transferred' };
 export const pill = (s: OwnerStatus) => <span className={`pill ${s}`}>{STATUS_LABEL[s]}</span>;
-export const when = (d: string, t: string) => { const S = cur(); return `${d === S.today ? 'Today' : d === addDays(S.today, -1) ? 'Yesterday' : fds(d)}, ${t}`; };
+export const when = (d: string, t: string) => { const S = cur(); return `${d === S.today ? 'Today' : d === addDays(S.today, -1) ? 'Yesterday' : fds(d)}, ${t12(t)}`; };
 export const P = (pid: string, sub = '') => `/p/${pid}${sub}`;
 export const ownerHref = (o: Owner, extra = '') => `/p/${o.project}/apartments/${o.id}${extra}`;
 export function viaHtml(p: Payment) {

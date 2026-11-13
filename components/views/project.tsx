@@ -1,7 +1,7 @@
 // Shared frame for a project's pages: the header with tabs (the demo's projHead), the "not set up" page,
 // and the modals that any project page can open from the address.
 import type { State } from '@/lib/types';
-import { cur, ownerById, followCount, currentOf } from '@/lib/engine';
+import { cur, ownerById, followCount, currentOf, hasGenerator } from '@/lib/engine';
 import { use } from '@/lib/engine';
 import { pendingCount } from '@/lib/manual-send';
 import { requireStaff } from '@/lib/session';
@@ -9,9 +9,9 @@ import { load, projects as listProjects } from '@/lib/ops';
 import { Go, A } from '../client';
 import { DocModal, OwnerModal, SendPickModal, TargetModal, PossessionModal } from './modals';
 
-export type Tab = 'dashboard' | 'owners' | 'payments' | 'utilities' | 'notices' | 'send' | 'follow' | 'messages' | 'settings';
-const TABS: [Tab, string, string][] = [['dashboard', 'Overview', ''], ['owners', 'Apartments', '/apartments'], ['payments', 'Payments', '/payments'], ['utilities', 'Utility bills', '/utilities'], ['notices', 'Notices', '/notices'], ['send', 'Send on WhatsApp', '/send'], ['follow', 'To do', '/todo'], ['messages', 'Messages', '/messages'], ['settings', 'Settings', '/settings']];
-export const TITLES: Record<Tab, string> = { dashboard: 'Overview', owners: 'Apartments', payments: 'Payments', utilities: 'Utility bills', notices: 'Notices', send: 'Send on WhatsApp', follow: 'To do', messages: 'Messages', settings: 'Settings' };
+export type Tab = 'dashboard' | 'owners' | 'payments' | 'utilities' | 'notices' | 'generator' | 'send' | 'follow' | 'messages' | 'settings';
+const TABS: [Tab, string, string][] = [['dashboard', 'Overview', ''], ['owners', 'Apartments', '/apartments'], ['payments', 'Payments', '/payments'], ['utilities', 'Utility bills', '/utilities'], ['notices', 'Notices', '/notices'], ['generator', 'Generator charges', '/generator'], ['send', 'Send on WhatsApp', '/send'], ['follow', 'To do', '/todo'], ['messages', 'Messages', '/messages'], ['settings', 'Settings', '/settings']];
+export const TITLES: Record<Tab, string> = { dashboard: 'Overview', owners: 'Apartments', payments: 'Payments', utilities: 'Utility bills', notices: 'Notices', generator: 'Generator charges', send: 'Send on WhatsApp', follow: 'To do', messages: 'Messages', settings: 'Settings' };
 
 export function projHead(tab: Tab, ownerTitle?: string) {
   const S = cur(), p = S.proj, n = followCount(), w = pendingCount();
@@ -19,7 +19,7 @@ export function projHead(tab: Tab, ownerTitle?: string) {
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
-    <nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => k !== 'utilities' || S.settings.rules.utilities.length).map(([k, l, sub]) =>
+    <nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
       <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : null}</Go>)}</nav>
   </>;
 }

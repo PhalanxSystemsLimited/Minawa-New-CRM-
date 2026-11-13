@@ -2,6 +2,7 @@
 // on screen (components/Docs.tsx, the demo's .doc look) and as the PDF sent on WhatsApp (lib/pdf.tsx).
 // Call inside use(state, …).
 import type { Bill, Payment, Owner, PayLink, Clearance } from './types';
+import { t12 } from '@/lib/fmt';
 import { cur, ownerById, duesBreakdown, balance, feePct, periodLabel } from './engine';
 import { fd, fm, fmShort, rs } from './fmt';
 
@@ -56,7 +57,7 @@ export function receiptDoc(p: Payment): DocData {
   const stamp = sp
     ? { sp: true, title: 'Received through Safepay', text: `Card payment confirmed by Safepay${sp.mode === 'sandbox' ? ' (sandbox)' : sp.mode === 'simulated' ? ' (simulated)' : ''}`, amount: rs(p.amount) }
     : { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: p.source === 'proof' ? `Transfer checked against the bank statement by ${p.by}` : `Paid into Minawa Group's bank account, recorded by ${p.by}`, amount: rs(p.amount) };
-  const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${p.t}`],
+  const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${t12(p.t)}`],
     ['Payment method', sp ? 'Debit or credit card, Pay Now link' : p.method]];
   if (sp) kv.push(['Safepay tracker', sp.tracker || 'None: simulated payment'], ['Safepay payment link', sp.link || sp.payLink || '–']);
   else kv.push(['Bank reference', p.ref], ['Payment ID', p.id]);

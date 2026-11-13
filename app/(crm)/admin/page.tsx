@@ -18,7 +18,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const last = new Map<string, { d: string; t: string }>();
   for (const e of acts) if (e.staffId && !last.has(e.staffId)) last.set(e.staffId, { d: e.d, t: e.t });
   const accIds = staff.filter(x => x.role === 'accountant').map(x => x.id);
-  const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && e.kind !== 'signin').slice(0, 8);
+  const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && !['signin', 'signout'].includes(e.kind)).slice(0, 8);
   const sorted = [...staff].sort((a, b) => (a.role === b.role ? 0 : a.role === 'admin' ? -1 : 1) || a.name.localeCompare(b.name));
   const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add'];
   let wa = { from: '', name: '', quality: '', error: '' };
@@ -77,7 +77,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         {row('WhatsApp webhook', !!process.env.WHATSAPP_VERIFY_TOKEN, `${app || 'https://your-crm'}/api/whatsapp/webhook · delivery, read receipts, owners' replies and screenshots`)}
         {row('Safepay', safepayConfigured(), safepayConfigured() ? (safepayMode() === 'live' ? 'Live: real card payments' : 'Sandbox: test payments only (set SAFEPAY_ENV=production to go live)') : 'Set SAFEPAY_SECRET_KEY. Until then Pay Now opens a simulated checkout.', safepayMode() === 'live' ? 'Live' : 'warn')}
         {row('Safepay webhook', !!process.env.SAFEPAY_WEBHOOK_SECRET, `${app || 'https://your-crm'}/api/safepay/webhook`)}
-        {row('Daily run and sending', !!process.env.CRON_SECRET, 'Supabase pg_cron calls /api/cron/daily at 10:00 and /api/cron/dispatch every 10 minutes (supabase/migrations/0002_schedule.sql).')}
+        {row('Daily run and sending', !!process.env.CRON_SECRET, 'Supabase pg_cron calls /api/cron/daily at 10:00 AM and /api/cron/dispatch every 10 minutes (supabase/migrations/0002_schedule.sql).')}
         {row('Address for Pay Now buttons', !!app, app ? `${app}/pay/…` : 'Set APP_URL to the CRM\'s public address.')}
       </div></div>
       <div className="card"><h3>Before go-live <small>from Minawa&apos;s checklist</small></h3><ul className="rules">

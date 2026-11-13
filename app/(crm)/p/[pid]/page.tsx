@@ -1,6 +1,6 @@
 // A project's Overview (the demo's viewDash).
 import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillDate, apartments, isBillingDay, billsOf, unpaidMaint, billDateOf, sheetStats } from '@/lib/engine';
-import { addDays, nextMonth, prevMonth } from '@/lib/fmt';
+import { addDays, nextMonth, prevMonth, hour12 } from '@/lib/fmt';
 import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short } from '@/lib/fmt';
 import { spInfo } from '@/lib/docdata';
 import { pendingCount } from '@/lib/manual-send';
@@ -41,7 +41,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
         <p>{rs(outstanding)} is still to collect from {owe.length} apartment{owe.length === 1 ? '' : 's'}{fees ? `, including ${rs(fees)} in fines` : ''}{arrears ? ` (${rs(arrears)} of it is old arrears from before ${fm(S.goLive.slice(0, 7))})` : ''}. {todo ? `${todo} thing${todo > 1 ? 's' : ''} need${todo > 1 ? '' : 's'} you today.` : 'Nothing needs you today.'}</p>
         {firstBill && !tg.total ? <div className="htg">
           <div className="htg-top"><span className="l">Billing starts</span><b className="num">{fd(firstBill)}</b></div>
-          <div className="htg-sub">The first bill goes out automatically on {fd(firstBill)} at {String(S.settings.rules.sendHour).padStart(2, '0')}:00, for {fm(S.goLive.slice(0, 7))}. Until then, payments go to old arrears ({rs(arrears)} from {arrearsOwing} flat{arrearsOwing === 1 ? '' : 's'}).</div>
+          <div className="htg-sub">The first bill goes out automatically on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}. Until then, payments go to old arrears ({rs(arrears)} from {arrearsOwing} flat{arrearsOwing === 1 ? '' : 's'}).</div>
         </div> : <div className="htg">
           <div className="htg-top"><span className="l">{monName} target</span><b className="num">{rs(tg.total)}</b><Go href={`${P}?m=target`} className="htg-link">Breakdown</Go></div>
           <div className="htg-bar" role="img" aria-label={`${tgPct}% of the target collected`}><span style={{ width: `${Math.min(100, tgPct)}%` }}></span><i style={{ left: `${pace}%` }} title="Where collections would be if paid evenly through the month"></i></div>
@@ -68,7 +68,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
         const ut = r.utilities[0], utDone = ut ? flats.filter(o => S.charges.some(c => c.ownerId === o.id && c.period === np && c.kind === ut && c.amount)).length : 0;
         const rem = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => unpaidMaint(b) > 0 && r.remindDays.some(d => addDays(b.dueDate, -d) > S.today)).length;
         const fineDay = S.bills.filter(b => unpaidMaint(b) > 0 && addDays(b.dueDate, 1) > S.today).map(b => addDays(b.dueDate, 1)).sort()[0];
-        return <div className="card"><div className="card-row"><h3>Billing desk <small>{fm(nextMonth(np))} bills go out on {fd(next)} at {r.sendHour}:00</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
+        return <div className="card"><div className="card-row"><h3>Billing desk <small>{fm(nextMonth(np))} bills go out on {fd(next)} at {hour12(r.sendHour)}</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
           <div className="desk">
             <div><div className="l">Next bills</div><div className="v num">{toBill}</div><div className="cell-sub">flats on {fds(next)}, due {fds(addDays(next, r.dueDays))}</div></div>
             {ut ? <div><div className="l">{ut} entered</div><div className="v num">{utDone} <span className="muted" style={{ fontSize: 14 }}>of {flats.length}</span></div><div className="cell-sub">for {fm(np)}</div></div> : <div><div className="l">Utility bills</div><div className="v num">–</div><div className="cell-sub">not used here</div></div>}

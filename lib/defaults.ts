@@ -70,7 +70,7 @@ export const NOTICE_PRESETS: { key: string; label: string; title: string; text: 
 export const RATE_CARDS: Record<string, { type: string; amount: number }[]> = {
   cc: [{ type: '1-Bed', amount: 6000 }, { type: '2-Bed', amount: 8000 }, { type: '3-Bed', amount: 9000 }, { type: '3-Bed (D/L)', amount: 10000 }],
   ow: [{ type: '1-Bed', amount: 5000 }, { type: '2-Bed', amount: 6000 }, { type: 'Cottage', amount: 8000 }],
-  re: [{ type: 'Apartment', amount: 12000 }]
+  re: [{ type: 'Apartment', amount: 12000 }, { type: 'Apartment + generator', amount: 15000 }]
 };
 export const RATE_FROM = '2026-01-01';
 /** The many ways the sheets write a flat type, to one name per rate card. */

@@ -55,7 +55,7 @@ export function blankOwner(p: Partial<Owner> & { id: string; project: string; ap
   return { unit: `${p.project}:${p.apt}`, block: '', type: '', name: '', phone: '', email: '', possession: '2000-01-01', possessionKnown: true,
     opening: 0, openingLeft: 0, credit: 0, feeDue: 0, exempt: false, exemptWhy: null, director: false, discount: null, abroad: false,
     invalidPhone: false, noPhone: false, rate: null, status: 'active', closedOn: null, flagged: false, flaggedOn: null, promiseUntil: null,
-    notes: [], suspensions: [], prevOwnerId: null, plan: 'monthly', floor: '', ...p };
+    notes: [], suspensions: [], prevOwnerId: null, plan: 'monthly', floor: '', generator: false, ...p };
 }
 
 export function freshState(proj: Project, today: string, rates: Rate[], seq: Record<string, number>): State {

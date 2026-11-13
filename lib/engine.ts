@@ -58,6 +58,22 @@ export function rateFor(type: string, d: string) {
   for (const x of S.rates) if (x.type === type && x.from <= d && (!r || x.from > r.from)) r = x;
   return r ? r.amount : 0;
 }
+/* Generator charges: a flat on the project's Generator Charges List is billed on the "<type> + generator" rate card
+ * (Royal Enclave: Apartment 12,000, Apartment + generator 15,000) where that card exists. A flat's own agreed rate still
+ * wins. Bills store their amount, so changing the list only affects bills made after the change. */
+export const GEN = ' + generator';
+export const genType = (type: string) => type + GEN;
+export const isGenType = (type: string) => type.endsWith(GEN);
+export const baseTypes = () => rateTypes().filter(t => !isGenType(t));
+/** Whether this project has generator rate cards (and so a Generator Charges List). */
+export const hasGenerator = () => S.rates.some(r => isGenType(r.type));
+/** The rate card a flat is billed on for a bill on day d. */
+export function cardType(o: Owner, d: string) {
+  return o.generator && S.rates.some(r => r.type === genType(o.type) && r.from <= d) ? genType(o.type) : o.type;
+}
+export const cardRate = (o: Owner, d: string) => rateFor(cardType(o, d), d);
+/** What one month of maintenance costs this flat on day d: its own rate, or its rate card (with or without generator). */
+export const rateOf = (o: Owner, d: string) => o.rate || cardRate(o, d);
 export function discountFor(o: Owner, d: string, amount: number) {
   const x = o.discount;
   if (!x || !x.value) return 0;
@@ -68,6 +84,13 @@ export function discountFor(o: Owner, d: string, amount: number) {
 export function billingDay(_o: Owner | null, y: number, m: number) { return Math.min(R().billDay, dim(y, m)); }
 export const billDateOf = (p: string) => `${p}-${String(billingDay(null, +p.slice(0, 4), +p.slice(5, 7))).padStart(2, '0')}`;
 const covered = (o: Owner, p: string) => S.bills.some(b => b.ownerId === o.id && b.months > 0 && b.period <= p && p <= (b.periodEnd || b.period));
+/** The first month not billed yet for this flat (go-live or later): where a change to its rate starts to count. */
+export function nextPeriodFor(o: Owner) {
+  let p = S.today.slice(0, 7);
+  if (p < S.goLive.slice(0, 7)) p = S.goLive.slice(0, 7);
+  for (let i = 0; i < 36 && covered(o, p); i++) p = nextMonth(p);
+  return p;
+}
 /** Last month of the plan period that month p falls in (calendar quarters and years). */
 export function planEnd(o: Owner, p: string) {
   const n = PLAN_MONTHS[o.plan || 'monthly'] || 1, y = +p.slice(0, 4), m = +p.slice(5, 7);
@@ -86,7 +109,7 @@ export function monthsToBill(o: Owner, d: string) {
 }
 /** One month's maintenance: the rate card (or the flat's own rate), prorated in the month of possession. */
 export function monthCharge(o: Owner, p: string) {
-  const full = o.rate || rateFor(o.type, billDateOf(p));
+  const full = rateOf(o, billDateOf(p));
   if (o.possession.slice(0, 7) === p && +o.possession.slice(8) > 1) {
     const days = dim(+p.slice(0, 4), +p.slice(5, 7)), from = +o.possession.slice(8);
     return { amount: Math.round(full * (days - from + 1) / days), full, from: o.possession };
@@ -132,14 +155,14 @@ export function monthTarget(p: string): Target {
   if (p < S.goLive.slice(0, 7)) return t;   // nothing is billed before go-live (opening balances cover it)
   for (const o of S.owners) {
     if (o.status !== 'active') continue;
-    const d = billDateOf(p), card = rateFor(o.type, d), amt = o.rate || card;
+    const d = billDateOf(p), ct = cardType(o, d), card = rateFor(ct, d), amt = o.rate || card;
     if (o.exempt) {
       if (inc.exempt.includes(o.id)) { t.exOn += amt; t.exOnN++; t.total += amt; } else { t.excluded++; t.exOut += amt; }
       continue;
     }
     if (o.possession > end) continue;
     const disc = discountFor(o, d, amt);
-    const ty = byType[o.type] || (byType[o.type] = { type: o.type, n: 0, rate: card, sub: 0 });
+    const ty = byType[ct] || (byType[ct] = { type: ct, n: 0, rate: card, sub: 0 });
     ty.n++; ty.sub += card; t.gross += card; t.flats++;
     if (o.rate && o.rate !== card) { t.own += o.rate - card; t.ownN++; }
     const fullRate = disc && inc.disc.includes(o.id);
@@ -154,7 +177,7 @@ export function tgLists() {
   const disc: { o: Owner; disc: number }[] = [], exempt: { o: Owner; amt: number }[] = [];
   for (const o of S.owners) {
     if (o.status !== 'active') continue;
-    const d = billDateOf(p), amt = o.rate || rateFor(o.type, d);
+    const d = billDateOf(p), amt = rateOf(o, d);
     if (o.exempt) exempt.push({ o, amt });
     else { const x = discountFor(o, d, amt); if (x) disc.push({ o, disc: x }); }
   }
@@ -193,7 +216,7 @@ export function createBill(o: Owner, d: string, opts: { utilitiesOnly?: boolean 
   for (const m of months) {
     const c = monthCharge(o, m), x = discountFor(o, billDateOf(m), c.amount);
     amount += c.amount; disc += x;
-    lines.push({ kind: 'maintenance', label: `Maintenance, ${o.type}, ${fm(m)}${c.from ? ` (from ${fds(c.from)}, ${rs(c.full)} a month)` : ''}`, amount: c.amount });
+    lines.push({ kind: 'maintenance', label: `Maintenance, ${o.rate ? o.type : cardType(o, billDateOf(m))}, ${fm(m)}${c.from ? ` (from ${fds(c.from)}, ${rs(c.full)} a month)` : ''}`, amount: c.amount });
     if (x) lines.push({ kind: 'discount', label: `Discount, ${fm(m)}${o.discount?.kind === 'pct' ? ` (${o.discount.value}%)` : ''}`, amount: -x });
   }
   const id = 'BL-' + (2600 + nid('bill'));
@@ -203,7 +226,7 @@ export function createBill(o: Owner, d: string, opts: { utilitiesOnly?: boolean 
     dueDate: addDays(d, R().dueDays), finalDate: addDays(addDays(d, R().dueDays), R().flagDays), amount, discount: disc, extras, net: amount - disc + extras, paid: 0, fine: 0, finePaid: 0,
     fined: false, fromCredit: 0, prev: Math.max(0, before), noticeSkipped: false, flagSkipped: false, reminders: [], lines, bd: null };
   S.bills.push(b);
-  if (amount) addEntry(o.id, d, 'bill', amount, `Maintenance · ${o.type} · ${periodLabel(b)}`, { ref: b.id });
+  if (amount) addEntry(o.id, d, 'bill', amount, `Maintenance · ${o.rate ? o.type : cardType(o, d)} · ${periodLabel(b)}`, { ref: b.id });
   if (disc && o.discount) addEntry(o.id, d, 'discount', -disc, o.discount.kind === 'pct' ? `Discount ${o.discount.value}%` : 'Discount (fixed)', { ref: b.id });
   for (const c of ch) addEntry(o.id, d, 'utility', c.amount, `${c.kind} · ${fm(c.period)}`, { ref: b.id });
   if (o.credit > 0) {

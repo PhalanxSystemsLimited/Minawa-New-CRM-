@@ -195,3 +195,41 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .signin-page .signin-card { border-radius: 16px !important }
 .signin-page .signin-mark, .signin-page .signin-form input, .signin-page .signin-btn, .signin-page .pw-eye { border-radius: 8px !important }
 .signin-page .callout { border-radius: 10px !important }
+
+/* Generator charges list */
+.gen-kpis { margin-bottom: 14px }
+.gen-table tbody tr { cursor: pointer }
+.gen-table tbody tr.sel td { background: var(--surface-2) }
+.gen-bar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; background: var(--surface); border-top: 1px solid var(--line); padding: 12px 0 2px; margin-top: 10px }
+.gen-bar .muted { margin-right: auto; font-size: 12.5px }
+
+/* 12-hour times ("10:05 AM") need a wider time column; sign-outs styled like sign-ins */
+.ev, .act-ev { grid-template-columns: 62px minmax(0, 1fr) }
+.ev .tm { white-space: nowrap }
+.k.signout { color: var(--muted) }
+/* WhatsApp activity: sent (green) / not sent (red) next to the WHATSAPP label */
+.k.wa-yes { color: var(--good) }
+.k.wa-no { color: var(--bad) }
+
+/* Activity badges: a soft colour-coded label with an icon for the kind of action, and a solid one for how it ended.
+   Theme colours only; corners follow the theme. */
+.k.abadge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 7px; margin-right: 6px; line-height: 1.5; border: 1px solid transparent; white-space: nowrap; vertical-align: middle }
+.k.abadge svg { flex: none }
+.k.abadge.t-good { color: var(--good); background: var(--good-soft); border-color: color-mix(in srgb, var(--good) 25%, transparent) }
+.k.abadge.t-bad { color: var(--bad); background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 25%, transparent) }
+.k.abadge.t-warn { color: var(--warn); background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 25%, transparent) }
+.k.abadge.t-info { color: var(--info); background: var(--info-soft); border-color: color-mix(in srgb, var(--info) 25%, transparent) }
+.k.abadge.t-accent { color: var(--brick); background: var(--neon-soft); border-color: color-mix(in srgb, var(--brick) 25%, transparent) }
+.k.abadge.t-muted { color: var(--muted); background: var(--surface-2); border-color: var(--line-strong) }
+.k.abadge.t-wa { color: #128c4b; background: var(--good-soft); border-color: color-mix(in srgb, #128c4b 25%, transparent) }
+.k.abadge.solid { color: #fff; border-color: transparent }
+.k.abadge.solid.t-good { background: var(--good) }
+.k.abadge.solid.t-bad { background: var(--bad) }
+.k.abadge.solid.t-info { background: var(--info) }
+.k.abadge.solid.t-muted { background: var(--muted) }
+.k.abadge.solid.t-warn { background: var(--warn) }
+.act-who .k.abadge { margin: 0 }
+.k.abadge.t-in { color: #fff; background: var(--info); border-color: var(--info) }
+.abadges { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-bottom: 2px }
+.abadges .k.abadge { margin: 0 }

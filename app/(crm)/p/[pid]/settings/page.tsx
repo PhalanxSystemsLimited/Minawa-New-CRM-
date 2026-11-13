@@ -1,6 +1,6 @@
 // Settings (the demo's viewSettings), plus reminder rules, bank details and the daily run.
 import { cur, rateTypes, rateFor, getTarget, isAdmin, billDateOf, balance } from '@/lib/engine';
-import { fd, fds, fm, rs, ord, addDays } from '@/lib/fmt';
+import { fd, fds, fm, rs, ord, addDays, hour12 } from '@/lib/fmt';
 import { TEMPLATE_VARS } from '@/lib/defaults';
 import { Go } from '@/components/client';
 import { Submit } from '@/components/client';
@@ -54,7 +54,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
       <div className="grid2">
         <div className="card"><h3>Billing schedule <small>new bills use these</small></h3>
           <form action={rulesAction} className="rules-form">{hid}
-            <div className="rule"><label htmlFor="ru-day">Bills and 1st reminder</label><div className="rule-in"><span>on the</span><input id="ru-day" name="billDay" type="number" min="1" max="28" defaultValue={r.billDay} disabled={dis} /><span>of every month, at {r.sendHour}:00</span></div></div>
+            <div className="rule"><label htmlFor="ru-day">Bills and 1st reminder</label><div className="rule-in"><span>on the</span><input id="ru-day" name="billDay" type="number" min="1" max="28" defaultValue={r.billDay} disabled={dis} /><span>of every month, at {hour12(r.sendHour)}</span></div></div>
             <div className="rule"><label htmlFor="ru-due">Due date</label><div className="rule-in"><input id="ru-due" name="dueDays" type="number" min="1" max="60" defaultValue={r.dueDays} disabled={dis} /><span>days after the bill ({fds(addDays(billDateOf(S.today.slice(0, 7)), r.dueDays))} for this month&apos;s bills)</span></div></div>
             <div className="rule"><label htmlFor="ru-rem">More reminders</label><div className="rule-in"><input id="ru-rem" name="remindDays" defaultValue={r.remindDays.join(', ')} disabled={dis} style={{ width: 110 }} /><span>days before the due date</span></div></div>
             <div className="rule"><label htmlFor="ru-fin">Flag for disconnection</label><div className="rule-in"><input id="ru-fin" name="flagDays" type="number" min="1" max="120" defaultValue={r.flagDays} disabled={dis} /><span>days after the due date, if still unpaid</span></div></div>
@@ -93,7 +93,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
         {['bill', 'reminder', 'notice', 'link', 'receipt', 'credit', 'alert', 'announce'].map(tplRow)}
       </div>
       <details className="card rules-card"><summary>How the system works</summary><ul className="rules">
-        <li>Every flat is billed on the {ord(r.billDay)} of the month at {r.sendHour}:00, in advance: monthly flats for the next month (the 25 Nov bill is for December), quarterly flats for the next calendar quarter (billed 25 Dec, Mar, Jun, Sep), annual flats for the next year (billed 25 December). Electricity and other utility bills entered by the accountant go on the same bill. The bill is the first reminder.</li>
+        <li>Every flat is billed on the {ord(r.billDay)} of the month at {hour12(r.sendHour)}, in advance: monthly flats for the next month (the 25 Nov bill is for December), quarterly flats for the next calendar quarter (billed 25 Dec, Mar, Jun, Sep), annual flats for the next year (billed 25 December). Electricity and other utility bills entered by the accountant go on the same bill. The bill is the first reminder.</li>
         <li>Billing starts at possession: the first month is charged from the possession date. The first bill also covers the rest of the possession month.</li>
         <li>The due date is {r.dueDays} days after the bill. {r.remindDays.length ? `Reminders go out ${r.remindDays.join(' and ')} days before the due date, each with a fresh payment link.` : ''} The day after the due date the fine ({r.feePct}% of the unpaid bills{r.fineArrears ? ' and old arrears' : ''}, set by the accountant) is added and a final notice goes out.</li>
         <li>{r.flagDays} days after the due date, flats still unpaid are flagged for disconnection. Paying in full clears the flag.</li>

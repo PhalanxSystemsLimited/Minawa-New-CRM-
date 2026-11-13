@@ -71,7 +71,7 @@ export async function transferAction(fdata: FormData) {
     o.status = 'closed'; o.closedOn = d; cancelLinks(o, s.today, t, 'account closed on transfer');
     let c = s.clearances.find(x => x.ownerId === o.id);
     if (!c) { c = { no: 'DC-' + s.today.slice(0, 4) + '-' + String(nid('dc')).padStart(3, '0'), ownerId: o.id, project: pid, d: s.today, by: staffName(staff) }; s.clearances.push(c); }
-    const n = blankOwner({ id: 'O' + nid('o'), project: pid, unit: unitOf(o), apt: o.apt, block: o.block, type: o.type, name, phone, possession: d, prevOwnerId: o.id, rate: o.rate });
+    const n = blankOwner({ id: 'O' + nid('o'), project: pid, unit: unitOf(o), apt: o.apt, block: o.block, type: o.type, name, phone, possession: d, prevOwnerId: o.id, rate: o.rate, generator: !!o.generator });
     s.owners.push(n);
     log(s.today, t, 'admin', `${o.apt} transferred: ${o.name}'s account closed (clearance ${c.no}); new account for ${name}, billed on the ${ord(+d.slice(8))}`, n.id);
     if (isBillingDay(n, s.today)) { const b = createBill(n, s.today); sendBill(n, b, s.today); }

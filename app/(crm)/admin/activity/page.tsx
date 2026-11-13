@@ -6,7 +6,7 @@ import { GoSelect, Go } from '@/components/client';
 import { ActivityList, initialsOf, lastSeen, roleTag } from '@/components/views/activity';
 
 export const dynamic = 'force-dynamic';
-const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook', 'link'], msg: ['message', 'whatsapp', 'bill'], fine: ['fine', 'flag', 'alert'], change: ['admin', 'job'], signin: ['signin'] };
+const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook', 'link'], msg: ['message', 'whatsapp', 'bill'], fine: ['fine', 'flag', 'alert'], change: ['admin', 'job'], signin: ['signin', 'signout'] };
 
 export default async function StaffActivity({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   await requireAdmin();
@@ -26,7 +26,7 @@ export default async function StaffActivity({ searchParams }: { searchParams: Pr
       <Go href={`/admin?edit=${encodeURIComponent(person.id)}`} className="btn sm">Edit</Go></div> : null}
     <div className="card"><div className="toolbar" style={{ marginBottom: 14 }}>
       <GoSelect name="who" value={who} ariaLabel="Whose activity" style={{ width: 'auto' }} options={[['accountants', 'All accountants'], ['admins', 'All admins'], ['all', 'Everyone'], ...people.map(s => [s.id, `${s.name} (${s.role === 'admin' ? 'Admin' : 'Accountant'})`] as [string, string])]} />
-      <GoSelect name="f" value={f} ariaLabel="What to show" style={{ width: 'auto' }} options={[['all', 'Everything'], ['money', 'Payments and links'], ['msg', 'Bills, notices and messages'], ['fine', 'Fines, flags and alerts'], ['change', 'Changes and setup'], ['signin', 'Sign-ins']]} />
+      <GoSelect name="f" value={f} ariaLabel="What to show" style={{ width: 'auto' }} options={[['all', 'Everything'], ['money', 'Payments and links'], ['msg', 'Bills, notices and messages'], ['fine', 'Fines, flags and alerts'], ['change', 'Changes and setup'], ['signin', 'Sign-ins and sign-outs']]} />
       <GoSelect name="p" value={pid} ariaLabel="Project" style={{ width: 'auto' }} options={[['', 'All projects'], ...projs.filter(p => p.live).map(p => [p.id, p.name] as [string, string])]} />
       <span className="muted" style={{ fontSize: 12.5, marginLeft: 'auto' }}>{list.length ? `${list.length}${list.length === 500 ? '+' : ''} action${list.length === 1 ? '' : 's'} · ${today} on the latest day` : ''}</span>
     </div>

@@ -36,3 +36,13 @@ export function nowPKT(): string {
   const d = new Date(Date.now() + 5 * 3600e3);
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
+
+/** "14:05" → "2:05 PM" (times are stored as 24-hour "HH:MM" so they sort; shown in 12-hour time). */
+export function t12(t: string | null | undefined) {
+  const m = String(t || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return t || '';
+  const h = +m[1];
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+}
+/** The hour the daily run goes out, e.g. 11 → "11:00 AM". */
+export const hour12 = (h: number) => t12(`${h}:00`);

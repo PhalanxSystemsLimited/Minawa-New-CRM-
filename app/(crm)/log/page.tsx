@@ -1,8 +1,9 @@
 // Activity log (the demo's log drawer, as a page): everything the system and staff did.
 import { requireStaff } from '@/lib/session';
+import { KindBadges } from '@/components/views/activity';
 import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
-import { dow, fd } from '@/lib/fmt';
+import { dow, fd, t12 } from '@/lib/fmt';
 import { GoSelect } from '@/components/client';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export default async function Log({ searchParams }: { searchParams: Promise<Reco
       <GoSelect name="p" value={pid} ariaLabel="Project" style={{ width: 'auto' }} options={[['', 'All projects'], ...projs.filter(p => p.live).map(p => [p.id, p.name] as [string, string])]} />
     </div>
       <div className="d-body log-page">{list.length ? list.map(e => { const h = e.d !== day ? (day = e.d, <div className="ev-day">{dow(e.d)} {fd(e.d)}</div>) : null;
-        return <div key={e.id}>{h}<div className="ev"><span className="tm">{e.t}</span><div><span className={`k ${e.kind}`}>{e.kind}</span>{e.project && !pid ? <b className="ev-p">{projs.find(p => p.id === e.project)?.name}: </b> : null}{e.text}</div></div></div>; }) : <p className="empty">Nothing yet.</p>}</div>
+        return <div key={e.id}>{h}<div className="ev"><span className="tm">{t12(e.t)}</span><div><KindBadges e={e} />{e.project && !pid ? <b className="ev-p">{projs.find(p => p.id === e.project)?.name}: </b> : null}{e.text}</div></div></div>; }) : <p className="empty">Nothing yet.</p>}</div>
     </div>
   </>;
 }

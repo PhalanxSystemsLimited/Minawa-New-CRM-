@@ -1,6 +1,6 @@
 // New: maintenance notices staff send on WhatsApp (water outage, electricity, lift, custom), and their history.
 import { cur, apartments, aptOrder } from '@/lib/engine';
-import { fd, fds } from '@/lib/fmt';
+import { fd, fds, t12 } from '@/lib/fmt';
 import { NOTICE_PRESETS } from '@/lib/defaults';
 import { NoticeComposer } from '@/components/NoticeComposer';
 import { projectPage, projHead } from '@/components/views/project';
@@ -25,7 +25,7 @@ export default async function Notices({ params, searchParams }: { params: Promis
       <div className="card"><div className="card-row"><h3>Sent notices</h3><span className="muted" style={{ fontSize: 12.5 }}>last 30</span></div>
         {sent.length ? <div className="tbl-wrap"><table><thead><tr><th>When</th><th>Notice</th><th>Sent to</th><th className="r">Owners</th><th className="r">Delivered</th><th>By</th></tr></thead><tbody>
           {sent.map(n => { const ms = msgsOf(n), ok = ms.filter(m => ['sent', 'delivered', 'read'].includes(m.status)).length;
-            return <tr key={n.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(n.d)}, {n.t}</td><td><div className="cell-main">{n.title}</div><div className="cell-sub nc-text">{n.text}</div></td><td>{n.audience.length > 60 ? n.audience.slice(0, 60) + '…' : n.audience}</td>
+            return <tr key={n.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(n.d)}, {t12(n.t)}</td><td><div className="cell-main">{n.title}</div><div className="cell-sub nc-text">{n.text}</div></td><td>{n.audience.length > 60 ? n.audience.slice(0, 60) + '…' : n.audience}</td>
               <td className="r num">{n.count}</td><td className="r num">{ok}{n.failed ? <div className="cell-sub bad-t">{n.failed} no number</div> : null}</td><td className="cell-sub">{n.by}</td></tr>; })}
         </tbody></table></div> : <p className="empty">No notices sent yet.</p>}
       </div>

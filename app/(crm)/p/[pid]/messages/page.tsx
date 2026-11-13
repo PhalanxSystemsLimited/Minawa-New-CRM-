@@ -1,6 +1,6 @@
 // New: every WhatsApp message for this project, with delivery status, errors and resend.
 import { cur, ownerById } from '@/lib/engine';
-import { fd, diff } from '@/lib/fmt';
+import { fd, diff, t12 } from '@/lib/fmt';
 import type { Message } from '@/lib/types';
 import { Go, A, LiveSearch } from '@/components/client';
 import { Submit } from '@/components/client';
@@ -36,7 +36,7 @@ export default async function Messages({ params, searchParams }: { params: Promi
       </div>
         {!list.length ? <p className="empty">No messages match.</p> : <div className="tbl-wrap"><table><thead><tr><th>When</th><th>Apartment</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>
           {list.map(m => { const o = ownerById(m.ownerId);
-            return <tr key={m.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(m.d)}, {m.t}</td><td><A href={ownerHref(o)} className="apt-a">{o?.apt}</A><div className="cell-sub">{o?.name}</div></td>
+            return <tr key={m.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(m.d)}, {t12(m.t)}</td><td><A href={ownerHref(o)} className="apt-a">{o?.apt}</A><div className="cell-sub">{o?.name}</div></td>
               <td><div>{m.title}</div><div className="cell-sub">{m.tpl ? `Template: ${S.templates[m.tpl]?.label || m.tpl}` : 'Free text'}{m.pdf ? ' · with PDF' : ''}{m.linkId ? ` · link ${m.linkId}` : ''}</div>{m.error ? <div className="cell-sub bad-t">{m.error}</div> : null}</td>
               <td>{msgTag(m)}</td>
               <td className="r">{m.status === 'failed' || m.status === 'skipped' ? (o?.invalidPhone ? <Go href={ownerHref(o, '?m=fix')} className="btn sm">Fix number</Go> : <form action={retryMessageAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={m.id} /><Submit className="btn sm">Send again</Submit></form>) : null}</td></tr>; })}

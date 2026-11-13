@@ -4,7 +4,7 @@ import { load, liveProjects } from '@/lib/ops';
 import { use, ownerById } from '@/lib/engine';
 import { payFiltered } from '@/lib/queries';
 import { spInfo } from '@/lib/docdata';
-import { todayPKT } from '@/lib/fmt';
+import { todayPKT, t12 } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
 const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   for (const id of pids) {
     const s = await load(id, staff);
     use(s, () => payFiltered(per, fam, q).forEach(p => { const o = ownerById(p.ownerId), sp = spInfo(p);
-      lines.push([s.proj.name, p.d, p.t, o.apt, o.name, p.amount, p.method, sp ? `Safepay (${sp.mode})` : 'Bank', sp ? 'Automatic' : p.by, p.receipt, p.ref, sp?.tracker || '', sp?.link || ''].map(cell).join(',')); }));
+      lines.push([s.proj.name, p.d, t12(p.t), o.apt, o.name, p.amount, p.method, sp ? `Safepay (${sp.mode})` : 'Bank', sp ? 'Automatic' : p.by, p.receipt, p.ref, sp?.tracker || '', sp?.link || ''].map(cell).join(',')); }));
   }
   return new Response('﻿' + lines.join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="minawa-payments-${pid || 'all'}-${todayPKT()}.csv"` } });
 }

@@ -2,7 +2,7 @@
 import { currentStaff } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
-import { todayPKT, addDays } from '@/lib/fmt';
+import { todayPKT, addDays, t12 } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
 const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   if (q) list = list.filter(e => `${e.apt} ${e.ownerName} ${e.phone} ${e.sentTo} ${e.title} ${e.staffName}`.toLowerCase().includes(q));
   const pname = (id: string) => projs.find(p => p.id === id)?.name || id;
   const lines = [['Date', 'Time', 'Answer', 'Sent by', 'Role', 'Project', 'Apartment', 'Owner', 'Owner number', 'Chat opened with', 'Test', 'Message', 'Text', 'Balance then (Rs)', 'Pay Now link', 'Confirmed', 'Message id', 'Recorded at (UTC)'].map(cell).join(',')];
-  for (const e of list) lines.push([e.d, e.t, e.answer === 'sent' ? 'Sent' : 'Opened, not sent', e.staffName, e.staffRole, pname(e.project), e.apt, e.ownerName, e.phone, '+' + e.sentTo, e.test ? 'yes' : '',
+  for (const e of list) lines.push([e.d, t12(e.t), e.answer === 'sent' ? 'Sent' : 'Opened, not sent', e.staffName, e.staffRole, pname(e.project), e.apt, e.ownerName, e.phone, '+' + e.sentTo, e.test ? 'yes' : '',
     e.title, e.text, e.amount, e.payUrl || '', e.via === 'prompt' ? 'Answered on return' : 'Marked by hand', e.messageId || '', e.at].map(cell).join(','));
   return new Response('﻿' + lines.join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="minawa-whatsapp-log-${today}.csv"` } });
 }

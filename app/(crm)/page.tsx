@@ -37,7 +37,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   if (staff.role === 'admin') {
     const store = await getStore(); staffList = await store.listStaff();
     const ids = staffList.filter(x => x.role === 'accountant').map(x => x.id);
-    accActs = (await store.getLog({ staffIds: ids, limit: 40 })).filter(e => e.kind !== 'signin').slice(0, 6);
+    accActs = (await store.getLog({ staffIds: ids, limit: 40 })).filter(e => !['signin', 'signout'].includes(e.kind)).slice(0, 6);
   }
   // WhatsApp sent by hand: everyone's for admins, your own for accountants.
   let wa: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getWaLog']>> = [];

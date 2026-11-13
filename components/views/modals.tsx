@@ -1,7 +1,7 @@
 // Modals, opened from the address (?m=… or ?doc=kind:id) so every one can be linked to and closed with Back.
 // Plain functions, called inside use(state, …).
 import type { Owner } from '@/lib/types';
-import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, rateFor, nextBillDate } from '@/lib/engine';
+import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate } from '@/lib/engine';
 import { PLAN_LABEL } from '@/lib/types';
 import { possessionAction, adjustAction } from '@/lib/actions-desk';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
@@ -219,7 +219,7 @@ export { sortedPayments };
 
 /** New possession: a flat handed over to its first owner. Billing starts from the possession date. */
 export function PossessionModal() {
-  const S = cur(), types = rateTypes(), blocks = [...new Set(S.owners.map(o => o.block).filter(Boolean))].sort();
+  const S = cur(), types = baseTypes(), blocks = [...new Set(S.owners.map(o => o.block).filter(Boolean))].sort();
   const first = nextBillDate(S.today);
   return <ModalShell title="New possession"><form action={possessionAction} style={col}><input type="hidden" name="pid" value={S.project} />
     <div className="callout">For a flat handed over to its first owner. Billing starts on the possession date: the first month is charged from that day. The first bill goes out on the {ord(S.settings.rules.billDay)} after possession (next one: {fd(first)}).</div>
