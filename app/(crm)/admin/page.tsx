@@ -33,12 +33,12 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
           <td>{roleTag(s.role)}</td>
           <td>{s.active ? <span className="tag good">Can sign in</span> : <span className="tag bad">Turned off</span>}</td>
           <td className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{l ? lastSeen(l.d, l.t) : 'Not yet'}</td>
-          <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/admin/activity?who=${encodeURIComponent(s.id)}`} className="btn sm">Activity</Go> <Go href={`/admin?edit=${encodeURIComponent(s.id)}`} className="btn sm">Edit</Go></td>
+          <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/log?who=${encodeURIComponent(s.id)}`} className="btn sm">Activity</Go> <Go href={`/admin?edit=${encodeURIComponent(s.id)}`} className="btn sm">Edit</Go></td>
         </tr>; })}
       </tbody></table></div>
       <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins can change everything, approve accountants' changes, do transfers and manage staff. Accountants record payments, enter utility bills, send notices and payment links by hand, and record new possessions; their changes to charges and settings wait for an admin's approval.</p>
     </div>
-    <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/admin/activity?who=accountants" className="btn sm">See all</Go></div>
+    <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, links, fines) shows here." />
     </div>
     {sp.add ? <ModalShell title="Add someone" closeKeys={keys}>

@@ -27,11 +27,9 @@ export function Sidebar({ projects, admin, approvals = 0 }: { projects: NavProje
             </Go>))}
         </div>
         <div className="side-h">System</div>
-        <Go href="/messages" className="side-i" current={path.startsWith('/messages')}><Ic n="msg" /><span className="side-l">WhatsApp messages</span></Go>
-        <Go href="/whatsapp" className="side-i" current={path.startsWith('/whatsapp')}><Ic n="phone" /><span className="side-l">WhatsApp log</span></Go>
+        <Go href="/whatsapp" className="side-i" current={path.startsWith('/whatsapp') || path.startsWith('/messages')}><Ic n="phone" /><span className="side-l">WhatsApp</span></Go>
         <Go href="/approvals" className="side-i" current={path.startsWith('/approvals')}><Ic n="check" /><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
-        <Go href="/log" className="side-i" current={path.startsWith('/log')}><Ic n="list" /><span className="side-l">Activity log</span></Go>
-        {admin ? <Go href="/admin/activity" className="side-i" current={path.startsWith('/admin/activity')}><Ic n="users" /><span className="side-l">Staff activity</span></Go> : null}
+        <Go href="/log" className="side-i" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><Ic n="list" /><span className="side-l">Activity</span></Go>
         {admin ? <Go href="/admin" className="side-i" current={path === '/admin'}><Ic n="shield" /><span className="side-l">Staff & connections</span></Go> : null}
       </nav>
       <div className="side-foot">Phase 1 · Maintenance dues</div>
@@ -51,7 +49,7 @@ export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid,
       <details className="more qa"><summary className="btn primary"><Ic n="plus" s={16} /><span className="lbl">Quick actions</span></summary><div className="menu menu-r">
         <Go href={`/p/${pid}?m=sendpick`}>Send a payment link</Go>
         <Go href={`/p/${pid}/apartments?f=owing`}>Record a payment</Go>
-        <Go href={`/p/${pid}/settings#announce`}>Send an announcement</Go>
+        <Go href={`/p/${pid}/send?mode=announce`}>Send an announcement</Go>
         <a href={`/api/export/payments?project=${pid}&per=all`} className="menu-a">Export payments (CSV)</a>
       </div></details>
       <Go href={firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`} className="icon-btn" title="To do" ariaLabel={`To do${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>

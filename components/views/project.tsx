@@ -13,7 +13,7 @@ import { Go, A } from '../client';
 import { DocModal, OwnerModal, SendPickModal, TargetModal, PossessionModal } from './modals';
 
 export type Tab = 'dashboard' | 'owners' | 'payments' | 'utilities' | 'notices' | 'generator' | 'send' | 'follow' | 'messages' | 'settings';
-const TABS: [Tab, string, string][] = [['dashboard', 'Overview', ''], ['owners', 'Apartments', '/apartments'], ['payments', 'Payments', '/payments'], ['utilities', 'Utility bills', '/utilities'], ['notices', 'Notices', '/notices'], ['generator', 'Generator charges', '/generator'], ['send', 'Send on WhatsApp', '/send'], ['follow', 'To do', '/todo'], ['messages', 'Messages', '/messages'], ['settings', 'Settings', '/settings']];
+const TABS: [Tab, string, string][] = [['dashboard', 'Overview', ''], ['owners', 'Apartments', '/apartments'], ['payments', 'Payments', '/payments'], ['utilities', 'Utility bills', '/utilities'], ['generator', 'Generator charges', '/generator'], ['send', 'Send on WhatsApp', '/send'], ['follow', 'To do', '/todo'], ['messages', 'Messages', '/messages'], ['settings', 'Settings', '/settings']];
 export const TITLES: Record<Tab, string> = { dashboard: 'Overview', owners: 'Apartments', payments: 'Payments', utilities: 'Utility bills', notices: 'Notices', generator: 'Generator charges', send: 'Send on WhatsApp', follow: 'To do', messages: 'Messages', settings: 'Settings' };
 
 /** Payments recorded since the signed-in person last opened this project's Payments (the last 7 days on a first visit). */

@@ -69,10 +69,10 @@ export function ActivityList({ list, staff, projects, showProject = true, empty 
   let day = '';
   return <div className="d-body log-page">{list.map(e => {
     const h = e.d !== day ? (day = e.d, <div className="ev-day">{dow(e.d)} {fd(e.d)}</div>) : null;
-    const who = staff.find(s => s.id === e.staffId), name = who?.name || e.by || 'Staff';
+    const who = staff.find(s => s.id === e.staffId), name = who?.name || e.by || (e.staffId ? 'Staff' : 'System');
     const proj = e.project && showProject ? projects.find(p => p.id === e.project)?.name : null;
     return <div key={e.id}>{h}<div className="ev act-ev"><span className="tm">{t12(e.t)}</span><div>
-      <div className="act-who"><span className={`act-av${who?.role === 'admin' ? ' admin' : ''}`} aria-hidden="true">{initialsOf(name)}</span><b>{name}</b>{who ? <span className="cell-sub">{who.role === 'admin' ? 'Admin' : 'Accountant'}</span> : null}<KindBadges e={e} />{proj ? <span className="cell-sub">{proj}</span> : null}</div>
+      <div className="act-who"><span className={`act-av${who?.role === 'admin' ? ' admin' : ''}${!e.staffId ? ' sys' : ''}`} aria-hidden="true">{e.staffId ? initialsOf(name) : 'S'}</span><b>{name}</b>{who ? <span className="cell-sub">{who.role === 'admin' ? 'Admin' : 'Accountant'}</span> : !e.staffId ? <span className="cell-sub">automatic</span> : null}<KindBadges e={e} />{proj ? <span className="cell-sub">{proj}</span> : null}</div>
       <div className="act-text">{e.text}{e.ownerId && e.project ? <> <a className="act-open" href={`/p/${e.project}/apartments/${e.ownerId}`}>Open apartment</a></> : null}</div></div></div></div>;
   })}</div>;
 }

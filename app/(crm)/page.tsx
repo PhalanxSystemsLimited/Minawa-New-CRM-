@@ -99,7 +99,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       <div className="card"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic</span></div>
         {up.length ? <div className="list">{up.map((x, i) => <div className="li" key={i}><div className="t"><div className="a">{x.e.text}</div><div className="b">{x.pname} · {dow(x.d)} {fd(x.d)}</div></div><Go href={ownerHref(x.e.o)} className="btn sm go" ariaLabel={`View ${x.e.o.name}`}>View</Go></div>)}</div> : <p className="empty">Nothing scheduled in the next 14 days.</p>}</div>
     </div>
-    {staff.role === 'admin' ? <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/admin/activity?who=accountants" className="btn sm">See all</Go></div>
+    {staff.role === 'admin' ? <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staffList} projects={projs} empty="Nothing yet. Payments, notes, utility bills, notices and links that accountants record show here." /></div> : null}
     <div className="card"><div className="card-row"><h3>WhatsApp sent by hand <small>{waSent} today{waToday.length - waSent ? `, ${waToday.length - waSent} opened but not sent` : ''} · {wa.filter(e => e.answer === 'sent').length} this month</small></h3><Go href="/whatsapp" className="btn sm">Open the log</Go></div>
       {wa.length ? <div className="tbl-wrap"><table><thead><tr><th>When</th><th>Sent by</th><th>To</th><th>Message</th><th>Answer</th></tr></thead><tbody>{wa.slice(0, 6).map(e =>

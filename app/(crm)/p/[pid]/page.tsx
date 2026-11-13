@@ -77,7 +77,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
           </div>
           <div className="desk-acts">
             {ut ? <Go href={`${P}/utilities?period=${np}`} className="btn sm primary">Enter {ut.toLowerCase()} bills</Go> : null}
-            <Go href={`${P}/notices`} className="btn sm">Send a notice</Go>
+            <Go href={`${P}/send?mode=notice`} className="btn sm">Send a notice</Go>
             <Go href={`${P}/apartments?m=possession`} className="btn sm">New possession</Go>
             <Go href={`${P}/apartments?f=owing`} className="btn sm">Record a payment</Go>
           </div></div>;

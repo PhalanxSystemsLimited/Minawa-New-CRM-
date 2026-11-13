@@ -88,7 +88,7 @@ export async function billUtilitiesNowAction(fdata: FormData) {
 
 /* ---------- maintenance notices ---------- */
 export async function sendNoticeAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/notices`;
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=notice`;
   const kind = S(fdata, 'kind') || 'custom', title = S(fdata, 'title') || 'Notice', text = S(fdata, 'text'), aud = S(fdata, 'aud') || 'all';
   if (!text) go(back, 'Write the message first');
   const picked = new Set(fdata.getAll('apt').map(String));

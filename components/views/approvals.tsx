@@ -22,7 +22,7 @@ export function ApprovalItem({ v, admin, meId, back, showOwner = true }: { v: Ap
       <div className="apv-top">
         <span className={`k abadge t-${KIND_TONE[a.kind]}`}>{IC.shield}{KIND_LABEL[a.kind]}</span>
         <span className={`k abadge${a.status === 'withdrawn' ? '' : ' solid'} t-${st}`}>{IC[si]}{sl}</span>
-        {!a.ownerId ? <span className="apv-who"><Go href={`/p/${a.project}/settings`} className="apt-a">{v.pname}</Go> <span className="cell-sub">whole project · Settings</span></span>
+        {!a.ownerId ? <span className="apv-who"><Go href={a.kind === 'announce' ? `/p/${a.project}/send?mode=announce` : `/p/${a.project}/settings`} className="apt-a">{v.pname}</Go> <span className="cell-sub">whole project · {a.kind === 'announce' ? 'Send on WhatsApp' : 'Settings'}</span></span>
           : showOwner ? <span className="apv-who"><Go href={`/p/${a.project}/apartments/${a.ownerId}`} className="apt-a">{v.apt}</Go> <span className="cell-sub">{v.owner} · {v.pname}</span></span> : null}
       </div>
       <div className="apv-sum">{a.summary}</div>

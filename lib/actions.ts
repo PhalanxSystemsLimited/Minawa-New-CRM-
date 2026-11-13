@@ -192,7 +192,7 @@ export async function fineAction(fdata: FormData) {
   go(back, failed(r) ? r.error : r.text);
 }
 export async function announceAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/settings`;
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=announce`;
   if (!S(fdata, 'text')) go(back, 'Write the message first');
   const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'announce', { aud: S(fdata, 'aud') || 'all', text: S(fdata, 'text') }, S(fdata, 'why'))));
   go(back, failed(r) ? r.error : r.text);

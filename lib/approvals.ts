@@ -141,7 +141,7 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       let failed = 0;
       list.forEach(x => { const m = pushMsg(x, d, t, { kind: 'announcement', title: 'Announcement', text, tpl: 'announce', vars: { text }, manual: true }); if (m.status === 'failed') failed++; });
       log(d, t, 'message', `Announcement sent to ${list.length} owners (${aud === 'all' ? 'all blocks' : 'Block ' + aud})${failed ? `, ${failed} failed` : ''} by ${who}`);
-      return `Announcement to ${list.length} owners${failed ? `, ${failed} without a WhatsApp number` : ''}. It waits in Send on WhatsApp`;
+      return `Announcement to ${list.length} owners${failed ? `, ${failed} without a WhatsApp number` : ''}. It waits in To do, to send one by one`;
     }
   }
   if (!o) throw new Error('Apartment not found');

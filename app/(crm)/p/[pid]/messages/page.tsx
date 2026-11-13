@@ -9,6 +9,7 @@ import { projectPage, projHead } from '@/components/views/project';
 import { ownerHref } from '@/components/views/bits';
 import { retryMessageAction } from '@/lib/actions';
 import { waTestNumber } from '@/lib/whatsapp';
+import { WaLogBody } from '@/components/views/walog';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,8 +26,14 @@ export default async function Messages({ params, searchParams }: { params: Promi
       .filter(m => { if (!q) return true; const o = ownerById(m.ownerId); return `${o?.apt} ${o?.name} ${m.title} ${m.error || ''}`.toLowerCase().includes(q); }).reverse().slice(0, 300);
     const delivered = all.filter(m => ['delivered', 'read', 'sent'].includes(m.status)).length, toSend = all.filter(m => m.status === 'pending' || m.status === 'queued').length, failed = count('problems');
     const chips: [string, string][] = [['all', 'All'], ['sent', 'Sent'], ['pending', 'To send'], ['problems', 'Not sent']];
+    // Two views: every message (to send, sent, not sent), and who sent what by hand (the WhatsApp log for this project).
+    const views = <div className="ptabs" role="tablist">
+      <Go href={P} current={sp.view !== 'log' ? 'true' : 'false'} replace>All messages</Go>
+      <Go href={`${P}?view=log`} current={sp.view === 'log' ? 'true' : 'false'} replace>Who sent what</Go>
+    </div>;
+    if (sp.view === 'log') return <>{projHead('messages')}{views}<WaLogBody sp={sp as Record<string, string>} fixedProject={pid} /></>;
     return <>
-      {projHead('messages')}
+      {projHead('messages')}{views}
       <div className="page-head"><div><h2>WhatsApp messages</h2><p>Bills, reminders, notices, payment links and receipts from the last {days} days. They are all sent by hand from Send on WhatsApp.</p></div><Go href={`/p/${pid}/send`} className="btn wa">Send on WhatsApp</Go></div>
       <div className="callout" style={{ marginBottom: 14 }}><div><b>Sent by hand.</b> Messages the CRM prepares wait under <b>To send</b> until someone sends them from <A href={`/p/${pid}/send`}>Send on WhatsApp</A>.{waTestNumber() ? <> Testing: chats open with +{waTestNumber()}, not the owners. Remove WHATSAPP_TEST_NUMBER to go live.</> : null}</div></div>
       <div className={`callout ${failed ? 'warn' : 'good'}`} style={{ marginBottom: 14 }}><div><b>{delivered} of {all.length}</b> sent{toSend ? `, ${toSend} still to send` : ''}.{failed ? ` ${failed} couldn't go out; fix the number or put them back to send.` : ''}</div></div>

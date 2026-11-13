@@ -101,7 +101,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
     {type === 'custom' ? <div className="sc-custom">
       <div className="form-row"><label htmlFor="sc-t">Title (for the history)</label><input id="sc-t" type="text" value={title} onChange={e => setTitle(e.target.value)} /></div>
       <div className="form-row"><label htmlFor="sc-m">Message</label><textarea id="sc-m" value={text} onChange={e => setText(e.target.value)} placeholder={'Dear {{name}}, …'} style={{ minHeight: 110 }}></textarea>
-        <span className="cell-sub">Filled in for each owner: {VARS}. For water, lift or electricity notices you can also use <a href={`/p/${pid}/notices`}>Notices</a>.</span></div>
+        <span className="cell-sub">Filled in for each owner: {VARS}. For water, lift or electricity notices use <a href={`/p/${pid}/send?mode=notice`}>Maintenance notice</a> above.</span></div>
       <label className="tg-row" style={{ border: 0, padding: 0 }}><input type="checkbox" checked={pay} onChange={e => setPay(e.target.checked)} /><span className="t">Add a Pay Now link for owners who owe</span></label>
     </div> : null}
 
