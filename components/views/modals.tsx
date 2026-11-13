@@ -4,6 +4,7 @@ import type { Owner } from '@/lib/types';
 import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
 import { PLAN_LABEL } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
+import { toggleGeneratorAction } from '@/lib/actions-generator';
 import { possessionAction, adjustAction } from '@/lib/actions-desk';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
 import { addDays, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
@@ -89,7 +90,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <div className="form-row"><label htmlFor="dc-k">Type</label><select id="dc-k" name="kind" defaultValue={x.kind}><option value="pct">Percentage of the monthly fee</option><option value="fixed">Fixed amount off each bill</option><option value="none">No discount</option></select></div>
         <div className="form-row"><label htmlFor="dc-v">Value (% or Rs)</label><input id="dc-v" name="value" type="number" min="0" step="1" defaultValue={x.value || ''} /></div>
         <div className="form-row"><label htmlFor="dc-u">Ends on (optional)</label><input id="dc-u" name="until" type="date" defaultValue={x.until || ''} /></div>
-        {isAdmin() ? null : <div className="form-row"><label htmlFor="dc-w">Reason for the admin (optional)</label><input id="dc-w" name="why" type="text" placeholder="e.g. Agreed with the owner for paying the year in advance" /></div>}
+        {isAdmin() ? null : <div className="form-row"><label htmlFor="dc-w">Reason for the admin <span className="req">(required)</span></label><input id="dc-w" name="why" type="text" required placeholder="e.g. Agreed with the owner for paying the year in advance" /></div>}
         {isAdmin() ? <div className="callout">Applies to bills from the next billing day. Recorded with your name.</div>
           : <div className="callout warn"><div>An admin has to approve this first. Once approved, it applies to bills from the next billing day.</div></div>}
         <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save discount' : 'Send for approval'}</Submit></div></form></ModalShell>; }
@@ -122,7 +123,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="eo-pl">Billing plan (owner&apos;s choice)</label><select id="eo-pl" name="plan" defaultValue={o.plan || 'monthly'}>{Object.entries(PLAN_LABEL).map(([k, l]) => <option key={k} value={k}>{l}{k === 'quarterly' ? ' (billed 25 Dec, Mar, Jun, Sep)' : k === 'annual' ? ' (billed each 25 Dec)' : ' (billed each 25th for the next month)'}</option>)}</select></div>
       <div className="form-row"><label htmlFor="eo-r">Own monthly fee (Rs)</label><input id="eo-r" name="ownRate" type="number" min="0" step="1" defaultValue={o.rate || ''} placeholder={`Empty: rate card, ${rs(cardRate(o, billDateOf(nextPeriodFor(o))))} a month`} /><div className="cell-sub">Only for a flat with its own agreed fee. Counts from the {fm(nextPeriodFor(o))} bill.</div></div>
       {isAdmin() ? null : <><div className="callout warn"><div>A change to the billing plan or the monthly fee needs an admin&apos;s approval. The other details save straight away.</div></div>
-        <div className="form-row"><label htmlFor="eo-w">Reason for the admin (optional)</label><input id="eo-w" name="why" type="text" placeholder="e.g. Owner asked to pay quarterly" /></div></>}
+        <div className="form-row"><label htmlFor="eo-w">Reason for the admin <span className="req">(required if you change the plan or fee)</span></label><input id="eo-w" name="why" type="text" placeholder="e.g. Owner asked to pay quarterly" /></div></>}
       <div className="form-row"><label htmlFor="eo-ab"><input id="eo-ab" name="abroad" type="checkbox" defaultChecked={o.abroad} /> Owner lives abroad</label></div>
       {isAdmin() ? <div className="form-row"><label htmlFor="eo-x"><input id="eo-x" name="exempt" type="checkbox" defaultChecked={o.exempt} /> Exempt from billing (directors&apos; flats)</label></div> : null}
       <div className="m-actions"><CloseBtn /><Submit>Save</Submit></div></form></ModalShell>;
@@ -131,8 +132,14 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="aj-a">Amount (Rs)</label><input id="aj-a" name="amount" type="number" min="1" step="1" required /></div>
       <div className="form-row"><label htmlFor="aj-r">Reason</label><input id="aj-r" name="reason" type="text" required placeholder="e.g. Water tank repair share; agreed waiver of September fine" /></div>
       {isAdmin() ? <div className="callout">Shows in the apartment&apos;s history with your name and the reason.</div>
-        : <div className="callout warn"><div>An admin has to approve this first. Once approved, it shows in the apartment&apos;s history with your name and the reason.</div></div>}
+        : <div className="callout warn"><div>An admin has to approve this first, and sees your reason. Once approved, it shows in the apartment&apos;s history with your name and the reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save adjustment' : 'Send for approval'}</Submit></div></form></ModalShell>;
+    case 'generator': { const on = !o.generator;
+      return <ModalShell title={on ? 'Add generator charges' : 'Remove generator charges'}><form action={toggleGeneratorAction} style={col}>{hidden(o)}<input type="hidden" name="on" value={on ? '1' : '0'} />
+        <div className="callout">{on ? `${o.apt} goes on the Generator Charges List` : `${o.apt} comes off the Generator Charges List`}. It counts from the flat&apos;s next bill; bills already made don&apos;t change.</div>
+        {isAdmin() ? null : <><div className="form-row"><label htmlFor="gn-w">Reason for the admin <span className="req">(required)</span></label><input id="gn-w" name="why" type="text" required placeholder="e.g. Generator connection installed on 10 Nov" /></div>
+          <div className="callout warn"><div>An admin has to approve this first.</div></div></>}
+        <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? (on ? 'Add generator charges' : 'Remove generator charges') : 'Send for approval'}</Submit></div></form></ModalShell>; }
     case 'send': return SendModal({ o });
     default: return null;
   }

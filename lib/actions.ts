@@ -21,6 +21,9 @@ import { billDoc } from './docdata';
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 const ownerPath = (pid: string, oid: string) => `/p/${pid}/apartments/${oid}`;
 const go = (path: string, toast?: string, extra = ''): never => redirect(path + (path.includes('?') ? '&' : '?') + (toast ? 't=' + encodeURIComponent(toast) : '') + extra);
+/** Runs a change; a rule it breaks (e.g. a missing reason) comes back as a message instead of an error page. */
+async function attempt<T>(fn: () => Promise<T>): Promise<T | { error: string }> { try { return await fn(); } catch (e) { return { error: (e as Error).message }; } }
+const failed = (x: unknown): x is { error: string } => !!x && typeof x === 'object' && 'error' in x;
 function needOwner(s: State, oid: string): Owner { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return o; }
 
 /* ---------- apartment ---------- */
@@ -45,8 +48,9 @@ export async function discountAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), k = S(fdata, 'kind'), v = Math.max(0, Math.round(+S(fdata, 'value') || 0));
   if (k === 'pct' && v > 100) go(ownerPath(pid, oid), 'A percentage discount can be at most 100');
   // An admin's discount applies now; an accountant's waits for an admin's approval.
-  const r = await mutate(pid, staff, s => changeOrRequest(needOwner(s, oid), 'discount', { kind: k === 'none' || !v ? 'none' : k, value: v, until: S(fdata, 'until') || null }, S(fdata, 'why')), { send: false });
-  go(ownerPath(pid, oid), r.text);
+  const r = await attempt(() => mutate(pid, staff, s => changeOrRequest(needOwner(s, oid), 'discount', { kind: k === 'none' || !v ? 'none' : k, value: v, until: S(fdata, 'until') || null }, S(fdata, 'why')), { send: false }));
+  if (failed(r)) go(ownerPath(pid, oid) + '?m=discount', r.error);
+  go(ownerPath(pid, oid), (r as ChangeResult).text);
 }
 export async function clearanceAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
@@ -101,7 +105,7 @@ export async function fixNumberAction(fdata: FormData) {
 }
 export async function editOwnerAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
-  const asked = await mutate(pid, staff, s => {
+  const asked = await attempt(() => mutate(pid, staff, s => {
     const o = needOwner(s, oid), ch: string[] = [];
     const name = S(fdata, 'name'), phone = S(fdata, 'phone'), email = S(fdata, 'email'), pos = S(fdata, 'possession');
     if (name && name !== o.name) { ch.push(`name ${o.name} → ${name}`); o.name = name; }
@@ -117,8 +121,10 @@ export async function editOwnerAction(fdata: FormData) {
     if (plan && ['monthly', 'quarterly', 'annual'].includes(plan)) out.push(changeOrRequest(o, 'plan', { plan }, why));
     if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null }, why)); }
     return out.filter(x => x.done === 'requested').map(x => x.summary);
-  }, { send: false });
-  go(ownerPath(pid, oid), asked.length ? `Saved. Sent to an admin for approval: ${asked.join('; ')}. It applies once approved.` : 'Saved');
+  }, { send: false }));
+  if (failed(asked)) go(ownerPath(pid, oid) + '?m=edit', `Not saved: ${asked.error}`);
+  const list = asked as string[];
+  go(ownerPath(pid, oid), list.length ? `Saved. Sent to an admin for approval: ${list.join('; ')}. It applies once approved.` : 'Saved');
 }
 export async function sendLinkAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
@@ -161,59 +167,43 @@ export async function targetOptionAction(fdata: FormData) {
   revalidatePath(`/p/${pid}`, 'layout');
 }
 export async function ratesAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid'), from = S(fdata, 'from');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) go(`/p/${pid}/settings`, 'Pick the date the new rates start');
-  await mutate(pid, staff, s => {
-    const types = [...rateTypes(), ...S(fdata, 'newtype').split(',').map(x => x.trim()).filter(Boolean)];
-    for (const ty of [...new Set(types)]) {
-      const v = Math.round(+S(fdata, 'r:' + ty) || 0); if (!(v > 0)) continue;
-      const r = s.rates.find(x => x.type === ty && x.from === from);
-      if (r) r.amount = v; else s.rates.push({ id: `${pid}:${ty}:${from}`, project: pid, type: ty, from, amount: v });
-    }
-    log(s.today, at(15), 'admin', `Rates from ${fd(from)} saved by ${staffName(staff)}: ${s.rates.filter(r => r.from === from).map(r => r.type + ' ' + rs(r.amount)).join(', ')}`);
-  }, { send: false });
-  go(`/p/${pid}/settings`, 'Rates saved. Use a mass announcement to tell owners.');
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), from = S(fdata, 'from'), back = `/p/${pid}/settings`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) go(back, 'Pick the date the new rates start');
+  // An admin's rates apply now; an accountant's wait for an admin's approval.
+  const r = await attempt(() => mutate(pid, staff, () => {
+    const rates: Record<string, number> = {};
+    for (const ty of [...new Set([...rateTypes(), ...S(fdata, 'newtype').split(',').map(x => x.trim()).filter(Boolean)])]) { const v = Math.round(+S(fdata, 'r:' + ty) || 0); if (v > 0) rates[ty] = v; }
+    return changeOrRequest(null, 'rates', { from, rates }, S(fdata, 'why'));
+  }, { send: false }));
+  go(back, failed(r) ? r.error : r.done === 'applied' ? 'Rates saved. Use a mass announcement to tell owners.' : r.text);
 }
 export async function rulesAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid');
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/settings`;
   const n = (k: string, lo: number, hi: number, def: number) => { const v = Math.round(+S(fdata, k)); return Number.isFinite(v) && v >= lo && v <= hi ? v : def; };
-  await mutate(pid, staff, s => {
-    const r = s.settings.rules;
-    const remind = [...new Set(S(fdata, 'remindDays').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x > 0 && x < 60))].sort((x, y) => y - x);
+  const r = await attempt(() => mutate(pid, staff, s => {
+    const r0 = s.settings.rules;
+    const remindDays = [...new Set(S(fdata, 'remindDays').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x > 0 && x < 60))].sort((x, y) => y - x);
     const utilities = [...new Set(S(fdata, 'utilities').split(',').map(x => x.trim()).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1)))];
-    const next = { ...r, billDay: n('billDay', 1, 28, r.billDay), dueDays: n('dueDays', 1, 60, r.dueDays), remindDays: remind, flagDays: n('flagDays', 1, 120, r.flagDays), autoSend: fdata.get('autoSend') === 'on', utilities };
-    next.remindDays = next.remindDays.filter(x => x < next.dueDays);
-    s.settings.rules = next;
-    log(s.today, at(15), 'admin', `Billing schedule changed by ${staffName(staff)}: bills on the ${ord(next.billDay)}, due ${next.dueDays} days later, reminders ${next.remindDays.length ? next.remindDays.join(' and ') + ' days before' : 'off'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}, automatic sending ${next.autoSend ? 'on' : 'off'}. New bills use them.`);
-  }, { send: false });
-  go(`/p/${pid}/settings`, 'Billing schedule saved. It applies to new bills.');
+    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 60, r0.dueDays), remindDays, flagDays: n('flagDays', 1, 120, r0.flagDays), autoSend: fdata.get('autoSend') === 'on', utilities };
+    c.remindDays = c.remindDays.filter(x => x < c.dueDays);
+    return changeOrRequest(null, 'rules', c, S(fdata, 'why'));
+  }, { send: false }));
+  go(back, failed(r) ? r.error : r.text);
 }
-/** The fine % is the accountant's to set. Optionally re-works every late owner's fine now and sends them their updated dues. */
+/** The fine %: optionally re-works every late owner's fine now and sends them their updated dues. An accountant's
+ *  change waits for an admin's approval. */
 export async function fineAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), pct = Math.round(+S(fdata, 'feePct') * 10) / 10, apply = !!fdata.get('apply'), send = !!fdata.get('send'), arrears = !!fdata.get('fineArrears');
-  if (!(pct >= 0 && pct <= 50)) go(`/p/${pid}/settings#fine`, 'The fine must be between 0% and 50%');
-  const n = await mutate(pid, staff, s => {
-    const was = s.settings.rules.feePct, wasA = s.settings.rules.fineArrears;
-    s.settings.rules = { ...s.settings.rules, feePct: pct, fineArrears: arrears };
-    log(s.today, at(15), 'fine', `Fine changed from ${was}% to ${pct}% by ${staffName(staff)}${wasA !== arrears ? (arrears ? '; old arrears are now fined too' : '; old arrears are no longer fined') : ''}${apply ? ', applied to current late owners' : ', for new overdue dues'}`);
-    if (!apply) return 0;
-    const changed = resyncFines(s.today, at(15), staffName(staff));
-    if (send) changed.forEach(o => { if (balance(o) > 0) sendPaymentLink(o, s.today, at(15)); });
-    return changed.length;
-  }, { send });
-  go(`/p/${pid}/settings`, apply ? `Fine set to ${pct}%. ${n} late owner${n === 1 ? '' : 's'} updated${send ? ' and sent their new dues' : ''}.` : `Fine set to ${pct}% for new overdue dues`);
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), pct = Math.round(+S(fdata, 'feePct') * 10) / 10, back = `/p/${pid}/settings`;
+  if (!(pct >= 0 && pct <= 50)) go(back + '#fine', 'The fine must be between 0% and 50%');
+  const c = { feePct: pct, fineArrears: !!fdata.get('fineArrears'), apply: !!fdata.get('apply'), send: !!fdata.get('send') };
+  const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'fine', c, S(fdata, 'why')), { send: c.send }));
+  go(back, failed(r) ? r.error : r.text);
 }
 export async function announceAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid'), aud = S(fdata, 'aud'), text = S(fdata, 'text');
-  if (!text) go(`/p/${pid}/settings`, 'Write the message first');
-  const res = await mutate(pid, staff, s => {
-    const t = at(15), list = s.owners.filter(x => x.status === 'active' && (aud === 'all' || x.block === aud));
-    let failed = 0;
-    list.forEach(x => { const m = pushMsg(x, s.today, t, { kind: 'announcement', title: 'Announcement', text, tpl: 'announce', vars: { text }, manual: true }); if (m.status === 'failed') failed++; });
-    log(s.today, t, 'message', `Announcement sent to ${list.length} owners (${aud === 'all' ? 'all blocks' : 'Block ' + aud})${failed ? `, ${failed} failed` : ''} by ${staffName(staff)}`);
-    return { n: list.length, failed };
-  });
-  go(`/p/${pid}/settings`, `Sent to ${res.n} owners${res.failed ? `, ${res.failed} failed` : ''}`);
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/settings`;
+  if (!S(fdata, 'text')) go(back, 'Write the message first');
+  const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'announce', { aud: S(fdata, 'aud') || 'all', text: S(fdata, 'text') }, S(fdata, 'why'))));
+  go(back, failed(r) ? r.error : r.text);
 }
 export async function templateAction(fdata: FormData) {
   const staff = await requireAdmin(), pid = S(fdata, 'pid'), k = S(fdata, 'k'), v = String(fdata.get('text') || '').trim(), submit = !!fdata.get('submit');

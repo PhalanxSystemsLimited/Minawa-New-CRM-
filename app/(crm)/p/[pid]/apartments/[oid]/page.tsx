@@ -1,6 +1,5 @@
 // One apartment (the demo's viewOwner): the flat, its owner, and bills, payments, history, notes and messages.
 import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator } from '@/lib/engine';
-import { toggleGeneratorAction } from '@/lib/actions-generator';
 import { getStore } from '@/lib/store';
 import type { WaLog } from '@/lib/types';
 import { PLAN_LABEL } from '@/lib/types';
@@ -91,7 +90,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
             <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
             {hasGenerator() ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>
-              : <form action={toggleGeneratorAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><input type="hidden" name="on" value={o.generator ? '0' : '1'} /><button type="submit">{o.generator ? 'Remove generator charges' : 'Add generator charges'}{ask}</button></form> : null}
+              : <Go href={m('generator')}>{o.generator ? 'Remove generator charges' : 'Add generator charges'}{ask}</Go> : null}
             {bal > 0 ? null : <Go href={m('recpay')}>Record payment</Go>}
             <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>
             <Go href={m('discount')}>Discount{ask}</Go>

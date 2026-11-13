@@ -10,7 +10,7 @@ type Show = 'all' | 'on' | 'off';
 export function GeneratorList({ pid, rows, blocks, genFee, baseFee, admin = true }: { pid: string; rows: GenRow[]; blocks: string[]; genFee: string; baseFee: string; admin?: boolean }) {
   const router = useRouter();
   const [show, setShow] = useState<Show>('all'), [block, setBlock] = useState(''), [q, setQ] = useState('');
-  const [picked, setPicked] = useState<Set<string>>(new Set()), [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set()), [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null), [why, setWhy] = useState('');
   const [busy, start] = useTransition();
   const list = useMemo(() => rows.filter(r => (show === 'all' || (show === 'on') === r.on) && (!block || r.block === block)
     && (!q || `${r.apt} ${r.name}`.toLowerCase().includes(q.toLowerCase()))), [rows, show, block, q]);
@@ -21,14 +21,15 @@ export function GeneratorList({ pid, rows, blocks, genFee, baseFee, admin = true
   const apply = (on: boolean) => {
     const ids = chosen.filter(r => r.on !== on).map(r => r.id);
     if (!ids.length) return;
+    if (!admin && !why.trim()) { setMsg({ ok: false, text: 'Write the reason for the admin first.' }); return; }
     setMsg(null);
     start(async () => {
-      const r = await setGeneratorAction({ pid, ids, on });
+      const r = await setGeneratorAction({ pid, ids, on, why });
       if (r.ok) {
         const fl = (n: number) => `${n} flat${n === 1 ? '' : 's'}`;
         setMsg({ ok: true, text: r.requested ? `${fl(r.requested)} sent to an admin for approval (${on ? `add to the list, ${genFee} a month` : `take off the list, ${baseFee} a month`}). The change applies once approved, from each flat's next bill.`
           : `${fl(r.changed)} ${on ? `added to the list (${genFee} a month)` : `taken off the list (${baseFee} a month)`}, from each flat's next bill.` });
-        setPicked(new Set()); router.refresh(); }
+        setPicked(new Set()); setWhy(''); router.refresh(); }
       else setMsg({ ok: false, text: r.error || 'Not saved. Try again.' });
     });
   };
@@ -53,6 +54,7 @@ export function GeneratorList({ pid, rows, blocks, genFee, baseFee, admin = true
         <td className="cell-sub">{r.hold ? 'Not billed' : `${r.from} bill`}</td>
         <td className="r num">{r.bal || <span className="muted">Nothing</span>}</td></tr>)
         : <tr><td colSpan={6} className="empty">No flats match.</td></tr>}</tbody></table></div>
+    {!admin ? <div className="form-row" style={{ marginTop: 12 }}><label htmlFor="gen-why">Reason for the admin <span className="req">(required)</span></label><input id="gen-why" type="text" value={why} onChange={e => setWhy(e.target.value)} placeholder="e.g. Generator connections installed in Block 16B" /><div className="cell-sub">Each ticked flat goes to the admin as its own request, to approve or reject one by one.</div></div> : null}
     <div className="gen-bar">
       <span className="muted">{chosen.length ? `${chosen.length} ticked` : 'Tick flats to change them'}{admin ? '' : ' · changes need an admin\'s approval'}{chosen.some(r => r.own) ? ' · flats with their own agreed rate keep it' : ''}</span>
       <button type="button" className="btn" disabled={busy || !remN} onClick={() => apply(false)}>{admin ? 'Remove from list' : 'Ask to remove'}{remN ? ` (${remN})` : ''}</button>

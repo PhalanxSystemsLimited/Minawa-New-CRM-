@@ -144,8 +144,12 @@ export async function adjustAction(fdata: FormData) {
   const amount = Math.round(+S(fdata, 'amount').replace(/[,\s]/g, '')), back = `/p/${pid}/apartments/${oid}`;
   if (!(amount > 0) || !reason) go(back + '?m=adjust', 'Enter an amount and the reason');
   // An admin's adjustment applies now; an accountant's waits for an admin's approval.
-  const r = await mutate(pid, staff, s => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'adjust', { kind: kind === 'credit' ? 'credit' : 'charge', amount, reason }); }, { send: false });
-  go(r.done === 'applied' ? back + '?tab=history' : back, r.text);
+  // The reason the accountant gives is also their reason for the admin.
+  let r: Awaited<ReturnType<typeof changeOrRequest>> | null = null, err = '';
+  try { r = await mutate(pid, staff, s => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'adjust', { kind: kind === 'credit' ? 'credit' : 'charge', amount, reason }, reason); }, { send: false }); }
+  catch (e) { err = (e as Error).message; }
+  if (!r) go(back + '?m=adjust', err || 'Not saved');
+  go(r!.done === 'applied' ? back + '?tab=history' : back, r!.text);
 }
 
 /* ---------- company details (admins) ---------- */

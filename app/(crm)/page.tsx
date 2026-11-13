@@ -47,10 +47,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   // Approvals: accountants' changes to owners' charges. Admins see what waits for them; accountants their own requests.
   const admin = staff.role === 'admin';
   const apv: ApprovalView[] = states.flatMap(s => use(s, () => s.approvals.filter(a => admin || a.byId === staff.id)
-    .map(a => { const o = ownerById(a.ownerId); return { a, apt: o?.apt || '', owner: o?.name || '', pname: s.proj.name }; })));
+    .map(a => { const o = a.ownerId ? ownerById(a.ownerId) : null; return { a, apt: o?.apt || '', owner: o?.name || '', pname: s.proj.name }; })));
   const apvWait = apv.filter(v => v.a.status === 'pending').sort((x, y) => (x.a.d + x.a.t).localeCompare(y.a.d + y.a.t));
-  const apvMine = admin ? [] : [...apvWait, ...apv.filter(v => v.a.status !== 'pending' && (v.a.decidedD || '') >= addDays(today, -13))
-    .sort((x, y) => ((y.a.decidedD || '') + y.a.decidedT).localeCompare((x.a.decidedD || '') + x.a.decidedT))].slice(0, 5);
+  const byDecided = (x: ApprovalView, y: ApprovalView) => ((y.a.decidedD || '') + y.a.decidedT).localeCompare((x.a.decidedD || '') + x.a.decidedT);
+  // Accountants: what an admin rejected (with the admin's note) in the last 30 days, and the rest of their requests.
+  const apvRejected = admin ? [] : apv.filter(v => v.a.status === 'rejected' && (v.a.decidedD || '') >= addDays(today, -29)).sort(byDecided);
+  const apvMine = admin ? [] : [...apvWait, ...apv.filter(v => v.a.status === 'approved' && (v.a.decidedD || '') >= addDays(today, -13)).sort(byDecided)].slice(0, 5);
   let modal = null;
   if (sp.doc && sp.dp) { const s = states.find(x => x.project === sp.dp); if (s) modal = use(s, () => DocModal({ doc: sp.doc, flash: sp.flash })); }
 
@@ -75,7 +77,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       <p className="cell-sub" style={{ margin: '0 0 12px' }}>These changes to what owners are charged apply only when you approve them.</p>
       <div className="apv-list">{apvWait.slice(0, 5).map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin meId={staff.id} back="/" />)}</div>
       {apvWait.length > 5 ? <div style={{ marginTop: 10 }}><Go href="/approvals" className="btn sm">{apvWait.length - 5} more waiting</Go></div> : null}</div> : null}
-    {!admin && apvMine.length ? <div className="card apv-card"><div className="card-row"><h3>Your change requests <small>{apvWait.length ? `${apvWait.length} waiting for an admin` : 'decided in the last 14 days'}</small></h3><Go href="/approvals" className="btn sm">See all</Go></div>
+    {!admin && apvRejected.length ? <div className="card apv-card"><div className="card-row"><h3>Rejected by an admin <small>{apvRejected.length} in the last 30 days, with the admin&apos;s note</small></h3><Go href="/approvals?s=done" className="btn sm">See all</Go></div>
+      <div className="apv-list">{apvRejected.slice(0, 5).map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin={false} meId={staff.id} back="/" />)}</div></div> : null}
+    {!admin && apvMine.length ? <div className="card apv-card"><div className="card-row"><h3>Your change requests <small>{apvWait.length ? `${apvWait.length} waiting for an admin` : 'approved in the last 14 days'}</small></h3><Go href="/approvals" className="btn sm">See all</Go></div>
       <div className="apv-list">{apvMine.map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin={false} meId={staff.id} back="/" />)}</div></div> : null}
     <div className="sec-row"><h3 className="sec-h">Maintenance by project</h3><span className="muted">{fm(mon)}</span></div>
     <div className="pgrid">{st.map(x => (

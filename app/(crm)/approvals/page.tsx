@@ -15,7 +15,7 @@ export default async function Approvals({ searchParams }: { searchParams: Promis
   const projs = (await listProjects()).filter(p => p.live);
   const states = await Promise.all(projs.map(p => load(p.id, me)));
   const all: ApprovalView[] = states.flatMap(s => use(s, () => s.approvals.filter(a => admin || a.byId === me.id)
-    .map(a => { const o = ownerById(a.ownerId); return { a, apt: o?.apt || '', owner: o?.name || '', pname: s.proj.name }; })));
+    .map(a => { const o = a.ownerId ? ownerById(a.ownerId) : null; return { a, apt: o?.apt || '', owner: o?.name || '', pname: s.proj.name }; })));
   const at = (v: ApprovalView) => v.a.d + ' ' + v.a.t, dec = (v: ApprovalView) => (v.a.decidedD || '') + ' ' + (v.a.decidedT || '');
   const waiting = all.filter(v => v.a.status === 'pending').sort((x, y) => at(x).localeCompare(at(y)));
   const done = all.filter(v => v.a.status !== 'pending').sort((x, y) => dec(y).localeCompare(dec(x)));

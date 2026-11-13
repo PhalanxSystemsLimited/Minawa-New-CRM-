@@ -155,13 +155,15 @@ export interface State {
   seq: Record<string, number>;
 }
 
-/** A change to what an owner is charged, asked for by an accountant. It only applies once an admin approves it.
- *  discount: { kind: 'pct' | 'fixed' | 'none', value, until } · generator: { on } · plan: { plan } · rate: { rate } (null = rate card)
- *  adjust: { kind: 'charge' | 'credit', amount, reason } */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust';
+/** A change asked for by an accountant. It only applies once an admin approves it.
+ *  For one owner: discount: { kind: 'pct' | 'fixed' | 'none', value, until } · generator: { on } · plan: { plan } ·
+ *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
+ *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
+ *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 export interface Approval {
-  id: string; project: string; ownerId: string; kind: ApprovalKind; change: Record<string, unknown>;
+  id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;
   /** What will change ("10% discount until 31 Dec 2026") and what it is now ("No discount"). */
   summary: string; before: string; note: string;
   byId: string | null; byName: string; d: ISODate; t: string;

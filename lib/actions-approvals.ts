@@ -12,7 +12,7 @@ const go = (path: string, toast: string): never => redirect(path + (path.include
 async function decideAction(fdata: FormData, approve: boolean) {
   const staff = await requireAdmin(), pid = S(fdata, 'pid'), id = S(fdata, 'id');
   let r: { ok: boolean; text: string };
-  try { r = await mutate(pid, staff, () => decide(id, approve, S(fdata, 'reply')), { send: false }); }
+  try { r = await mutate(pid, staff, () => decide(id, approve, S(fdata, 'reply'))); }   // sends what an approved fine or announcement queued
   catch (e) { r = { ok: false, text: `Not approved: ${(e as Error).message}` }; }
   go(back(fdata), r.text);
 }
