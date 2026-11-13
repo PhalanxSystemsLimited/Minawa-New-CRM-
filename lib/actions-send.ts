@@ -7,7 +7,7 @@ import { intl } from './dispatch';
 import { requireStaff, staffName } from './session';
 import { mutate, load } from './ops';
 import { safepayConfigured } from './safepay';
-import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting, sendPaymentLink } from './engine';
+import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting } from './engine';
 import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
 import { compose, composeQueued, cantSend, pendingGroups, type SendItem, type SendType } from './manual-send';
@@ -156,8 +156,8 @@ function resendItem(o: Owner, d: string, t: string, replacesOf: (o: Owner) => st
   return { item: { ...it, key: `link:${o.id}`, fromMsg: null, replaces: replacesOf(o) }, to: waTestNumber() || intl(o.phone) };
 }
 
-/** Save the owner's fixed or new WhatsApp number. Sending by hand: the message stays in To do and its WhatsApp chat
- *  opens; it leaves To do only once the accountant confirms it was sent. Sending automatically: it is resent now. */
+/** Save the owner's fixed or new WhatsApp number. The message stays in To do and its WhatsApp chat is ready to open;
+ *  it leaves To do only once the accountant confirms it was sent. */
 export async function fixNumberSendAction(input: { pid: string; oid: string; phone: string }): Promise<ResendResult> {
   const staff = await requireStaff(), phone = String(input.phone || '').trim();
   if (waDigits(phone).length < 10) return { ok: false, error: 'That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.' };
@@ -168,18 +168,12 @@ export async function fixNumberSendAction(input: { pid: string; oid: string; pho
       const was = o.noPhone ? 'none' : o.phone, t = at(15);
       o.phone = phone; o.invalidPhone = false; o.noPhone = false;
       o.notes.push({ d: s.today, by: staffName(staff), text: `WhatsApp number ${was === 'none' ? 'added' : 'corrected'}: ${phone}.` });
-      if (s.settings.rules.autoSend) {
-        log(s.today, t, 'admin', `Number fixed for ${o.apt} by ${staffName(staff)} (${was} → ${phone}); latest balance resent`, o.id);
-        if (balance(o) > 0) sendPaymentLink(o, s.today, t);
-        return { auto: true, owes: balance(o) > 0, ready: null };
-      }
       const ready = resendItem(o, s.today, t, x => pendingDues(s, x));
       // Until it is sent, the message stays in To do.
       if (ready) for (const m of s.messages) if (m.ownerId === o.id && m.status === 'failed') m.error = FIX_WAIT + phone;
       log(s.today, t, 'admin', `Number fixed for ${o.apt} by ${staffName(staff)} (${was} → ${phone})${ready ? '; WhatsApp chat opened to send the latest balance' : '; nothing owed, so nothing to resend'}`, o.id);
-      return { auto: false, owes: !!ready, ready };
+      return { ready };
     }, { send: true });
-    if (r.auto) return { ok: true, toast: r.owes ? 'Number saved and the latest balance sent on WhatsApp' : 'Number saved. Nothing is owed, so nothing was sent.' };
     if (!r.ready) return { ok: true, toast: 'Number saved. Nothing is owed, so there is nothing to resend.' };
     const [item] = await safepayLinks(input.pid, staff, [r.ready.item]);
     return { ok: true, toast: 'Number saved. Send the message in WhatsApp, then come back here and confirm it was sent.', item, to: r.ready.to };

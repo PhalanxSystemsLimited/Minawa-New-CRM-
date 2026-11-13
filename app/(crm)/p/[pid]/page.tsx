@@ -36,7 +36,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
     return <>
       {projHead('dashboard')}
       <section className="hero hero-ov"><div>
-        <div className="hero-chips"><span className="hchip"><span className="live"></span>{S.settings.rules.autoSend ? 'Auto-billing on' : 'Auto-billing on · sending by hand'}</span>{!S.settings.rules.autoSend && pendingCount() ? <Go href={`/p/${S.project}/send`} className="hchip">{pendingCount()} to send on WhatsApp</Go> : null}{ne ? <span className="hchip">Next: {fds(ne.d)} · {ne.ev[0].text}</span> : null}</div>
+        <div className="hero-chips"><span className="hchip"><span className="live"></span>Auto-billing on · sending by hand</span>{pendingCount() ? <Go href={`/p/${S.project}/send`} className="hchip">{pendingCount()} to send on WhatsApp</Go> : null}{ne ? <span className="hchip">Next: {fds(ne.d)} · {ne.ev[0].text}</span> : null}</div>
         <h2>Collections · <span>{monName}</span></h2>
         <p>{rs(outstanding)} is still to collect from {owe.length} apartment{owe.length === 1 ? '' : 's'}{fees ? `, including ${rs(fees)} in fines` : ''}{arrears ? ` (${rs(arrears)} of it is old arrears from before ${fm(S.goLive.slice(0, 7))})` : ''}. {todo ? `${todo} thing${todo > 1 ? 's' : ''} need${todo > 1 ? '' : 's'} you today.` : 'Nothing needs you today.'}</p>
         {firstBill && !tg.total ? <div className="htg">

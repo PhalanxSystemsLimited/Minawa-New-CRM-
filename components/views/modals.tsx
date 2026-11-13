@@ -114,7 +114,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <div className="form-row"><label htmlFor="tr-d">Transfer and possession date</label><input id="tr-d" name="d" type="date" required defaultValue={S.today} min={addDays(S.today, -90)} max={S.today} /></div>
         <div className="m-actions"><CloseBtn /><Submit>Transfer and open buyer account</Submit></div></form></ModalShell>;
     case 'disconnect': return <ModalShell title="Record disconnection"><form action={act.disconnectAction} style={col}>{hidden(o)}<div className="form-row"><label htmlFor="ds">Service disconnected</label><select id="ds" name="service">{SERVICES.map(s => <option key={s}>{s}</option>)}</select></div><div className="callout">Recorded against {o.apt} with today&apos;s date. Restoration is recorded once dues are paid.</div><div className="m-actions"><CloseBtn /><Submit className="btn danger">Record disconnection</Submit></div></form></ModalShell>;
-    case 'fix': return <ModalShell title={o.noPhone ? 'Add WhatsApp number' : 'Fix WhatsApp number'}><FixNumberForm pid={o.project} oid={o.id} name={o.name} phone={o.phone} noPhone={o.noPhone} hand={!cur().settings.rules.autoSend} owes={bal > 0} /></ModalShell>;
+    case 'fix': return <ModalShell title={o.noPhone ? 'Add WhatsApp number' : 'Fix WhatsApp number'}><FixNumberForm pid={o.project} oid={o.id} name={o.name} phone={o.phone} noPhone={o.noPhone} owes={bal > 0} /></ModalShell>;
     case 'edit': return <ModalShell title={`Edit apartment ${o.apt}`}><form action={act.editOwnerAction} style={col}>{hidden(o)}
       <div className="form-row"><label htmlFor="eo-n">Owner&apos;s name</label><input id="eo-n" name="name" required defaultValue={o.name} /></div>
       <div className="form-row"><label htmlFor="eo-p">WhatsApp number</label><input id="eo-p" name="phone" type="tel" defaultValue={o.phone} placeholder="+92 3xx xxx xxxx" /></div>
@@ -145,36 +145,21 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
   }
 }
 
-/** Send a payment link on WhatsApp: automatically (Meta template) or by hand (wa.me with the text ready). */
+/** Send a payment link on WhatsApp, by hand: Send on WhatsApp opens the owner's chat with the message typed in. */
 function SendModal({ o }: { o: Owner }) {
-  const bal = balance(o), bd = duesBreakdown(o), l = activeLink(o);
+  const bal = balance(o), l = activeLink(o);
   if (bal <= 0) return <ModalShell title="Send payment link on WhatsApp"><div className="callout">Nothing owed, so there is no payment link to send.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
-  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
-  const url = l && l.amount === bal ? (appUrl ? `${appUrl}/pay/${l.id}` : l.sp?.url || null) : null;
-  const lines = [`Hi ${first(o.name)}, this is Minawa Group.`, '', `Maintenance dues for Apt ${o.apt}:`, ...bd.rows.map(r => `• ${r.short}: ${rs(r.amount)}`), `Dues: ${rs(bd.dues)}`];
-  if (bd.fee) lines.push(`Fine ${feePct()}%: ${rs(bd.fee)}`);
-  lines.push(`*Total to pay: ${rs(bal)}*`, '');
-  if (url) lines.push('Pay securely by debit or credit card (Safepay):', url, '', 'The link is for this exact amount. Your receipt comes here once it is paid.');
-  else lines.push('(A fresh payment link is created when you press Send now.)');
-  lines.push('', 'Thank you,', 'Minawa Group');
-  const text = lines.join('\n'), to = waTestNumber() || intl(o.phone);
   return <ModalShell title="Send payment link on WhatsApp" wide>
     <div className="wa-to"><span className="wa-logo"><Wa /></span><div style={{ minWidth: 0 }}><div className="cell-sub">To</div><b className="num">{o.phone || 'No WhatsApp number'}</b>
-      <div className="cell-sub">Apartment {o.apt}, owner {o.name}.{waTestNumber() ? ` Testing mode: it goes to the test number +${waTestNumber()} instead.` : ''}</div></div></div>
-    {cur().settings.rules.autoSend ? <div className="form-row"><label htmlFor="waText">Message (for sending by hand)</label><textarea id="waText" readOnly defaultValue={text}></textarea></div> : null}
-    <div className="wa-att"><span className="pdf-ic" aria-hidden="true">PDF</span><div className="t"><b>Statement-{o.apt}-{cur().today}.pdf</b><span className="cell-sub">{cur().settings.rules.autoSend ? 'Attached to the automatic message' : 'Optional: attach it in the chat'}</span></div>
+      <div className="cell-sub">Apartment {o.apt}, owner {o.name}.{waTestNumber() ? ` Testing mode: the chat opens with the test number +${waTestNumber()} instead.` : ''}</div></div></div>
+    <div className="wa-att"><span className="pdf-ic" aria-hidden="true">PDF</span><div className="t"><b>Statement-{o.apt}-{cur().today}.pdf</b><span className="cell-sub">Optional: attach it in the chat</span></div>
       <a className="btn sm" href={`/api/pdf/${o.project}/statement/${o.id}`} download><Ic n="download" s={14} /> Download</a></div>
     <details className="wa-prev"><summary>Preview the PDF</summary><div><DocView d={statementDoc(o, l)} /></div></details>
     <h4 className="tg-h4">Send it</h4>
-    {!cur().settings.rules.autoSend ? <div className="wa-ways">
+    <div className="wa-ways">
       <div className="wa-way"><div className="t"><b>Send by hand on WhatsApp Web</b><span className="cell-sub">Makes a Pay Now link for exactly {rs(bal)}, opens {o.name}&apos;s chat with the message typed in, and records it on the history once you&apos;ve sent it.</span></div>
         <Go href={`/p/${o.project}/send?type=link&ids=${o.id}&go=1`} className="btn wa"><Wa /> Open in WhatsApp</Go></div>
-    </div> : <div className="wa-ways">
-      <div className="wa-way"><div className="t"><b>Automatically, from the business number</b><span className="cell-sub">Sends the approved &quot;Payment link&quot; template with the statement PDF and a Pay Now button for exactly {rs(bal)}.</span></div>
-        <form action={act.sendLinkAction}>{hidden(o)}<Submit className="btn wa" pendingText="Sending…"><Wa /> Send now</Submit></form></div>
-      <div className="wa-way"><div className="t"><b>By hand</b><span className="cell-sub">Copies the text and opens the chat in WhatsApp. Paste it, attach the PDF, send.</span></div>
-        <CopyOpen className="btn" text={text} href={`https://wa.me/${to}?text=${encodeURIComponent(text)}`}><Wa /> Copy and open chat</CopyOpen></div>
-    </div>}
+    </div>
     <div className="m-actions" style={{ marginTop: 14 }}><CloseBtn /></div>
   </ModalShell>;
 }

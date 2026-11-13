@@ -1,4 +1,4 @@
-// Every 10 minutes: payments Safepay confirmed but whose webhook was missed, then anything still unsent.
+// Every 10 minutes: payments Safepay confirmed but whose webhook was missed, and Safepay links for new messages.
 import { NextResponse } from 'next/server';
 import { dispatchAll } from '@/lib/ops';
 import { authorised } from '@/lib/cron';

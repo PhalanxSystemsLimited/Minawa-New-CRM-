@@ -6,7 +6,7 @@ import { companyAction } from '@/lib/actions-desk';
 import { Submit, Go, ModalShell, CloseBtn, PasswordInput } from '@/components/client';
 import { ActivityList, lastSeen, roleTag } from '@/components/views/activity';
 import { projects as listProjects } from '@/lib/ops';
-import { waConfigured, waTestNumber, waDailyCap, sender } from '@/lib/whatsapp';
+import { waTestNumber } from '@/lib/whatsapp';
 import { safepayConfigured, safepayMode } from '@/lib/safepay';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +21,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && !['signin', 'signout'].includes(e.kind)).slice(0, 8);
   const sorted = [...staff].sort((a, b) => (a.role === b.role ? 0 : a.role === 'admin' ? -1 : 1) || a.name.localeCompare(b.name));
   const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add'];
-  let wa = { from: '', name: '', quality: '', error: '' };
-  if (waConfigured()) { try { wa = { ...(await sender()), error: '' }; } catch (e) { wa.error = (e as Error).message; } }
   const app = process.env.APP_URL || '';
   const row = (name: string, ok: boolean, what: string, tag?: string) => <div className="li"><div className="t"><div className="a">{name}</div><div className="b">{what}</div></div>{ok ? <span className={`tag ${tag === 'warn' ? 'warn' : 'good'}`}>{tag && tag !== 'warn' ? tag : 'On'}</span> : <span className="tag bad">Not set up</span>}</div>;
   return <>
@@ -38,7 +36,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
           <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/admin/activity?who=${encodeURIComponent(s.id)}`} className="btn sm">Activity</Go> <Go href={`/admin?edit=${encodeURIComponent(s.id)}`} className="btn sm">Edit</Go></td>
         </tr>; })}
       </tbody></table></div>
-      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins can change rates, rules, templates, discounts and transfers, and manage staff. Accountants record payments, check transfers, enter utility bills, send notices and payment links, record new possessions and set the fine %.</p>
+      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins can change everything, approve accountants' changes, do transfers and manage staff. Accountants record payments, enter utility bills, send notices and payment links by hand, and record new possessions; their changes to charges and settings wait for an admin's approval.</p>
     </div>
     <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/admin/activity?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, links, fines) shows here." />
@@ -73,21 +71,18 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
     <div className="grid2">
       <div className="card"><h3>Connections</h3><div className="list">
         {row('Database', true, store.kind === 'supabase' ? 'Supabase' : 'Local file (data/local-db.json): for trying the CRM only. Connect Supabase before go-live.', store.kind === 'supabase' ? 'Supabase' : 'warn')}
-        {row('WhatsApp Business (Meta Cloud API)', waConfigured(), waConfigured() ? (wa.error ? `Connected, but: ${wa.error}` : `${wa.from}${wa.name ? ` · ${wa.name}` : ''}${wa.quality ? ` · quality ${wa.quality}` : ''}${waTestNumber() ? ` · testing: all messages go to +${waTestNumber()}` : ' · sending to owners'}${waDailyCap() ? ` · daily limit ${waDailyCap().toLocaleString('en-US')} people` : ''}`) : 'Set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID.', waTestNumber() ? 'warn' : undefined)}
-        {row('WhatsApp webhook', !!process.env.WHATSAPP_VERIFY_TOKEN, `${app || 'https://your-crm'}/api/whatsapp/webhook · delivery, read receipts, owners' replies and screenshots`)}
+        {row('WhatsApp', true, `Sent by hand: staff open each owner's chat from Send on WhatsApp and confirm it was sent${waTestNumber() ? ` · testing: chats open with +${waTestNumber()}` : ' · chats open with the owners'}`, waTestNumber() ? 'warn' : 'By hand')}
         {row('Safepay', safepayConfigured(), safepayConfigured() ? (safepayMode() === 'live' ? 'Live: real card payments' : 'Sandbox: test payments only (set SAFEPAY_ENV=production to go live)') : 'Set SAFEPAY_SECRET_KEY. Until then Pay Now opens a simulated checkout.', safepayMode() === 'live' ? 'Live' : 'warn')}
         {row('Safepay webhook', !!process.env.SAFEPAY_WEBHOOK_SECRET, `${app || 'https://your-crm'}/api/safepay/webhook`)}
-        {row('Daily run and sending', !!process.env.CRON_SECRET, 'Supabase pg_cron calls /api/cron/daily at 10:00 AM and /api/cron/dispatch every 10 minutes (supabase/migrations/0002_schedule.sql).')}
+        {row('Daily run', !!process.env.CRON_SECRET, 'Supabase pg_cron calls /api/cron/daily at 11:00 AM and /api/cron/dispatch every 10 minutes (supabase/migrations/0002_schedule.sql).')}
         {row('Address for Pay Now buttons', !!app, app ? `${app}/pay/…` : 'Set APP_URL to the CRM\'s public address.')}
       </div></div>
       <div className="card"><h3>Before go-live <small>from Minawa&apos;s checklist</small></h3><ul className="rules">
-        <li>Meta Business account verified (unverified accounts can message only 250 people a day; Country Club alone has 274 flats).</li>
-        <li>A sending number Minawa owns, not on WhatsApp yet, shown as &quot;Minawa Group&quot;.</li>
-        <li>The message templates approved by Meta (Settings › Message templates › Submit to Meta).</li>
+        <li>A WhatsApp number Minawa owns for sending by hand, signed in on WhatsApp Web, shown as &quot;Minawa Group&quot;.</li>
         <li>Safepay merchant approval: business registration, NTN, directors&apos; CNICs, address, receiving bank account.</li>
         <li>Owners&apos; WhatsApp numbers and possession dates, imported in each project&apos;s Apartments › Import.</li>
         <li>Bank account per building, printed on bills (each project&apos;s Settings).</li>
-        <li>Remove WHATSAPP_TEST_NUMBER, so messages go to owners.</li>
+        <li>Remove WHATSAPP_TEST_NUMBER, so chats open with the owners.</li>
       </ul></div>
     </div>
   </>;

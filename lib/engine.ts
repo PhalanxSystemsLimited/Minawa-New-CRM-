@@ -308,13 +308,13 @@ export function pushMsg(o: Owner, d: string, t: string, m: MsgIn) {
     if (o.invalidPhone) { msg.status = 'failed'; msg.error = o.noPhone ? 'No WhatsApp number on file' : 'Number not on WhatsApp'; }
     else if (SEEDING) msg.status = 'read';
     else if (QUIET) { msg.status = 'skipped'; msg.error = 'Made while catching up past days on import, not sent'; }
-    else if (!R().autoSend) msg.status = 'pending';   // sending by hand: waits in Send on WhatsApp
+    else msg.status = 'pending';   // sent by hand: waits in Send on WhatsApp
   } else msg.status = 'delivered';
   S.messages.push(msg);
   if (msg.status === 'failed') log(d, t, 'alert', `WhatsApp message to ${o.apt} failed: ${o.noPhone ? 'no WhatsApp number on file' : 'number not on WhatsApp'}. Added to To do`, o.id);
   return msg;
 }
-// Values for a WhatsApp template. Meta allows no line breaks inside a value, so the months go on one line.
+// Values for a message's text (the months go on one line).
 export function bdVars(bd: Breakdown) {
   return { breakdown: bd.rows.map(r => `${r.short} ${rs(r.amount)}`).join(' + ') || 'none', dues: rs(bd.dues), fee: rs(bd.fee) };
 }
@@ -330,7 +330,7 @@ export function sendBill(o: Owner, b: Bill, d: string) {
     const vars = { name: first(o.name), apt: o.apt, month: periodLabel(b), amount: rs(b.net), ...bdVars(bd), total: rs(bal), due: fd(b.dueDate) };
     pushMsg(o, d, t, { kind: 'bill', title: `Bill · ${periodLabel(b)}`, text: fill(S.templates.bill.text, vars), tpl: 'bill', vars, linkId: l.id, pdf: { kind: 'bill', id: b.id } });
   }
-  if (!o.invalidPhone) log(d, t, 'message', R().autoSend ? `Bill for ${periodLabel(b)} sent to ${o.apt} on WhatsApp with PDF` : `Bill for ${periodLabel(b)} ready to send to ${o.apt} (Send on WhatsApp)`, o.id);
+  if (!o.invalidPhone) log(d, t, 'message', `Bill for ${periodLabel(b)} ready to send to ${o.apt} (Send on WhatsApp)`, o.id);
 }
 function sendNotice(o: Owner, b: Bill, d: string, newBill?: Bill) {
   const bal = balance(o), t = '11:00';
@@ -340,7 +340,7 @@ function sendNotice(o: Owner, b: Bill, d: string, newBill?: Bill) {
   let text = fill(S.templates.notice.text, vars);
   if (newBill) text += `\n\nThis total includes your new ${periodLabel(newBill)} bill.`;
   pushMsg(o, d, t, { kind: 'notice', title: 'Final notice', text, tpl: 'notice', vars, linkId: l.id, pdf: { kind: 'bill', id: (newBill || b).id } });
-  if (!o.invalidPhone) log(d, t, 'message', `Disconnection notice ${R().autoSend ? 'sent' : 'ready to send'} to ${o.apt}: ${rs(bal)}, final deadline ${fd(b.finalDate)}`, o.id);
+  if (!o.invalidPhone) log(d, t, 'message', `Disconnection notice ready to send to ${o.apt}: ${rs(bal)}, final deadline ${fd(b.finalDate)}`, o.id);
 }
 // New: a friendly reminder a few days before the due date, with a fresh payment link.
 function sendReminder(o: Owner, b: Bill, d: string) {
@@ -350,7 +350,7 @@ function sendReminder(o: Owner, b: Bill, d: string) {
   const bd = duesBreakdown(o);
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), due: fd(b.dueDate) };
   pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
-  if (!o.invalidPhone) log(d, t, 'message', `Reminder ${R().autoSend ? 'sent' : 'ready to send'} to ${o.apt}: ${rs(bal)} due ${fd(b.dueDate)}`, o.id);
+  if (!o.invalidPhone) log(d, t, 'message', `Reminder ready to send to ${o.apt}: ${rs(bal)} due ${fd(b.dueDate)}`, o.id);
 }
 function flag(o: Owner, d: string) {
   o.flagged = true; o.flaggedOn = d;
@@ -464,7 +464,7 @@ export function sendPaymentLink(o: Owner, d: string, t: string) {
   const bd = duesBreakdown(o);
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal) };
   const m = pushMsg(o, d, t, { kind: 'link', title: 'Payment link', text: fill(S.templates.link.text, vars), tpl: 'link', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id }, manual: true });
-  log(d, t, 'message', `Payment link for ${rs(bal)} ${R().autoSend ? 'sent' : 'ready to send'} to ${o.apt} by ${S.by}`, o.id);
+  log(d, t, 'message', `Payment link for ${rs(bal)} ready to send to ${o.apt} by ${S.by}`, o.id);
   return m;
 }
 

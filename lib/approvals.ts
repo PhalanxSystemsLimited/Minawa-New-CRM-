@@ -17,7 +17,7 @@ export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announc
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
 
 type Disc = { kind: 'pct' | 'fixed' | 'none'; value: number; until: string | null };
-type RulesChange = Pick<Rules, 'billDay' | 'dueDays' | 'remindDays' | 'flagDays' | 'autoSend' | 'utilities'>;
+type RulesChange = Pick<Rules, 'billDay' | 'dueDays' | 'remindDays' | 'flagDays' | 'utilities'>;
 const num = (x: unknown) => Math.round(Number(x) || 0);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -37,7 +37,6 @@ function rulesDiff(c: RulesChange) {
   if (c.remindDays.join(',') !== r.remindDays.join(',')) out.push([`reminders ${r.remindDays.join(' and ') || 'off'}${r.remindDays.length ? ' days before' : ''}`, `reminders ${c.remindDays.join(' and ') || 'off'}${c.remindDays.length ? ' days before' : ''}`]);
   if (c.flagDays !== r.flagDays) out.push([`flag ${r.flagDays} days after the due date`, `flag ${c.flagDays} days after the due date`]);
   if (c.utilities.join(',') !== r.utilities.join(',')) out.push([`utilities: ${r.utilities.join(', ') || 'none'}`, `utilities: ${c.utilities.join(', ') || 'none'}`]);
-  if (c.autoSend !== r.autoSend) out.push([`automatic sending ${r.autoSend ? 'on' : 'off'}`, `automatic sending ${c.autoSend ? 'on' : 'off'}`]);
   return out;
 }
 const lateOwners = () => cur().owners.filter(o => o.status === 'active' && !o.exempt && o.feeDue > 0 && balance(o) > 0);
@@ -126,7 +125,7 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       const next = { ...S.settings.rules, ...(c as unknown as RulesChange) };
       next.remindDays = next.remindDays.filter(x => x < next.dueDays);
       S.settings.rules = next;
-      log(d, t, 'admin', `Billing schedule changed by ${who}: bills on the ${ord(next.billDay)}, due ${next.dueDays} days later, reminders ${next.remindDays.length ? next.remindDays.join(' and ') + ' days before' : 'off'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}, automatic sending ${next.autoSend ? 'on' : 'off'}. New bills use them.`);
+      log(d, t, 'admin', `Billing schedule changed by ${who}: bills on the ${ord(next.billDay)}, due ${next.dueDays} days later, reminders ${next.remindDays.length ? next.remindDays.join(' and ') + ' days before' : 'off'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}. New bills use them.`);
       return 'Billing schedule saved. It applies to new bills.';
     }
     case 'fine': {
@@ -143,7 +142,7 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       let failed = 0;
       list.forEach(x => { const m = pushMsg(x, d, t, { kind: 'announcement', title: 'Announcement', text, tpl: 'announce', vars: { text }, manual: true }); if (m.status === 'failed') failed++; });
       log(d, t, 'message', `Announcement sent to ${list.length} owners (${aud === 'all' ? 'all blocks' : 'Block ' + aud})${failed ? `, ${failed} failed` : ''} by ${who}`);
-      return `Announcement to ${list.length} owners${failed ? `, ${failed} without a WhatsApp number` : ''}${S.settings.rules.autoSend ? '' : '. It waits in Send on WhatsApp'}`;
+      return `Announcement to ${list.length} owners${failed ? `, ${failed} without a WhatsApp number` : ''}. It waits in Send on WhatsApp`;
     }
   }
   if (!o) throw new Error('Apartment not found');

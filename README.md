@@ -11,11 +11,11 @@ Minawa Group ERP, Phase 1: maintenance dues. Built by Phalanx Systems.
   - **Notices:** water or electricity outages, lift work and more, written from presets or from scratch, and sent on WhatsApp to all owners, a block, or chosen flats.
   - **New possession:** record a flat handed over to its first owner.
   - **Fine %:** change it, apply it to late owners, and send them their updated dues.
-- **WhatsApp (Meta Cloud API):** bills, reminders, notices, payment links and receipts go out as approved templates, with the PDF attached and a **Pay Now** button.
+- **WhatsApp, sent by hand:** bills, reminders, notices, payment links and receipts wait in **Send on WhatsApp**. Staff open each owner's chat (WhatsApp Web or the app) with the message and its **Pay Now** link typed in, send it, and confirm it was sent. There is no automatic sending.
 - **Safepay:** each message has a payment link for the exact amount. A payment is recorded only after Safepay's API confirms it.
 - **Web CRM:** looks exactly like the demo (`minawa-crm-main/demo`), with sign-in, roles, billing settings, a message log, import and project setup added.
 
-**Stack:** Next.js 15 (App Router, TypeScript), Supabase (Postgres, Auth, pg_cron), WhatsApp Cloud API, Safepay, hosted on Vercel.
+**Stack:** Next.js 15 (App Router, TypeScript), Supabase (Postgres, Auth, pg_cron), WhatsApp sent by hand (WhatsApp Web), Safepay, hosted on Vercel.
 
 ---
 
@@ -25,7 +25,7 @@ You need Node.js 20 or newer.
 
 ```bash
 npm install
-cp .env.example .env.local      # local mode: leave the Supabase, WhatsApp and Safepay values empty
+cp .env.example .env.local      # local mode: leave the Supabase and Safepay values empty
 npm run dev
 ```
 
@@ -34,7 +34,7 @@ npm run dev
 
 With no Supabase keys, the CRM keeps its data in `data/local-db.json`. That file starts with sample data: three projects, as of 11 Nov 2026, because `.env.example` sets `APP_TODAY=2026-11-11`. To reset the sample, run `npm run seed`.
 
-Without Safepay keys, **Pay Now** opens a test checkout. Without WhatsApp keys, messages are recorded as "Not sent".
+Without Safepay keys, **Pay Now** opens a test checkout.
 
 ## 2. Design: exactly the demo's
 
@@ -55,15 +55,8 @@ Without Safepay keys, **Pay Now** opens a test checkout. Without WhatsApp keys, 
    Everyone after that is added from the CRM: **Staff & connections › Add someone**.
 4. Copy the Project URL, the anon key and the service role key into the environment (step 5).
 
-### WhatsApp (Meta)
-1. Set up a Meta Business account and get it verified. Unverified accounts can only message 250 people a day, and Country Club alone has 274 flats.
-2. Create a Meta app (type Business) and add the WhatsApp product. Register Minawa's sending number, with the display name "Minawa Group".
-3. Make a permanent access token: a System User in Business Settings, with the `whatsapp_business_messaging` and `whatsapp_business_management` permissions.
-4. Create the templates. Either use **Settings › Message templates › Submit to Meta** in the CRM, or create them by hand from `docs/WHATSAPP-TEMPLATES.md`. All are **Utility** templates.
-5. Set up the webhook in Meta › WhatsApp › Configuration:
-   - URL: `https://YOUR-CRM/api/whatsapp/webhook`
-   - Verify token: the value of `WHATSAPP_VERIFY_TOKEN`
-   - Subscribe to **messages** and **message_template_status_update**.
+### WhatsApp
+Messages are sent by hand from each project's **Send on WhatsApp** page: it opens each owner's chat with the message typed in, and asks "Did you send the message?" on coming back. Keep `WHATSAPP_TEST_NUMBER` set while testing (every chat opens with that number); remove it to go live.
 
 ### Safepay
 1. Get the merchant account approved. Safepay asks for business registration, the NTN, directors' CNICs, the business address and the receiving bank account.
@@ -114,8 +107,9 @@ Keep `WHATSAPP_TEST_NUMBER` set while you check everything: every message goes t
 | --- | --- |
 | `lib/engine.ts` | The billing rules, ported line for line from the demo: bills, reminders, late fee, notices, flags, promises, payment allocation, targets |
 | `lib/store/` | Supabase store (production) and local file store. Both load one project, let the engine change it, and save only what changed, inside a lock |
-| `lib/dispatch.ts` | Sends what the engine queued: makes the Safepay link and the PDF, then sends the WhatsApp template |
-| `lib/whatsapp.ts`, `lib/safepay.ts` | API clients |
+| `lib/dispatch.ts` | After each change: makes the Safepay links new messages need, and tidies the Send on WhatsApp list |
+| `lib/manual-send.ts`, `lib/actions-send.ts` | Sending by hand: the messages' text, opening each chat, and recording what was sent |
+| `lib/safepay.ts` | Safepay API client |
 | `lib/pdf.tsx`, `lib/docdata.ts` | Bills, receipts, statements and clearance certificates, on screen and as PDF |
 | `lib/actions.ts`, `lib/import-action.ts` | Everything staff can do (server actions, with role checks) |
 | `app/(crm)/…` | The screens |
@@ -124,7 +118,7 @@ Keep `WHATSAPP_TEST_NUMBER` set while you check everything: every message goes t
 | `supabase/migrations/` | The database schema, row-level security and the schedule |
 
 **Roles.**
-- **Admins** (the CEO and directors) can change rates, the billing schedule, templates, discounts and transfers, and manage staff.
-- **Accountants** can record payments, check bank transfers, enter utility bills, send notices, record new possessions, set the fine % and send payment links.
+- **Admins** (the CEO and directors) can change everything, approve or reject accountants' changes, do transfers, and manage staff.
+- **Accountants** can record payments, enter utility bills, send notices, record new possessions and send payment links. Their changes to what owners are charged (discounts, generator charges, billing plan, monthly fees, adjustments, the fine, the billing schedule) and mass announcements wait for an admin's approval, with a reason.
 
-**Safety.** A payment is only recorded after Safepay's API confirms it, never from the webhook body or a redirect. Every write runs inside one database lock. Webhooks are checked with HMAC signatures (Safepay with SHA-512, Meta with SHA-256 using `META_APP_SECRET`).
+**Safety.** A payment is only recorded after Safepay's API confirms it, never from the webhook body or a redirect. Every write runs inside one database lock. Safepay's webhook is checked with its HMAC-SHA512 signature.

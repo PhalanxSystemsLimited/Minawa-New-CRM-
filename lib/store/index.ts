@@ -26,8 +26,6 @@ export interface Store {
   saveStaff(s: Staff): Promise<void>;
   /** Where an owner (by WhatsApp digits), a payment link (by our id or Safepay's) or a WhatsApp message lives. */
   locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }): Promise<{ project: string; id: string } | null>;
-  /** Owners Minawa's WhatsApp number messaged since `sinceIso` (all projects): WhatsApp's daily limit counts unique people. */
-  recentRecipients(sinceIso: string): Promise<string[]>;
   /** Raw import of a whole sample or migration (replaces a project's data). */
   replaceProjectData(pid: string, s: State): Promise<void>;
   saveTemplates(t: Record<string, Template>): Promise<void>;

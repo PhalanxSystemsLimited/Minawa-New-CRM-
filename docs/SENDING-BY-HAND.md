@@ -39,10 +39,7 @@ Nothing goes out by itself. Bills, fines and balances still update automatically
 
 ## Settings
 
-The switch is in Settings → Billing schedule → *Send WhatsApp messages automatically*:
-
-- **Off** (now): sending by hand, as described above.
-- **On**: the WhatsApp Business API sends everything. Turn it on only once the company number and Meta keys are set up.
+Sending is always by hand. There is no automatic sending (the WhatsApp Business API is not used).
 
 ## Testing
 

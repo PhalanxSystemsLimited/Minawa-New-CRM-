@@ -34,11 +34,11 @@ function ReadyBox({ r, saved }: { r: Ready; saved?: string }) {
 
 const withToast = (path: string, t?: string) => t ? `${path}${path.includes('?') ? '&' : '?'}t=${encodeURIComponent(t)}` : path;
 
-export function FixNumberForm({ pid, oid, name, phone, noPhone, hand, owes }: { pid: string; oid: string; name: string; phone: string; noPhone: boolean; hand: boolean; owes: boolean }) {
+export function FixNumberForm({ pid, oid, name, phone, noPhone, owes }: { pid: string; oid: string; name: string; phone: string; noPhone: boolean; owes: boolean }) {
   const router = useRouter(), sp = useSearchParams();
   const [v, setV] = useState(noPhone ? '' : phone), [busy, setBusy] = useState(false), [err, setErr] = useState(''), [ready, setReady] = useState<Ready | null>(null);
   const back = sp.get('from') === 'todo' ? `/p/${pid}/todo` : `/p/${pid}/apartments/${oid}`;
-  const opens = hand && owes;
+  const opens = owes;
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (v.replace(/\D/g, '').length < 10) { setErr('That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.'); return; }
@@ -61,11 +61,10 @@ export function FixNumberForm({ pid, oid, name, phone, noPhone, hand, owes }: { 
     <div className="form-row"><label htmlFor="fx">{noPhone ? 'WhatsApp number' : 'Correct number'} for {name}</label>
       <input id="fx" name="phone" type="tel" required placeholder="+92 3xx xxx xxxx" value={v} onChange={e => setV(e.target.value)} autoFocus /></div>
     {err ? <div className="callout bad"><div>{err}</div></div> : null}
-    <div className="callout">{!hand ? 'Saving resends the latest balance with a fresh payment link.'
-      : owes ? <>Saving gets the latest balance and a fresh payment link ready for {name}. Then open the WhatsApp chat, send it, and come back here: you&apos;ll be asked whether it was sent. It leaves To do once you say yes.</>
+    <div className="callout">{owes ? <>Saving gets the latest balance and a fresh payment link ready for {name}. Then open the WhatsApp chat, send it, and come back here: you&apos;ll be asked whether it was sent. It leaves To do once you say yes.</>
       : 'Nothing is owed, so there is nothing to resend. Saving just keeps the number.'}</div>
     <div className="m-actions"><button type="button" className="btn" onClick={() => router.replace(back)} disabled={busy}>Cancel</button>
-      <button type="submit" className={`btn ${opens ? 'wa' : 'primary'}`} disabled={busy}>{busy ? 'Saving…' : opens ? <><Wa /> Save and get the message ready</> : hand ? 'Save number' : 'Save and resend'}</button></div>
+      <button type="submit" className={`btn ${opens ? 'wa' : 'primary'}`} disabled={busy}>{busy ? 'Saving…' : opens ? <><Wa /> Save and get the message ready</> : 'Save number'}</button></div>
   </form>;
 }
 

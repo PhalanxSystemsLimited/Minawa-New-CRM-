@@ -21,7 +21,7 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
     return <>
       {projHead('follow')}{head}
       {pr.length ? <div className="card"><h3>Check these bank transfers <small>owners sent a screenshot</small></h3>
-        <div className="list">{pr.map(p => { const o = ownerById(p.ownerId); return <div className="li" key={p.id}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span></div><div className="b">{o.name} · sent {fd(p.d)}{p.media ? <> · <a href={`/api/whatsapp/media/${encodeURIComponent(p.media)}`} target="_blank" rel="noopener">See screenshot</a></> : null}</div></div>
+        <div className="list">{pr.map(p => { const o = ownerById(p.ownerId); return <div className="li" key={p.id}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span></div><div className="b">{o.name} · sent {fd(p.d)}</div></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <form action={verifyAction} style={{ display: 'flex', gap: 6 }}>{hid(p.id)}<input type="hidden" name="amt" value={p.amount} /><Submit className="btn sm primary">It&apos;s in the bank</Submit></form>
             <form action={rejectAction}>{hid(p.id)}<Submit className="btn sm">Can&apos;t find it</Submit></form>

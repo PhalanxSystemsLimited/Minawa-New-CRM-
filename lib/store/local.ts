@@ -112,10 +112,6 @@ export class LocalStore implements Store {
   }
   async listStaff() { return clone(db().staff); }
   async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); flush(); }
-  async recentRecipients(sinceIso: string) {
-    const ms = db().messages as { ownerId: string; from: string; status: string; sentAt: string | null }[];
-    return [...new Set(ms.filter(m => m.from === 'biz' && ['sent', 'delivered', 'read'].includes(m.status) && !!m.sentAt && m.sentAt >= sinceIso).map(m => m.ownerId))];
-  }
   async locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }) {
     const d = db();
     if (q.phoneDigits) {

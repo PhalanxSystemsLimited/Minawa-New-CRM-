@@ -1,6 +1,6 @@
 // Sending by hand on WhatsApp Web: the accountant picks owners, the CRM writes each message with today's figures and a
 // Pay Now link, opens the owner's chat in WhatsApp Web with the text ready, and records it once the accountant has sent it.
-// Bills, fines and balances still update automatically; only the sending is by hand (rules.autoSend off).
+// Bills, fines and balances still update automatically; the sending is always by hand.
 // Everything here runs inside the engine (use(s, …)).
 import type { Message, Owner } from './types';
 import { cur, balance, activeLink, createLink, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct } from './engine';

@@ -26,9 +26,7 @@ export function NoticeComposer({ presets, flats, blocks, project, pid, action, t
   const count = useMemo(() => aud === 'all' ? flats.length : aud.startsWith('block:') ? flats.filter(f => f.block === aud.slice(6)).length : picked.length, [aud, picked, flats]);
   const noPhone = (aud === 'all' ? flats : aud.startsWith('block:') ? flats.filter(f => f.block === aud.slice(6)) : flats.filter(f => picked.includes(f.id))).filter(f => f.noPhone).length;
   // The same layout as the message each owner gets (their own apartment, block and name go in the brackets).
-  const preview = hand
-    ? `*Minawa Group · Maintenance*\n_🔧 Maintenance notice_\n\nDear [owner's name],\nPlease note the following maintenance update for your building.\n\n📍 *Project:* ${project}\n🏢 *Apartment:* [apartment]\n🧱 *Block:* [block]\n👤 *Owner:* [owner's name]\n\n*${title}*\n${body}\n\nFor any questions, just reply to this message.\n\nThank you,\n*Minawa Group*\n_Maintenance Department_`
-    : `Maintenance notice from Minawa Group, ${project}:\n\n${title}\n${body}\n\nFor help, reply to this message.`;
+  const preview = `*Minawa Group · Maintenance*\n_🔧 Maintenance notice_\n\nDear [owner's name],\nPlease note the following maintenance update for your building.\n\n📍 *Project:* ${project}\n🏢 *Apartment:* [apartment]\n🧱 *Block:* [block]\n👤 *Owner:* [owner's name]\n\n*${title}*\n${body}\n\nFor any questions, just reply to this message.\n\nThank you,\n*Minawa Group*\n_Maintenance Department_`;
   return <form action={action} className="nc">
     <input type="hidden" name="pid" value={pid} /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="text" value={body} /><input type="hidden" name="aud" value={aud} />
     {picked.map(id => <input key={id} type="hidden" name="apt" value={id} />)}
@@ -58,9 +56,9 @@ export function NoticeComposer({ presets, flats, blocks, project, pid, action, t
       <div>
         <div className="form-row"><label>WhatsApp preview</label></div>
         <div className="wa-bubble"><div className="wa-bubble-in">{waFormat(preview)}</div><div className="wa-bubble-t">Minawa Group · now</div></div>
-        <p className="cell-sub" style={{ margin: '8px 0 0' }}>{hand ? 'Next, each owner\'s chat opens in WhatsApp Web with this message typed in; you press Send for each one.' : <>Goes out as the approved &quot;Maintenance notice&quot; template, so it reaches owners even if they haven&apos;t messaged recently.</>}</p>
+        <p className="cell-sub" style={{ margin: '8px 0 0' }}>Next, each owner&apos;s chat opens in WhatsApp Web with this message typed in; you press Send for each one.</p>
       </div>
     </div>
-    <div className="m-actions" style={{ marginTop: 14 }}><span className="muted" style={{ fontSize: 12.5, marginRight: 'auto', alignSelf: 'center' }}>{count} owner{count === 1 ? '' : 's'}{noPhone ? `, ${noPhone} without a working WhatsApp number` : ''}</span><Submit className="btn wa" pendingText={hand ? 'Preparing…' : 'Sending…'} disabled={!count || !body.trim()}><Wa /> {hand ? 'Next: send' : 'Send'} to {count} owner{count === 1 ? '' : 's'}</Submit></div>
+    <div className="m-actions" style={{ marginTop: 14 }}><span className="muted" style={{ fontSize: 12.5, marginRight: 'auto', alignSelf: 'center' }}>{count} owner{count === 1 ? '' : 's'}{noPhone ? `, ${noPhone} without a working WhatsApp number` : ''}</span><Submit className="btn wa" pendingText="Preparing…" disabled={!count || !body.trim()}><Wa /> {'Next: send'} to {count} owner{count === 1 ? '' : 's'}</Submit></div>
   </form>;
 }

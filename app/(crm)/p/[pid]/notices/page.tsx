@@ -20,7 +20,7 @@ export default async function Notices({ params, searchParams }: { params: Promis
       {projHead('notices')}
       <div className="page-head"><div><h2>Notices</h2><p>Tell owners about water or electricity outages, lift maintenance and other work. Pick a type, fill in the details, edit the message if you like, and send it on WhatsApp.</p></div></div>
       <div className="card"><h3>New notice</h3>
-        <NoticeComposer presets={NOTICE_PRESETS} flats={flats} blocks={blocks} project={S.proj.name} pid={pid} action={sendNoticeAction} today={fds(S.today)} hand={!S.settings.rules.autoSend} />
+        <NoticeComposer presets={NOTICE_PRESETS} flats={flats} blocks={blocks} project={S.proj.name} pid={pid} action={sendNoticeAction} today={fds(S.today)} hand />
       </div>
       <div className="card"><div className="card-row"><h3>Sent notices</h3><span className="muted" style={{ fontSize: 12.5 }}>last 30</span></div>
         {sent.length ? <div className="tbl-wrap"><table><thead><tr><th>When</th><th>Notice</th><th>Sent to</th><th className="r">Owners</th><th className="r">Delivered</th><th>By</th></tr></thead><tbody>

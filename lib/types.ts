@@ -22,15 +22,15 @@ export interface Rules {
   remindDays: number[];     // more reminders, this many days before the due date ([7, 3])
   feePct: number;           // fine, % of the unpaid bills (and old arrears if fineArrears) while a bill is overdue; set by accountants (10)
   flagDays: number;         // flag for disconnection this many days after the due date (15)
-  autoSend: boolean;        // true: WhatsApp messages go out automatically (Business API); false: staff send them by hand on WhatsApp Web
   sendHour: number;         // hour (PKT) the daily run goes out (11)
   utilities: string[];      // utility bills entered each month for this project, e.g. ['Electricity']
   /** Fine old arrears (opening balances from before go-live) too. Off: the fine is only on the system's own bills. */
   fineArrears: boolean;
 }
-export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindDays: [7, 3], feePct: 10, flagDays: 15, autoSend: false, sendHour: 11, utilities: [], fineArrears: false };
+export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindDays: [7, 3], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
-  const x = { ...DEFAULT_RULES, ...r } as Rules;
+  const x = { ...DEFAULT_RULES, ...r } as Rules & { autoSend?: unknown };
+  delete x.autoSend;   // from before: WhatsApp is only sent by hand now
   if (!Array.isArray(x.remindDays)) x.remindDays = typeof x.remindDays === 'number' && x.remindDays > 0 ? [x.remindDays] : [];
   if (!Array.isArray(x.utilities)) x.utilities = [];
   x.fineArrears = x.fineArrears === true;

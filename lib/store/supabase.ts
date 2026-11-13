@@ -120,16 +120,6 @@ export class SupabaseStore implements Store {
   }
   async listStaff() { return (await this.all('staff')).map(r => { const s = fromRow<Staff & { createdAt?: string }>(r); delete s.createdAt; return s; }); }
   async saveStaff(st: Staff) { await this.upsert('staff', [toRow(st as unknown as Record<string, unknown>)], 'id'); }
-  async recentRecipients(sinceIso: string) {
-    const out = new Set<string>();
-    for (let from = 0; ; from += 1000) {
-      const { data, error } = await this.db.from('messages').select('owner_id').eq('from_', 'biz').in('status', ['sent', 'delivered', 'read']).gte('sent_at', sinceIso).range(from, from + 999);
-      if (error) throw new Error(error.message);
-      (data || []).forEach(r => out.add(String(r.owner_id)));
-      if (!data || data.length < 1000) break;
-    }
-    return [...out];
-  }
   async locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }) {
     if (q.phoneDigits) {
       const tail = q.phoneDigits.slice(-10);

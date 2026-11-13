@@ -14,8 +14,9 @@ export const PROJECTS: Project[] = [
 
 export const SAMPLE_BANK = 'Minawa Group – Maintenance · Sample Bank Ltd · IBAN PK00 SMPL 0000 0012 3456 7890';
 
-// WhatsApp templates. `text` is what staff see and edit; `metaName` is the approved template's name in Meta.
-// Variables use Meta's named parameters, so the text here is the same text submitted to Meta.
+// Message texts the CRM records for each kind of message (the history shows them). `metaName` is left over from
+// the WhatsApp Business API, which isn't used: messages are sent by hand.
+// Variables ({{name}}, {{total}}…) are filled in from the owner's figures.
 export const TEMPLATES: Record<string, Template> = {
   bill: { key: 'bill', label: 'Bill', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_bill',
     text: 'Hi {{name}}, your maintenance bill for {{month}} (Apt {{apt}}) is {{amount}}.\n\nYour dues: {{breakdown}}\nDues: {{dues}}\nFine: {{fee}}\nTotal payable: {{total}}, due by {{due}}\n\nYour statement is attached. Tap Pay Now to pay by debit or credit card.' },

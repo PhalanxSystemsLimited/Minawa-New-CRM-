@@ -103,13 +103,12 @@ export async function sendNoticeAction(fdata: FormData) {
     const audience = aud === 'all' ? 'All owners' : aud.startsWith('block:') ? `Block ${aud.slice(6)}` : list.map(o => o.apt).join(', ');
     const n: Notice = { id: 'NT' + nid('nt'), project: pid, d: s.today, t, kind, title, text, audience, count: list.length, failed, by: staffName(staff) };
     s.notices.push(n);
-    const auto = s.settings.rules.autoSend;
-    log(s.today, t, 'message', `Notice "${title}" ${auto ? 'sent' : 'prepared'} for ${list.length} owner${list.length === 1 ? '' : 's'} (${audience})${failed ? `, ${failed} without a working number` : ''} by ${staffName(staff)}${auto ? '' : '; to be sent by hand'}`);
-    return { n: list.length, failed, id: n.id, auto };
+    log(s.today, t, 'message', `Notice "${title}" prepared for ${list.length} owner${list.length === 1 ? '' : 's'} (${audience})${failed ? `, ${failed} without a working number` : ''} by ${staffName(staff)}; to be sent by hand`);
+    return { n: list.length, failed, id: n.id };
   });
   // Sending by hand: straight on to sending it, one chat at a time.
-  if (!res.auto && res.n > res.failed) go(`/p/${pid}/send?type=queue&notice=${res.id}&go=1`, `Notice ready for ${res.n - res.failed} owner${res.n - res.failed === 1 ? '' : 's'}: open each chat and press Send`);
-  go(back, res.n ? `Notice sent to ${res.n} owner${res.n === 1 ? '' : 's'}${res.failed ? `; ${res.failed} ${res.failed === 1 ? 'has' : 'have'} no working number` : ''}` : 'Nobody matched that audience');
+  if (res.n > res.failed) go(`/p/${pid}/send?type=queue&notice=${res.id}&go=1`, `Notice ready for ${res.n - res.failed} owner${res.n - res.failed === 1 ? '' : 's'}: open each chat and press Send`);
+  go(back, res.n ? `Notice prepared for ${res.n} owner${res.n === 1 ? '' : 's'}${res.failed ? `; ${res.failed} ${res.failed === 1 ? 'has' : 'have'} no working number` : ''}` : 'Nobody matched that audience');
 }
 
 /* ---------- new possession ---------- */

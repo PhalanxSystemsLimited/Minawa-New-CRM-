@@ -13,7 +13,6 @@ import {
 } from './engine';
 import { fd, rs, ord, waDigits } from './fmt';
 import { blankOwner } from './seed';
-import { submitTemplate } from './whatsapp';
 import { use } from './engine';
 import { changeOrRequest, type ChangeResult } from './approvals';
 import { billDoc } from './docdata';
@@ -126,12 +125,6 @@ export async function editOwnerAction(fdata: FormData) {
   const list = asked as string[];
   go(ownerPath(pid, oid), list.length ? `Saved. Sent to an admin for approval: ${list.join('; ')}. It applies once approved.` : 'Saved');
 }
-export async function sendLinkAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
-  const m = await mutate(pid, staff, s => sendPaymentLink(needOwner(s, oid), s.today, at(15)));
-  const st = m ? (await load(pid, staff)).messages.find(x => x.id === m.id) : null;
-  go(ownerPath(pid, oid), !m ? 'Nothing owed, so no link was sent' : st?.status === 'sent' ? 'Payment link sent on WhatsApp' : st?.status === 'failed' ? `Not sent: ${st.error}` : `Link created. WhatsApp: ${st?.error || st?.status}`);
-}
 export async function pickAction(fdata: FormData) {
   await requireStaff();
   redirect(ownerPath(S(fdata, 'pid'), S(fdata, 'oid')) + '?m=send');
@@ -156,8 +149,8 @@ export async function alertDoneAction(fdata: FormData) {
 }
 export async function retryMessageAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back') || `/p/${pid}/messages`;
-  const auto = await mutate(pid, staff, s => { const m = s.messages.find(x => x.id === id), a = s.settings.rules.autoSend; if (m && (m.status === 'failed' || m.status === 'skipped')) { m.status = a ? 'queued' : 'pending'; m.error = null; log(s.today, at(15), 'message', `Message ${m.id} to ${ownerById(m.ownerId)?.apt} ${a ? 'queued again' : 'put back in Send on WhatsApp'} by ${staffName(staff)}`, m.ownerId); } return a; });
-  go(back, auto ? 'Sent again' : 'Added to Send on WhatsApp, ready to send by hand');
+  await mutate(pid, staff, s => { const m = s.messages.find(x => x.id === id); if (m && (m.status === 'failed' || m.status === 'skipped')) { m.status = 'pending'; m.error = null; log(s.today, at(15), 'message', `Message ${m.id} to ${ownerById(m.ownerId)?.apt} put back in Send on WhatsApp by ${staffName(staff)}`, m.ownerId); } });
+  go(back, 'Added to Send on WhatsApp, ready to send by hand');
 }
 
 /* ---------- settings (admins) ---------- */
@@ -184,7 +177,7 @@ export async function rulesAction(fdata: FormData) {
     const r0 = s.settings.rules;
     const remindDays = [...new Set(S(fdata, 'remindDays').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x > 0 && x < 60))].sort((x, y) => y - x);
     const utilities = [...new Set(S(fdata, 'utilities').split(',').map(x => x.trim()).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1)))];
-    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 60, r0.dueDays), remindDays, flagDays: n('flagDays', 1, 120, r0.flagDays), autoSend: fdata.get('autoSend') === 'on', utilities };
+    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 60, r0.dueDays), remindDays, flagDays: n('flagDays', 1, 120, r0.flagDays), utilities };
     c.remindDays = c.remindDays.filter(x => x < c.dueDays);
     return changeOrRequest(null, 'rules', c, S(fdata, 'why'));
   }, { send: false }));
@@ -205,31 +198,6 @@ export async function announceAction(fdata: FormData) {
   const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'announce', { aud: S(fdata, 'aud') || 'all', text: S(fdata, 'text') }, S(fdata, 'why'))));
   go(back, failed(r) ? r.error : r.text);
 }
-export async function templateAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid'), k = S(fdata, 'k'), v = String(fdata.get('text') || '').trim(), submit = !!fdata.get('submit');
-  if (!v) go(`/p/${pid}/settings`, 'The template can\'t be empty');
-  const s0 = await load(pid, staff), tp = s0.templates[k];
-  if (!tp) go(`/p/${pid}/settings`, 'Unknown template');
-  let msg = 'Saved';
-  const next = { ...tp };
-  if (submit) {
-    const version = (+(tp.metaName.match(/_v(\d+)$/)?.[1] || 1)) + 1, name = tp.metaName.replace(/_v\d+$/, '') + '_v' + version;
-    try {
-      const { renderPdf } = await import('./pdf'); const b = s0.bills[0], pdf = b ? await renderPdf(use(s0, () => billDoc(b))) : null;
-      await submitTemplate({ name, text: v, examples: EXAMPLES, pdfHeader: ['bill', 'notice', 'reminder', 'link', 'receipt', 'credit'].includes(k) ? pdf : null, payButtonUrl: ['bill', 'notice', 'reminder', 'link'].includes(k) ? process.env.APP_URL || null : null });
-      Object.assign(next, { pending: v, status: 'pending', submittedOn: s0.today, pendingName: name });
-      msg = 'Submitted to Meta. The current wording is used until Meta approves the new one.';
-    } catch (e) { go(`/p/${pid}/settings`, `Not submitted: ${(e as Error).message}`); }
-  } else {
-    // Without submitting: record the wording that is already approved in WhatsApp Manager under this name.
-    Object.assign(next, { text: v, pending: null, status: 'approved', metaName: S(fdata, 'metaName') || tp.metaName });
-    msg = 'Template saved';
-  }
-  const store = await getStore();
-  await store.withLock(async () => { const s = await load(pid, staff); s.templates[k] = next as typeof tp; await store.saveTemplates(s.templates); await store.appendLog([{ id: 'L' + Date.now(), project: pid, d: s.today, t: at(15), kind: 'admin', text: `${tp.label} template ${submit ? 'submitted to Meta' : 'saved'} by ${staffName(staff)}`, ownerId: null, staffId: staff.id, by: staffName(staff) }]); });
-  go(`/p/${pid}/settings`, msg);
-}
-const EXAMPLES: Record<string, string> = { name: 'Hamza', apt: 'A-101', month: 'November 2026', amount: 'Rs 5,000', breakdown: 'Oct 2026 Rs 5,000 + Nov 2026 Rs 5,000', dues: 'Rs 10,000', fee: 'Rs 1,000', total: 'Rs 11,000', due: '19 Nov 2026', final: '3 Dec 2026', paid: 'Rs 5,000', date: '4 Nov 2026', balance: 'Rs 0', credit: 'Rs 2,500', text: 'Water supply to Block C will be off on 13 Nov, 10 am to 4 pm for tank cleaning.', project: 'Country Club Apartments', title: 'Water supply interruption' };
 export async function runDailyAction(fdata: FormData) {
   const staff = await requireAdmin(), pid = S(fdata, 'pid');
   const out = await runDailyAll(staff) as Record<string, { days: string[] }>;
