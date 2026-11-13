@@ -256,3 +256,7 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
   .apv { flex-direction: column }
   .apv-act { width: 100% }
 }
+
+/* To do › fixed number: the message ready to send */
+.wa-ready { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface-2) }
+.wa-ready pre { margin: 6px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; font: 12.5px/1.45 inherit; font-family: inherit }
