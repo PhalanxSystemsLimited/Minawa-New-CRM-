@@ -262,9 +262,6 @@ input[type=text],input[type=number],input[type=date],input[type=tel],input[type=
 }
 
 /* ---------- fixes after review ---------- */
-/* the brand tile: a white building on rust (the logo file has a white background) */
-.side-logo{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M5 21V7l8-4v18'/%3E%3Cpath d='M19 21V11l-6-4'/%3E%3Cpath d='M9 9h1M9 13h1M9 17h1'/%3E%3C/svg%3E") center/20px no-repeat,linear-gradient(135deg,var(--rust),#993717)}
-.side-logo img{opacity:0}
 /* the search box is one soft field */
 .gsearch input,.gsearch input:focus{border:0 !important;background:transparent !important;box-shadow:none !important;padding:0;border-radius:0}
 /* settings rows: label, then the value and its explanation on one line where it fits */
@@ -275,4 +272,117 @@ input[type=text],input[type=number],input[type=date],input[type=tel],input[type=
   .hs{padding:13px 14px}
   .hs .v{font-size:19px}
   .proj-title{font-size:24px}
+}
+
+/* ================= Polish (Nov 2026): stronger text, frosted panels, the Minawa logo, motion =================
+   Visual only. Text greys are darker for legibility; cards are frosted glass over a soft warm backdrop; the sidebar
+   colour runs to the bottom of the page; buttons, cards and tabs respond to the pointer. */
+:root{
+  --muted:#475569;              /* was #64748B: body text that is secondary */
+  --label:#526070;              /* small uppercase labels (were #94A3B8) */
+  --glass:rgba(255,255,255,.66); --glass-strong:rgba(255,255,255,.8); --glass-line:rgba(255,255,255,.75);
+  --glass-shadow:0 1px 1px rgba(16,24,40,.03),0 8px 24px rgba(16,24,40,.06);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+
+/* the page: a soft warm backdrop for the frosted panels; on desktop the sidebar colour fills its column to the bottom */
+html,body{background-color:var(--bg)}
+body{background-image:radial-gradient(900px 520px at 85% -8%,rgba(217,93,57,.10),transparent 60%),radial-gradient(760px 520px at 8% 110%,rgba(30,126,81,.06),transparent 60%),radial-gradient(700px 480px at 45% 55%,rgba(37,99,235,.045),transparent 62%);background-attachment:fixed}
+@media (min-width:901px){
+  body{background-image:linear-gradient(to right,var(--ink) 0 272px,transparent 272px),radial-gradient(900px 520px at 85% -8%,rgba(217,93,57,.10),transparent 60%),radial-gradient(760px 520px at 8% 110%,rgba(30,126,81,.06),transparent 60%),radial-gradient(700px 480px at 45% 55%,rgba(37,99,235,.045),transparent 62%)}
+  body{background-attachment:scroll,fixed,fixed,fixed}
+  body:has(.signin-page){background-image:none}
+  html{background:linear-gradient(to right,var(--ink) 0 272px,var(--bg) 272px)}
+  html:has(.signin-page){background:var(--bg)}
+  .foot-note{margin-left:272px;padding-top:6px}
+  .app{min-height:calc(100vh - 46px)}
+}
+.foot-note{color:var(--muted);font-weight:500}
+
+/* the logo: Minawa's mark on a white tile */
+.side-logo{background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.6)}
+.side-logo img{opacity:1;width:32px;height:32px;filter:none;border-radius:5px}
+.side{scrollbar-width:none}
+.side::-webkit-scrollbar{width:0;height:0}
+
+/* stronger greys */
+.muted,.cell-sub,.page-head p,.crumb-path,.crumb-path a,.me-r,.hero-date{color:var(--muted)}
+.crumb-path span{color:#94A3B8}
+th,.kpi .l,.kpi .k-l,.pc-target .l,.pd-i .l,.pd-app .l,.form-row label,.side-h{color:var(--label)}
+.pc-top .cell-sub,.pcard .stat-rows div,.pc-target .cell-sub{color:#475569}
+.gsearch,.gsearch input::placeholder{color:#64748B}
+.empty{color:#475569}
+.card h3 small,.card-row h3 small{color:#475569}
+.tag{color:#334155}
+.chipbtn{color:#334155}
+.proj-tabs button{color:#475569}
+/* sidebar text on charcoal: lighter */
+.side-h{color:#8A94A6}
+.side-i{color:#CBD5E1}
+.side-i .ico{color:#94A3B8}
+.side-p{color:#E2E8F0}
+.side-p small{color:#94A3B8}
+.side-p.off{color:#AAB4C3}
+.side-p.off small{color:#7C8899}
+.sb2{color:#AAB4C3}
+.side-foot{color:#8A94A6}
+/* the dark welcome panel */
+.hero p{color:#E2E8F0}
+.hs .l{color:#AAB4C3}
+.hero-date{color:#AAB4C3}
+
+/* frosted panels instead of flat white */
+.card,.stat,.kpi,.pcard,.proj-tabs,.offp,.sec-row .muted{background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(16px) saturate(1.35);backdrop-filter:blur(16px) saturate(1.35)}
+.card,.pcard,.kpi{outline:1px solid rgba(230,228,221,.55);outline-offset:-1px}
+.top{background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4)}
+th,tfoot td,.pcard .stat-foot{background:rgba(250,249,245,.7)}
+tbody tr:hover td{background:rgba(255,255,255,.7)}
+.pc-target{-webkit-backdrop-filter:none;backdrop-filter:none}
+.m-card{background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4)}
+.menu{background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.callout{background:rgba(246,245,241,.75)}
+input[type=text],input[type=number],input[type=date],input[type=tel],input[type=email],input[type=password],input[type=search],select,textarea,.search{background:rgba(255,255,255,.85)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .card,.stat,.kpi,.pcard,.proj-tabs,.offp,.top,.m-card,.menu{background:#fff}
+}
+
+/* ---------- motion ---------- */
+.btn,.chipbtn,.side-i,.side-p,.proj-tabs button,.icon-btn,.me,.rcpt,.tag,.apt-a,.stat-go,.menu a,.menu button,.ptabs button,.pay-x{transition:background-color .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease),box-shadow .25s var(--ease),transform .2s var(--ease)}
+.btn{position:relative;overflow:hidden;isolation:isolate}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(16,24,40,.09)}
+.btn:active{transform:translateY(0) scale(.98);box-shadow:0 1px 2px rgba(16,24,40,.08)}
+.btn.primary:hover,.btn.neon:hover{box-shadow:0 10px 22px rgba(217,93,57,.32)}
+.btn.wa:hover{box-shadow:0 10px 22px rgba(37,211,102,.3)}
+/* a light sweep across the main buttons on hover */
+.btn.primary::after,.btn.neon::after,.btn.wa::after,.qa>summary.btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);transform:translateX(-120%);transition:transform .6s var(--ease)}
+.btn.primary:hover::after,.btn.neon:hover::after,.btn.wa:hover::after,.qa>summary.btn:hover::after{transform:translateX(120%)}
+.btn[disabled],.btn[aria-disabled="true"]{transform:none !important;box-shadow:none !important}
+.btn:focus-visible,.chipbtn:focus-visible,.proj-tabs button:focus-visible{outline:none;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--rust)}
+.chipbtn:hover{transform:translateY(-1px)}
+.icon-btn:hover,.me:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(16,24,40,.08)}
+.icon-btn:active{transform:scale(.96)}
+.side-i:hover{transform:translateX(2px)}
+.side-i[aria-current="page"]:hover{transform:none}
+.side-p:hover{transform:translateX(2px)}
+.proj-tabs button:active{transform:scale(.97)}
+.card,.pcard,.kpi,.stat,.hs,.offp{transition:transform .25s var(--ease),box-shadow .25s var(--ease),border-color .25s var(--ease)}
+.pcard:hover,.kpi:hover,.offp:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(16,24,40,.1)}
+.hs:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
+.rcpt:hover,.apt-a:hover{transform:translateY(-1px)}
+.dot-n,.tab-b,.tab-new,.side-pay{animation:mrPop .35s var(--ease) both}
+@keyframes mrPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+/* content eases in on each page */
+main>*{animation:mrRise .45s var(--ease) both}
+main>*:nth-child(2){animation-delay:.04s}
+main>*:nth-child(3){animation-delay:.08s}
+main>*:nth-child(4){animation-delay:.12s}
+main>*:nth-child(5){animation-delay:.16s}
+main>*:nth-child(n+6){animation-delay:.2s}
+@keyframes mrRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.m-card{animation:mrModal .28s var(--ease) both}
+@keyframes mrModal{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.toast{animation:mrRise .3s var(--ease) both}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+  .btn:hover,.pcard:hover,.kpi:hover,.chipbtn:hover,.icon-btn:hover,.side-i:hover,.side-p:hover{transform:none}
 }
