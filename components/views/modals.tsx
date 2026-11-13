@@ -1,7 +1,7 @@
 // Modals, opened from the address (?m=… or ?doc=kind:id) so every one can be linked to and closed with Back.
 // Plain functions, called inside use(state, …).
 import type { Owner } from '@/lib/types';
-import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate } from '@/lib/engine';
+import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
 import { PLAN_LABEL } from '@/lib/types';
 import { possessionAction, adjustAction } from '@/lib/actions-desk';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
@@ -88,8 +88,10 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <div className="form-row"><label htmlFor="dc-k">Type</label><select id="dc-k" name="kind" defaultValue={x.kind}><option value="pct">Percentage of the monthly fee</option><option value="fixed">Fixed amount off each bill</option><option value="none">No discount</option></select></div>
         <div className="form-row"><label htmlFor="dc-v">Value (% or Rs)</label><input id="dc-v" name="value" type="number" min="0" step="1" defaultValue={x.value || ''} /></div>
         <div className="form-row"><label htmlFor="dc-u">Ends on (optional)</label><input id="dc-u" name="until" type="date" defaultValue={x.until || ''} /></div>
-        <div className="callout">Applies to bills from the next billing day. Recorded with your name.</div>
-        <div className="m-actions"><CloseBtn /><Submit>Save discount</Submit></div></form></ModalShell>; }
+        {isAdmin() ? null : <div className="form-row"><label htmlFor="dc-w">Reason for the admin (optional)</label><input id="dc-w" name="why" type="text" placeholder="e.g. Agreed with the owner for paying the year in advance" /></div>}
+        {isAdmin() ? <div className="callout">Applies to bills from the next billing day. Recorded with your name.</div>
+          : <div className="callout warn"><div>An admin has to approve this first. Once approved, it applies to bills from the next billing day.</div></div>}
+        <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save discount' : 'Send for approval'}</Submit></div></form></ModalShell>; }
     case 'clearance': {
       if (bal > 0) {
         const items: string[] = [];
@@ -117,6 +119,9 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="eo-e">Email</label><input id="eo-e" name="email" type="email" defaultValue={o.email} /></div>
       <div className="form-row"><label htmlFor="eo-ps">Possession date (billing day)</label><input id="eo-ps" name="possession" type="date" required defaultValue={o.possessionKnown ? o.possession : ''} /></div>
       <div className="form-row"><label htmlFor="eo-pl">Billing plan (owner&apos;s choice)</label><select id="eo-pl" name="plan" defaultValue={o.plan || 'monthly'}>{Object.entries(PLAN_LABEL).map(([k, l]) => <option key={k} value={k}>{l}{k === 'quarterly' ? ' (billed 25 Dec, Mar, Jun, Sep)' : k === 'annual' ? ' (billed each 25 Dec)' : ' (billed each 25th for the next month)'}</option>)}</select></div>
+      <div className="form-row"><label htmlFor="eo-r">Own monthly fee (Rs)</label><input id="eo-r" name="ownRate" type="number" min="0" step="1" defaultValue={o.rate || ''} placeholder={`Empty: rate card, ${rs(cardRate(o, billDateOf(nextPeriodFor(o))))} a month`} /><div className="cell-sub">Only for a flat with its own agreed fee. Counts from the {fm(nextPeriodFor(o))} bill.</div></div>
+      {isAdmin() ? null : <><div className="callout warn"><div>A change to the billing plan or the monthly fee needs an admin&apos;s approval. The other details save straight away.</div></div>
+        <div className="form-row"><label htmlFor="eo-w">Reason for the admin (optional)</label><input id="eo-w" name="why" type="text" placeholder="e.g. Owner asked to pay quarterly" /></div></>}
       <div className="form-row"><label htmlFor="eo-ab"><input id="eo-ab" name="abroad" type="checkbox" defaultChecked={o.abroad} /> Owner lives abroad</label></div>
       {isAdmin() ? <div className="form-row"><label htmlFor="eo-x"><input id="eo-x" name="exempt" type="checkbox" defaultChecked={o.exempt} /> Exempt from billing (directors&apos; flats)</label></div> : null}
       <div className="m-actions"><CloseBtn /><Submit>Save</Submit></div></form></ModalShell>;
@@ -124,8 +129,9 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="aj-k">Type</label><select id="aj-k" name="kind" defaultValue="charge"><option value="charge">Charge: add to the next bill (repairs, adjustment cost, correction)</option><option value="credit">Credit or waiver: lower what {o.name} owes now</option></select></div>
       <div className="form-row"><label htmlFor="aj-a">Amount (Rs)</label><input id="aj-a" name="amount" type="number" min="1" step="1" required /></div>
       <div className="form-row"><label htmlFor="aj-r">Reason</label><input id="aj-r" name="reason" type="text" required placeholder="e.g. Water tank repair share; agreed waiver of September fine" /></div>
-      <div className="callout">Shows in the apartment&apos;s history with your name and the reason.</div>
-      <div className="m-actions"><CloseBtn /><Submit>Save adjustment</Submit></div></form></ModalShell>;
+      {isAdmin() ? <div className="callout">Shows in the apartment&apos;s history with your name and the reason.</div>
+        : <div className="callout warn"><div>An admin has to approve this first. Once approved, it shows in the apartment&apos;s history with your name and the reason.</div></div>}
+      <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save adjustment' : 'Send for approval'}</Submit></div></form></ModalShell>;
     case 'send': return SendModal({ o });
     default: return null;
   }

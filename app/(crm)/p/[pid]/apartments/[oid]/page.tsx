@@ -9,6 +9,8 @@ import { Go, A } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
 import { pill, when, viaHtml, waBtn, ownerSince } from '@/components/views/bits';
 import { restoreAction } from '@/lib/actions';
+import { pendingFor } from '@/lib/approvals';
+import { ApprovalItem } from '@/components/views/approvals';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,9 @@ export default async function Apartment({ params, searchParams }: { params: Prom
     const tab = ['bills', 'payments', 'history', 'notes'].includes(sp.tab) ? sp.tab : 'bills';
     const pays = sortedPayments().filter(p => ids.has(p.ownerId));
     const m = (k: string) => `${base}?m=${k}`;
+    // An accountant's change to what the flat is charged waits for an admin's approval.
+    const waiting = closed ? [] : pendingFor(o), genWait = waiting.some(a => a.kind === 'generator');
+    const ask = isAdmin() ? null : <small className="muted"> · needs approval</small>;
     const adminItem = (k: string, label: string) => isAdmin() ? <Go href={m(k)}>{label}</Go> : <button aria-disabled="true" title="Admins only">{label} · admins</button>;
     const msgTag = (x: typeof msgs[number]) => /^Test:/.test(x.error || '') && x.status !== 'failed' ? <span className="tag warn" title={x.error || ''}>Test only</span> : x.status === 'failed' ? <span className="tag bad" title={x.error || ''}>Failed</span> : x.status === 'skipped' ? <span className="tag" title={x.error || ''}>Not sent</span> : x.status === 'pending' ? <span className="tag warn" title="Waiting to be sent by hand from Send on WhatsApp">To send</span> : x.status === 'sent' && x.waId === 'hand' ? <span className="tag info">Sent by hand</span>: x.status === 'queued' ? <span className="tag warn">Sending</span>
       : x.status === 'read' ? <span className="tag good">Read</span> : x.manual && x.status === 'sent' ? <span className="tag info">Sent by staff</span> : x.status === 'delivered' || (x.status === 'sent' && diff(S.today, x.d) >= 1) ? <span className="tag">Delivered</span> : <span className="tag">Sent</span>;
@@ -84,11 +89,12 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
             <Go href={m('note')}>Add note</Go>
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
-            <Go href={m('adjust')}>Adjustment (charge or credit)</Go>
-            {hasGenerator() ? <form action={toggleGeneratorAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><input type="hidden" name="on" value={o.generator ? '0' : '1'} /><button type="submit">{o.generator ? 'Remove generator charges' : 'Add generator charges'}</button></form> : null}
+            <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
+            {hasGenerator() ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>
+              : <form action={toggleGeneratorAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><input type="hidden" name="on" value={o.generator ? '0' : '1'} /><button type="submit">{o.generator ? 'Remove generator charges' : 'Add generator charges'}{ask}</button></form> : null}
             {bal > 0 ? null : <Go href={m('recpay')}>Record payment</Go>}
             <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>
-            {adminItem('discount', 'Discount')}
+            <Go href={m('discount')}>Discount{ask}</Go>
             <hr />
             <Go href={m('clearance')}>Dues clearance certificate</Go>
             {adminItem('transfer', 'Transfer to a new owner')}
@@ -98,6 +104,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           </div></details>
         </div>}
       </div>
+      {waiting.length ? <div className="card apv-card"><div className="card-row"><h3>Waiting for approval <small>{waiting.length} change{waiting.length === 1 ? '' : 's'} to what {o.name} is charged</small></h3><Go href="/approvals" className="btn sm">Approvals</Go></div>
+        <div className="apv-list">{waiting.map(a => <ApprovalItem key={a.id} v={{ a, apt: o.apt, owner: o.name, pname: S.proj.name }} admin={isAdmin()} meId={S.staffId || ''} back={base} showOwner={false} />)}</div></div> : null}
       {o.exempt ? <div className={`callout ${o.exemptWhy ? 'warn' : ''}`}>{o.exemptWhy ? o.exemptWhy : 'Directors\' apartments are exempt, so no bills are sent.'}</div> : null}
       {(() => { const x = sheetOf(o); if (!x) return null;
         return <div className="card"><div className="card-row"><h3>2026 <small>office sheet as on {fd(x.asOf)}</small></h3><span className="cell-sub">{x.source}</span></div>

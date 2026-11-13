@@ -61,7 +61,7 @@ export function blankOwner(p: Partial<Owner> & { id: string; project: string; ap
 export function freshState(proj: Project, today: string, rates: Rate[], seq: Record<string, number>): State {
   return { project: proj.id, proj, today, goLive: proj.goLive || today, by: 'System', role: 'admin', rates,
     templates: JSON.parse(JSON.stringify(TEMPLATES)), settings: defaultSettings(proj.id),
-    owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], log: [], seq };
+    owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], log: [], seq };
 }
 
 const sampleRates = (pid: string): Rate[] => pid === 'cc'

@@ -8,6 +8,7 @@ import { ownerById, apartments, log, at, nid, pushMsg, createBill, sendBill, rat
 import { fd, fds, fm, rs, waDigits } from './fmt';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
+import { changeOrRequest } from './approvals';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 const go = (path: string, toast?: string): never => redirect(path + (path.includes('?') ? '&' : '?') + (toast ? 't=' + encodeURIComponent(toast) : ''));
@@ -142,15 +143,9 @@ export async function adjustAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), kind = S(fdata, 'kind'), reason = S(fdata, 'reason');
   const amount = Math.round(+S(fdata, 'amount').replace(/[,\s]/g, '')), back = `/p/${pid}/apartments/${oid}`;
   if (!(amount > 0) || !reason) go(back + '?m=adjust', 'Enter an amount and the reason');
-  await mutate(pid, staff, s => {
-    const o = ownerById(oid); if (!o) return;
-    if (kind === 'credit') waive(o, amount, reason, s.today, at(15), staffName(staff));
-    else {
-      s.charges.push({ id: 'CH' + nid('ch'), ownerId: o.id, project: pid, period: s.today.slice(0, 7), kind: 'Adjustment', amount, units: null, note: reason, by: staffName(staff), d: s.today, billId: null });
-      log(s.today, at(15), 'admin', `${rs(amount)} charge added to ${o.apt} by ${staffName(staff)} (${reason}); goes on the next bill`, o.id);
-    }
-  }, { send: false });
-  go(back + '?tab=history', kind === 'credit' ? `${rs(amount)} credited` : `${rs(amount)} charge added; it goes on the next bill`);
+  // An admin's adjustment applies now; an accountant's waits for an admin's approval.
+  const r = await mutate(pid, staff, s => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'adjust', { kind: kind === 'credit' ? 'credit' : 'charge', amount, reason }); }, { send: false });
+  go(r.done === 'applied' ? back + '?tab=history' : back, r.text);
 }
 
 /* ---------- company details (admins) ---------- */

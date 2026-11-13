@@ -15,6 +15,7 @@ import { fd, rs, ord, waDigits } from './fmt';
 import { blankOwner } from './seed';
 import { submitTemplate } from './whatsapp';
 import { use } from './engine';
+import { changeOrRequest, type ChangeResult } from './approvals';
 import { billDoc } from './docdata';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
@@ -41,14 +42,11 @@ export async function noteAction(fdata: FormData) {
   go(ownerPath(pid, oid) + '?tab=notes', 'Note saved');
 }
 export async function discountAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), k = S(fdata, 'kind'), v = Math.max(0, Math.round(+S(fdata, 'value') || 0));
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), k = S(fdata, 'kind'), v = Math.max(0, Math.round(+S(fdata, 'value') || 0));
   if (k === 'pct' && v > 100) go(ownerPath(pid, oid), 'A percentage discount can be at most 100');
-  await mutate(pid, staff, s => {
-    const o = needOwner(s, oid), t = at(15);
-    if (k === 'none' || !v) { o.discount = null; log(s.today, t, 'admin', `Discount removed for ${o.apt} by ${staffName(staff)}`, o.id); }
-    else { o.discount = { kind: k as 'pct' | 'fixed', value: v, until: S(fdata, 'until') || null }; log(s.today, t, 'admin', `Discount set for ${o.apt}: ${k === 'pct' ? v + '%' : rs(v)}${o.discount.until ? ' until ' + fd(o.discount.until) : ''} by ${staffName(staff)}`, o.id); }
-  }, { send: false });
-  go(ownerPath(pid, oid), 'Discount saved');
+  // An admin's discount applies now; an accountant's waits for an admin's approval.
+  const r = await mutate(pid, staff, s => changeOrRequest(needOwner(s, oid), 'discount', { kind: k === 'none' || !v ? 'none' : k, value: v, until: S(fdata, 'until') || null }, S(fdata, 'why')), { send: false });
+  go(ownerPath(pid, oid), r.text);
 }
 export async function clearanceAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
@@ -103,7 +101,7 @@ export async function fixNumberAction(fdata: FormData) {
 }
 export async function editOwnerAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
-  await mutate(pid, staff, s => {
+  const asked = await mutate(pid, staff, s => {
     const o = needOwner(s, oid), ch: string[] = [];
     const name = S(fdata, 'name'), phone = S(fdata, 'phone'), email = S(fdata, 'email'), pos = S(fdata, 'possession');
     if (name && name !== o.name) { ch.push(`name ${o.name} → ${name}`); o.name = name; }
@@ -111,12 +109,16 @@ export async function editOwnerAction(fdata: FormData) {
     if (email !== o.email) o.email = email;
     if (pos && (pos !== o.possession || !o.possessionKnown)) { ch.push(`possession ${o.possessionKnown ? fd(o.possession) : 'not on file'} → ${fd(pos)}`); o.possession = pos; o.possessionKnown = true; }
     o.abroad = fdata.get('abroad') === 'on';
-    const plan = S(fdata, 'plan') as Owner['plan'];
-    if (plan && ['monthly', 'quarterly', 'annual'].includes(plan) && plan !== o.plan) { ch.push(`billing plan ${o.plan} → ${plan}`); o.plan = plan; }
     if (staff.role === 'admin') { const ex = fdata.get('exempt') === 'on'; if (ex !== o.exempt) { ch.push(ex ? 'now exempt' : 'no longer exempt'); o.exempt = ex; if (!ex) o.exemptWhy = null; } }
     if (ch.length) log(s.today, at(15), 'admin', `${o.apt} edited by ${staffName(staff)}: ${ch.join('; ')}`, o.id);
+    // What the flat is charged (billing plan, own monthly fee): an accountant's change waits for an admin's approval.
+    const out: ChangeResult[] = [], why = S(fdata, 'why');
+    const plan = S(fdata, 'plan');
+    if (plan && ['monthly', 'quarterly', 'annual'].includes(plan)) out.push(changeOrRequest(o, 'plan', { plan }, why));
+    if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null }, why)); }
+    return out.filter(x => x.done === 'requested').map(x => x.summary);
   }, { send: false });
-  go(ownerPath(pid, oid), 'Saved');
+  go(ownerPath(pid, oid), asked.length ? `Saved. Sent to an admin for approval: ${asked.join('; ')}. It applies once approved.` : 'Saved');
 }
 export async function sendLinkAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');

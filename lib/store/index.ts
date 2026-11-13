@@ -48,7 +48,7 @@ export function normalizeState(s: State) {
     if (b.extras == null) b.extras = 0;
     delete b.reminded;
   }
-  s.charges = s.charges || []; s.notices = s.notices || [];
+  s.charges = s.charges || []; s.notices = s.notices || []; s.approvals = s.approvals || [];
   return s;
 }
 

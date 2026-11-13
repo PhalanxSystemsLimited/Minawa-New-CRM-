@@ -8,7 +8,7 @@ export const roleTag = (r: string) => r === 'admin' ? <span className="tag info"
  * one for how it ended (sent / not sent, prepared, created…). Colours come from the theme. */
 type Tone = 'good' | 'bad' | 'warn' | 'info' | 'accent' | 'muted' | 'wa' | 'in';
 const P = (d: string) => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: d }} />;
-const IC: Record<string, React.ReactNode> = {
+export const IC: Record<string, React.ReactNode> = {
   wa: P('<path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/>'),
   card: P('<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/>'),
   link: P('<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
@@ -22,12 +22,16 @@ const IC: Record<string, React.ReactNode> = {
   in: P('<path d="M10 17l5-5-5-5M15 12H3M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/>'),
   out: P('<path d="M14 17l5-5-5-5M19 12H8M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/>'),
   check: P('<path d="m5 12 5 5 9-10"/>'),
+  clock: P('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  x: P('<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>'),
+  shield: P('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/>'),
   bang: P('<path d="M12 5v9M12 18.5v.5"/>')
 };
 const KINDS: Record<string, [string, Tone, string]> = {
   payment: ['Payment', 'good', 'card'], webhook: ['Online payment', 'good', 'card'], link: ['Payment link', 'info', 'link'], message: ['Message', 'info', 'msg'],
   whatsapp: ['WhatsApp', 'wa', 'wa'], bill: ['Bill', 'accent', 'doc'], fine: ['Fine', 'bad', 'pct'], flag: ['Flag', 'bad', 'flag'], alert: ['Alert', 'warn', 'alert'],
-  job: ['Setup', 'accent', 'gear'], admin: ['Change', 'warn', 'edit'], signin: ['Sign in', 'in', 'in'], signout: ['Sign out', 'muted', 'out']
+  job: ['Setup', 'accent', 'gear'], admin: ['Change', 'warn', 'edit'], signin: ['Sign in', 'in', 'in'], signout: ['Sign out', 'muted', 'out'],
+  approval: ['Approval', 'accent', 'shield']
 };
 const KIND: Record<string, string> = Object.fromEntries(Object.entries(KINDS).map(([k, v]) => [k, v[0]]));
 /** Sign-outs logged before they had their own kind say so in the text. */
@@ -40,6 +44,7 @@ function outcome(e: Pick<LogEntry, 'kind' | 'text'>): [string, Tone, string] | n
   if (e.kind === 'message') return /set aside/.test(t) ? ['Set aside', 'muted', 'bang'] : /prepared|ready to send|put back/.test(t) ? ['Prepared', 'info', 'doc'] : /failed/.test(t) ? ['Failed', 'bad', 'bang'] : / sent /.test(t) ? ['Sent', 'good', 'check'] : null;
   if (e.kind === 'link') return /cancel/i.test(t) ? ['Cancelled', 'muted', 'bang'] : /created/.test(t) ? ['Created', 'info', 'check'] : null;
   if (e.kind === 'payment' || e.kind === 'webhook') return /recorded|received|paid/i.test(t) ? ['Received', 'good', 'check'] : null;
+  if (e.kind === 'approval') return / approved /.test(t) ? ['Approved', 'good', 'check'] : / rejected /.test(t) ? ['Rejected', 'bad', 'x'] : / withdrew /.test(t) ? ['Withdrawn', 'muted', 'x'] : / asked for /.test(t) ? ['Waiting', 'warn', 'clock'] : null;
   if (e.kind === 'flag') return /cleared/.test(t) ? ['Cleared', 'good', 'check'] : null;
   return null;
 }

@@ -146,9 +146,24 @@ export interface State {
   rates: Rate[]; templates: Record<string, Template>; settings: ProjectSettings;
   owners: Owner[]; bills: Bill[]; entries: Entry[]; links: PayLink[]; messages: Message[]; payments: Payment[];
   proofs: Proof[]; alerts: Alert[]; clearances: Clearance[]; charges: Charge[]; notices: Notice[];
+  /** Changes to an owner's charges that an accountant asked for, waiting for (or decided by) an admin. */
+  approvals: Approval[];
   company?: Company;
   log: LogEntry[];          // new entries only (written on save)
   seq: Record<string, number>;
+}
+
+/** A change to what an owner is charged, asked for by an accountant. It only applies once an admin approves it.
+ *  discount: { kind: 'pct' | 'fixed' | 'none', value, until } · generator: { on } · plan: { plan } · rate: { rate } (null = rate card)
+ *  adjust: { kind: 'charge' | 'credit', amount, reason } */
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
+export interface Approval {
+  id: string; project: string; ownerId: string; kind: ApprovalKind; change: Record<string, unknown>;
+  /** What will change ("10% discount until 31 Dec 2026") and what it is now ("No discount"). */
+  summary: string; before: string; note: string;
+  byId: string | null; byName: string; d: ISODate; t: string;
+  status: ApprovalStatus; decidedById: string | null; decidedByName: string | null; decidedD: ISODate | null; decidedT: string | null; reply: string | null;
 }
 
 /** Minawa's company details, printed on every bill, statement and receipt. */

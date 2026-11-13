@@ -2,13 +2,14 @@
 import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
 import { use, projStats, sortedPayments, ownerById, upcoming } from '@/lib/engine';
-import { MONL, fm, fd, dow, dowl, rs, todayPKT } from '@/lib/fmt';
+import { MONL, fm, fd, dow, dowl, rs, todayPKT, addDays } from '@/lib/fmt';
 import { Ic } from '@/components/icons';
 import { Go, A } from '@/components/client';
 import { viaHtml, when, ownerHref } from '@/components/views/bits';
 import { DocModal } from '@/components/views/modals';
 import { ActivityList, lastSeen } from '@/components/views/activity';
 import { getStore } from '@/lib/store';
+import { ApprovalItem, type ApprovalView } from '@/components/views/approvals';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,13 +44,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   let wa: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getWaLog']>> = [];
   try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
   const waToday = wa.filter(e => e.d === today), waSent = waToday.filter(e => e.answer === 'sent').length;
+  // Approvals: accountants' changes to owners' charges. Admins see what waits for them; accountants their own requests.
+  const admin = staff.role === 'admin';
+  const apv: ApprovalView[] = states.flatMap(s => use(s, () => s.approvals.filter(a => admin || a.byId === staff.id)
+    .map(a => { const o = ownerById(a.ownerId); return { a, apt: o?.apt || '', owner: o?.name || '', pname: s.proj.name }; })));
+  const apvWait = apv.filter(v => v.a.status === 'pending').sort((x, y) => (x.a.d + x.a.t).localeCompare(y.a.d + y.a.t));
+  const apvMine = admin ? [] : [...apvWait, ...apv.filter(v => v.a.status !== 'pending' && (v.a.decidedD || '') >= addDays(today, -13))
+    .sort((x, y) => ((y.a.decidedD || '') + y.a.decidedT).localeCompare((x.a.decidedD || '') + x.a.decidedT))].slice(0, 5);
   let modal = null;
   if (sp.doc && sp.dp) { const s = states.find(x => x.project === sp.dp); if (s) modal = use(s, () => DocModal({ doc: sp.doc, flash: sp.flash })); }
 
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Dashboard</div></div><div className="crumb-path">Dashboard</div></div>
     <section className="hero"><div>
-      <div className="hero-chips"><span className="hchip"><span className="live"></span>Maintenance live in {live.length} of {projs.length} projects</span></div>
+      <div className="hero-chips"><span className="hchip"><span className="live"></span>Maintenance live in {live.length} of {projs.length} projects</span>{admin && apvWait.length ? <Go href="/approvals" className="hchip apv-chip">{apvWait.length} change{apvWait.length === 1 ? '' : 's'} waiting for your approval</Go> : null}</div>
       <h2>Welcome back, <span>{staff.name || roleName(staff)}</span></h2>
       <p>Across {live.length} project{live.length === 1 ? '' : 's'}, <b>{rs(tot('outstanding'))}</b> is still to collect from {owing} apartment{owing === 1 ? '' : 's'}{arrears ? <>, of which <b>{rs(arrears)}</b> is old arrears from before the system</> : null}. {target ? <>{monName}&apos;s target is <b>{rs(target)}</b> and {pct}% of it is in.</> : starts ? <>Billing starts on <b>{fd(starts)}</b>.</> : null} {y26 ? <>For 2026, <b>{rs(y26.paid)}</b> of <b>{rs(y26.due)}</b> owed (with arrears) has been paid ({y26.due ? Math.round(100 * y26.paid / y26.due) : 0}%). </> : null}{todo ? `${todo} thing${todo > 1 ? 's' : ''} need${todo > 1 ? '' : 's'} you today.` : 'Nothing needs you today.'}</p>
       <div className="hero-stats">
@@ -63,6 +71,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <div className="hero-date">{dowl(today)}, {fd(today)}</div>
       </div>
     </section>
+    {admin && apvWait.length ? <div className="card apv-card"><div className="card-row"><h3>Waiting for your approval <small>{apvWait.length} change{apvWait.length === 1 ? '' : 's'} an accountant asked for</small></h3><Go href="/approvals" className="btn sm">See all</Go></div>
+      <p className="cell-sub" style={{ margin: '0 0 12px' }}>These changes to what owners are charged apply only when you approve them.</p>
+      <div className="apv-list">{apvWait.slice(0, 5).map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin meId={staff.id} back="/" />)}</div>
+      {apvWait.length > 5 ? <div style={{ marginTop: 10 }}><Go href="/approvals" className="btn sm">{apvWait.length - 5} more waiting</Go></div> : null}</div> : null}
+    {!admin && apvMine.length ? <div className="card apv-card"><div className="card-row"><h3>Your change requests <small>{apvWait.length ? `${apvWait.length} waiting for an admin` : 'decided in the last 14 days'}</small></h3><Go href="/approvals" className="btn sm">See all</Go></div>
+      <div className="apv-list">{apvMine.map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin={false} meId={staff.id} back="/" />)}</div></div> : null}
     <div className="sec-row"><h3 className="sec-h">Maintenance by project</h3><span className="muted">{fm(mon)}</span></div>
     <div className="pgrid">{st.map(x => (
       <div className="pcard" key={x.p.id}>

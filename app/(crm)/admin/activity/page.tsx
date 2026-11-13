@@ -6,7 +6,7 @@ import { GoSelect, Go } from '@/components/client';
 import { ActivityList, initialsOf, lastSeen, roleTag } from '@/components/views/activity';
 
 export const dynamic = 'force-dynamic';
-const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook', 'link'], msg: ['message', 'whatsapp', 'bill'], fine: ['fine', 'flag', 'alert'], change: ['admin', 'job'], signin: ['signin', 'signout'] };
+const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook', 'link'], msg: ['message', 'whatsapp', 'bill'], fine: ['fine', 'flag', 'alert'], change: ['admin', 'job', 'approval'], signin: ['signin', 'signout'] };
 
 export default async function StaffActivity({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   await requireAdmin();

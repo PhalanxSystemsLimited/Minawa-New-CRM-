@@ -16,11 +16,12 @@ export const TABLES = {
   clearances: ['no', 'ownerId', 'project', 'd', 'by'],
   rates: ['id', 'project', 'type', 'from', 'amount'],
   charges: ['id', 'ownerId', 'project', 'period', 'kind', 'amount', 'units', 'note', 'by', 'd', 'billId'],
-  notices: ['id', 'project', 'd', 't', 'kind', 'title', 'text', 'audience', 'count', 'failed', 'by']
+  notices: ['id', 'project', 'd', 't', 'kind', 'title', 'text', 'audience', 'count', 'failed', 'by'],
+  approvals: ['id', 'project', 'ownerId', 'kind', 'change', 'summary', 'before', 'note', 'byId', 'byName', 'd', 't', 'status', 'decidedById', 'decidedByName', 'decidedD', 'decidedT', 'reply']
 } as const;
 export type TableName = keyof typeof TABLES;
-export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', links: 'id', messages: 'id', payments: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id' };
-export const STATE_TABLES: TableName[] = ['owners', 'bills', 'entries', 'links', 'messages', 'payments', 'proofs', 'alerts', 'clearances', 'rates', 'charges', 'notices'];
+export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', links: 'id', messages: 'id', payments: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id', approvals: 'id' };
+export const STATE_TABLES: TableName[] = ['owners', 'bills', 'entries', 'links', 'messages', 'payments', 'proofs', 'alerts', 'clearances', 'rates', 'charges', 'notices', 'approvals'];
 
 export const snake = (s: string) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 export const camel = (s: string) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());

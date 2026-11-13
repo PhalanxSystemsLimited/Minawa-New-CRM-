@@ -7,7 +7,7 @@ import { Go, GlobalSearch } from './client';
 
 export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number }
 
-export function Sidebar({ projects, admin }: { projects: NavProject[]; admin: boolean }) {
+export function Sidebar({ projects, admin, approvals = 0 }: { projects: NavProject[]; admin: boolean; approvals?: number }) {
   const path = usePathname();
   const home = path === '/';
   const pid = path.startsWith('/p/') ? path.split('/')[2] : null;
@@ -29,6 +29,7 @@ export function Sidebar({ projects, admin }: { projects: NavProject[]; admin: bo
         <div className="side-h">System</div>
         <Go href="/messages" className="side-i" current={path.startsWith('/messages')}><Ic n="msg" /><span className="side-l">WhatsApp messages</span></Go>
         <Go href="/whatsapp" className="side-i" current={path.startsWith('/whatsapp')}><Ic n="phone" /><span className="side-l">WhatsApp log</span></Go>
+        <Go href="/approvals" className="side-i" current={path.startsWith('/approvals')}><Ic n="check" /><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
         <Go href="/log" className="side-i" current={path.startsWith('/log')}><Ic n="list" /><span className="side-l">Activity log</span></Go>
         {admin ? <Go href="/admin/activity" className="side-i" current={path.startsWith('/admin/activity')}><Ic n="users" /><span className="side-l">Staff activity</span></Go> : null}
         {admin ? <Go href="/admin" className="side-i" current={path === '/admin'}><Ic n="shield" /><span className="side-l">Staff & connections</span></Go> : null}

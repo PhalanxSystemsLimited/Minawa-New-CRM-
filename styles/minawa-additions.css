@@ -233,3 +233,26 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .k.abadge.t-in { color: #fff; background: var(--info); border-color: var(--info) }
 .abadges { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-bottom: 2px }
 .abadges .k.abadge { margin: 0 }
+
+/* ---------- Approvals: accountants' changes to owners' charges, waiting for an admin ---------- */
+.apv-list { display: grid; gap: 10px }
+.apv { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
+.apv.apv-pending { border-left: 4px solid var(--warn); background: color-mix(in srgb, var(--warn-soft) 35%, var(--surface)) }
+.apv.apv-approved { border-left: 4px solid var(--good) }
+.apv.apv-rejected { border-left: 4px solid var(--bad) }
+.apv.apv-withdrawn { border-left: 4px solid var(--line); opacity: .85 }
+.apv-main { min-width: 0; flex: 1; display: grid; gap: 4px }
+.apv-top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 2px }
+.apv-who { margin-left: 4px }
+.apv-sum { font-weight: 700; font-size: 14.5px }
+.apv-now { font-size: 13px }
+.apv-note, .apv-reply { font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); justify-self: start }
+.apv-act { display: grid; gap: 8px; width: 250px; flex: none }
+.apv-act input[type="text"] { width: 100%; font-size: 13px }
+.apv-btns { display: flex; gap: 8px; justify-content: flex-end }
+.apv-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+.hchip.apv-chip { text-decoration: none }
+@media (max-width: 760px) {
+  .apv { flex-direction: column }
+  .apv-act { width: 100% }
+}

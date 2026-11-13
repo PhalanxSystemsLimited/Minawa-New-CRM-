@@ -10,7 +10,7 @@ import { buildSample, SAMPLE_START } from '../seed';
 interface DB {
   projects: Project[]; templates: Record<string, Template>; settings: Record<string, ProjectSettings>; counters: Record<string, number>;
   log: LogEntry[]; staff: Staff[]; company?: Company; walog?: WaLog[];
-  owners: object[]; bills: object[]; entries: object[]; links: object[]; messages: object[]; payments: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; rates: Rate[];
+  owners: object[]; bills: object[]; entries: object[]; links: object[]; messages: object[]; payments: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
 }
 const FILE = path.join(process.cwd(), 'data', 'local-db.json');
 const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unknown> };
@@ -18,12 +18,13 @@ const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unk
 function empty(): DB {
   return { projects: PROJECTS.map(p => ({ ...p })), templates: JSON.parse(JSON.stringify(TEMPLATES)), settings: {}, counters: {}, log: [],
     staff: [{ id: 'local-admin', email: 'admin@minawa.local', name: 'Admin', role: 'admin', active: true }, { id: 'local-accountant', email: 'accountant@minawa.local', name: 'Accountant', role: 'accountant', active: true }],
-    owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], rates: [] };
+    owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], rates: [] };
 }
 function db(): DB {
   if (g.__minawaDb) return g.__minawaDb;
   if (fs.existsSync(FILE)) g.__minawaDb = JSON.parse(fs.readFileSync(FILE, 'utf8')) as DB;
   else { g.__minawaDb = process.env.LOCAL_SAMPLE === 'off' ? empty() : sampleDb(); flush(); }
+  g.__minawaDb.approvals = g.__minawaDb.approvals || [];
   return g.__minawaDb;
 }
 /** The demo's sample (three projects, two months of history) as a fresh local database. */
@@ -61,7 +62,7 @@ export class LocalStore implements Store {
       rates: pick('rates') as unknown as Rate[], templates: clone(d.templates),
       settings: defaultSettings(pid, clone(d.settings[pid] || null)),
       owners: pick('owners'), bills: pick('bills'), entries: pick('entries'), links: pick('links'), messages: pick('messages'), payments: pick('payments'),
-      proofs: pick('proofs'), alerts: pick('alerts'), clearances: pick('clearances'), charges: pick('charges'), notices: pick('notices'), log: [], seq: clone(d.counters)
+      proofs: pick('proofs'), alerts: pick('alerts'), clearances: pick('clearances'), charges: pick('charges'), notices: pick('notices'), approvals: pick('approvals'), log: [], seq: clone(d.counters)
     } as unknown as State;
     s.company = { ...DEFAULT_COMPANY, ...(d.company || {}) };
     normalizeState(s);

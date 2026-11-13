@@ -7,7 +7,7 @@ import { dow, fd, t12 } from '@/lib/fmt';
 import { GoSelect } from '@/components/client';
 
 export const dynamic = 'force-dynamic';
-const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook'], link: ['link'], msg: ['bill', 'message', 'whatsapp'], fine: ['fine', 'flag', 'alert'], job: ['job', 'admin'] };
+const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook'], link: ['link'], msg: ['bill', 'message', 'whatsapp'], fine: ['fine', 'flag', 'alert'], job: ['job', 'admin', 'approval'] };
 
 export default async function Log({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   await requireStaff();
