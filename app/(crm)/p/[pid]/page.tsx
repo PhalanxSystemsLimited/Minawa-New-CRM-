@@ -8,6 +8,7 @@ import { Ic } from '@/components/icons';
 import { Go, A, GoRow } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
 import { pill, waMini, when, ownerHref } from '@/components/views/bits';
+import { HeroStatus, HeroStart, HeroStat, HeroYear } from '@/components/views/hero';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +21,11 @@ export default async function Overview({ params, searchParams }: { params: Promi
     const fees = act.reduce((s, o) => s + (o.feeDue || 0), 0), flagged = act.filter(o => o.flagged).length;
     const mon = S.today.slice(0, 7), monName = MONL[+mon.slice(5) - 1], dom = +S.today.slice(8);
     const coll = S.payments.filter(p => p.d.slice(0, 7) === mon).reduce((s, p) => s + p.amount, 0);
+    const payN = S.payments.filter(p => p.d.slice(0, 7) === mon).length;
     const tg = getTarget(mon), tgPct = tg.total ? Math.round(100 * coll / tg.total) : 0, tgLeft = Math.max(0, tg.total - coll);
-    const dimN = dim(+mon.slice(0, 4), +mon.slice(5, 7)), daysLeft = dimN - dom + 1, perDay = Math.ceil(tgLeft / Math.max(1, daysLeft));
+    const dimN = dim(+mon.slice(0, 4), +mon.slice(5, 7)), daysLeft = dimN - dom + 1;
     const pace = Math.round(100 * (dom - 1) / dimN);
-    const arrears = act.reduce((s, o) => s + (o.openingLeft || 0), 0), arrearsOwing = act.filter(o => o.openingLeft > 0).length;
+    const arrears = act.reduce((s, o) => s + (o.openingLeft || 0), 0);
     const fb = firstBillDate(), firstBill = S.today <= fb && (S.settings.lastRun || '') < fb ? fb : null;
     const co = collections(), coT = co.map(([p]) => getTarget(p).total), coMax = Math.max(1, ...co.map(x => x[1]), ...coT);
     const bw = Math.min(56, Math.floor(300 / Math.max(1, co.length)) - 14);
@@ -31,32 +33,29 @@ export default async function Overview({ params, searchParams }: { params: Promi
     const top = [...owe].sort((a, b) => (+b.flagged - +a.flagged) || balance(b) - balance(a)).slice(0, 5);
     const up = upcoming(14, 5);
     const todo = followCount(), ne = nextEvent();
-    const stat = (label: string, value: string | number, href: string, cls?: string) => <Go href={href} className="hs hs-btn"><div className="l">{label}</div><div className={`v num ${cls || ''}`}>{value}</div></Go>;
     const badge = (p: typeof recent[number]) => spInfo(p) ? <span className="sp-ok"><Ic n="check" s={12} /> Safepay</span> : <span className="recv-by"><Ic n="bank" s={12} /> {p.source === 'proof' ? 'Transfer' : 'Bank'}</span>;
     return <>
       {projHead('dashboard')}
       <section className="hero hero-ov"><div>
         <div className="hero-chips"><span className="hchip"><span className="live"></span>Auto-billing on · sending by hand</span>{pendingCount() ? <Go href={`/p/${S.project}/send`} className="hchip">{pendingCount()} to send on WhatsApp</Go> : null}{ne ? <span className="hchip">Next: {fds(ne.d)} · {ne.ev[0].text}</span> : null}</div>
         <h2>Collections · <span>{monName}</span></h2>
-        <p>{rs(outstanding)} is still to collect from {owe.length} apartment{owe.length === 1 ? '' : 's'}{fees ? `, including ${rs(fees)} in fines` : ''}{arrears ? ` (${rs(arrears)} of it is old arrears from before ${fm(S.goLive.slice(0, 7))})` : ''}. {todo ? `${todo} thing${todo > 1 ? 's' : ''} need${todo > 1 ? '' : 's'} you today.` : 'Nothing needs you today.'}</p>
-        {firstBill ? <div className="htg">
-          <div className="htg-top"><span className="l">Billing starts</span><b className="num">{fd(firstBill)}</b></div>
-          <div className="htg-sub">The first bill goes out automatically on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}. Until then, payments go to old arrears ({rs(arrears)} from {arrearsOwing} flat{arrearsOwing === 1 ? '' : 's'}).</div>
-        </div> : <div className="htg">
+        <HeroStatus todo={todo} href={`${P}/todo`} />
+        {firstBill ? <HeroStart date={firstBill} month={S.goLive.slice(0, 7)} today={S.today} extra={`goes out at ${hour12(S.settings.rules.sendHour)}`} />
+          : <div className="htg">
           <div className="htg-top"><span className="l">{monName} target</span><b className="num">{rs(tg.total)}</b><Go href={`${P}?m=target`} className="htg-link">Breakdown</Go></div>
           <div className="htg-bar" role="img" aria-label={`${tgPct}% of the target collected`}><span style={{ width: `${Math.min(100, tgPct)}%` }}></span><i style={{ left: `${pace}%` }} title="Where collections would be if paid evenly through the month"></i></div>
-          <div className="htg-sub">{rs(coll)} collected, {tgPct}%{tgLeft ? ` · ${rs(tgLeft)} to go · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left · ${rs(perDay)} a day` : ' · target met'}</div>
+          <div className="htg-sub"><b>{tgPct}%</b> collected{tgLeft ? <> · {rs(tgLeft)} to go · {daysLeft} day{daysLeft === 1 ? '' : 's'} left</> : ' · target met'}</div>
         </div>}
         <div className="hero-stats">
-          {stat(`Collected in ${monName}`, rs(coll), `${P}/payments?per=month`, 'neon')}
-          {stat('Outstanding', rs(outstanding), `${P}/apartments?f=owing`)}
-          {stat('Apartments owing', owe.length, `${P}/apartments?f=owing`)}
-          {stat('Flagged', flagged, `${P}/apartments?f=flagged`)}
+          <HeroStat label={`Collected in ${monName}`} value={rs(coll)} sub={`${payN} payment${payN === 1 ? '' : 's'}`} href={`${P}/payments?per=month`} neon />
+          <HeroStat label="Still to collect" value={rs(outstanding)} sub={arrears && arrears >= outstanding ? 'all old arrears' : arrears ? `${rs(arrears)} old arrears` : fees ? `${rs(fees)} in fines` : undefined} href={`${P}/apartments?f=owing`} />
+          <HeroStat label="Apartments owing" value={owe.length} sub={`of ${act.length}`} href={`${P}/apartments?f=owing`} />
+          <HeroStat label="Flagged" value={flagged} sub="for disconnection" href={`${P}/apartments?f=flagged`} />
         </div>
-        {(() => { const y = sheetStats().sheet; return y ? <p className="hero-y26">2026, office sheet as on {fd(y.asOf!)}: <b>{rs(y.paid)}</b> paid of <b>{rs(y.due)}</b> owed for the year with arrears ({y.pct}%){y.since ? `, ${rs(y.since)} of it recorded in the CRM since` : ''}.</p> : null; })()}
+        {(() => { const y = sheetStats().sheet; return y ? <HeroYear paid={y.paid} due={y.due} asOf={y.asOf} /> : null; })()}
         </div>
         <div className="hero-side">
-          <div className="hero-btns"><a className="btn ghost-d" href={`/api/export/payments?project=${pid}&per=all`}><Ic n="download" s={16} /> Export</a>{todo ? <Go href={`${P}/todo`} className="btn neon"><Ic n="check" s={16} /> {todo} to do</Go> : null}</div>
+          <div className="hero-btns"><a className="btn ghost-d" href={`/api/export/payments?project=${pid}&per=all`}><Ic n="download" s={16} /> Export</a></div>
           <div className="hero-date">{dowl(S.today)}, {fd(S.today)}</div>
         </div>
       </section>

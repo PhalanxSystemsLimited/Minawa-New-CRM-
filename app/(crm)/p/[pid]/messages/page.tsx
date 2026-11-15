@@ -1,5 +1,6 @@
 // Every WhatsApp message for this project (all sent by hand from Send on WhatsApp): what is still to send, what was
 // sent and what couldn't go out.
+import { PhoneMore } from '@/components/Mobile';
 import { cur, ownerById } from '@/lib/engine';
 import { fd, diff, t12 } from '@/lib/fmt';
 import type { Message } from '@/lib/types';
@@ -48,6 +49,7 @@ export default async function Messages({ params, searchParams }: { params: Promi
               <td>{msgTag(m)}</td>
               <td className="r">{m.status === 'failed' || m.status === 'skipped' ? (o?.invalidPhone ? <Go href={ownerHref(o, '?m=fix')} className="btn sm">Fix number</Go> : <form action={retryMessageAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={m.id} /><Submit className="btn sm">Send again</Submit></form>) : null}</td></tr>; })}
         </tbody></table></div>}
+        {list.length > 40 ? <PhoneMore step={40} what="messages" /> : null}
       </div>
     </>;
   });

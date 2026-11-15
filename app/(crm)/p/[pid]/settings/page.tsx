@@ -37,7 +37,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <div className="apv-list">{waiting.map(a => <ApprovalItem key={a.id} v={{ a, apt: '', owner: '', pname: S.proj.name }} admin={ad} meId={S.staffId || ''} back={`/p/${pid}/settings`} />)}</div></div> : null}
       <div className="grid2">
         <div className="card"><h3>Monthly fees by apartment type <small>rate card</small></h3>
-          <form action={ratesAction}>{hid}<div className="tbl-wrap"><table><thead><tr><th>Type</th><th className="r">From {fd(curFrom)}</th><th className="r">From <input type="date" name="from" defaultValue={nextFrom} className="th-date" aria-label="New rates start on" /></th></tr></thead><tbody>
+          <form action={ratesAction}>{hid}<div className="tbl-wrap"><table className="m-keep rate-tbl"><thead><tr><th>Type</th><th className="r">From {fd(curFrom)}</th><th className="r">From <input type="date" name="from" defaultValue={nextFrom} className="th-date" aria-label="New rates start on" /></th></tr></thead><tbody>
             {types.map(ty => <tr key={ty}><td className="cell-main">{ty}</td><td className="r num">{rs(rateFor(ty, S.today))}</td><td className="r"><input className="fee-in num" type="number" min="0" step="100" name={`r:${ty}`} defaultValue={rateFor(ty, nextFrom)} aria-label={`${ty} rate from ${fd(nextFrom)}`} /></td></tr>)}
           </tbody></table></div>
           {why('why-rates')}

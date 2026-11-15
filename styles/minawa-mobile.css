@@ -1,0 +1,215 @@
+/* ================= Phones and tablets (Nov 2026) =================
+   Laptops and PCs (1024px and wider) are NOT changed by this file: apart from hiding the phone-only pieces below
+   (the bottom bar, the logo button, the menu's sign-out block and the "Show more" button), every rule sits inside a
+   max-width media query. Same colours, fonts and frosted panels as the desktop design. */
+
+/* phone-only pieces: hidden everywhere unless a media query below shows them */
+.mbar,.m-logo,.side-me,.m-more{display:none}
+
+/* ---------- tablets and phones (up to 1023px): comfortable touch targets ---------- */
+@media (max-width:1023px){
+  .btn{min-height:40px}
+  .chipbtn{min-height:34px}
+  .tbl-wrap{-webkit-overflow-scrolling:touch}
+}
+
+/* ---------- tablets with the slide-out menu (768–900px): the menu has its sign-out too ---------- */
+@media (max-width:900px){
+  .side{overflow-y:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .side-me{display:flex;align-items:center;gap:10px;margin:12px 0 6px;padding:12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+  .side-me .me-av{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--rust);color:#fff;font-weight:800;font-size:13px;flex:none}
+  .side-me-t{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25}
+  .side-me-t b{color:#fff;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .side-me-t span{color:#94A3B8;font-size:12px}
+  .side-me .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.22);min-height:36px}
+}
+
+/* ================= phones (up to 767px) ================= */
+@media (max-width:767px){
+  html,body{-webkit-text-size-adjust:100%}
+  body{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+
+  /* top bar: logo · search · + · bell, stays at the top while scrolling */
+  .top{position:sticky;top:0}
+  .top-in{min-height:0;padding:10px 14px calc(10px) 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));gap:8px}
+  .top-in [data-a="side-open"]{display:none}
+  .m-logo{display:grid;place-items:center;width:42px;height:42px;flex:none;border:0;padding:0;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+  .m-logo img{width:100%;height:100%;object-fit:cover;display:block}
+  .gsearch{flex:1 1 auto;height:42px;padding:0 12px}
+  .gsearch{position:relative}
+  .gsearch input{font-size:16px}
+  .gsearch input::placeholder{color:transparent}
+  .gsearch::after{content:"Search";position:absolute;left:40px;top:50%;transform:translateY(-50%);color:#94A3B8;font-size:16px;pointer-events:none}
+  .gsearch:has(input:not(:placeholder-shown))::after{display:none}
+  .qa summary.btn{width:42px;height:42px;min-height:42px;padding:0;justify-content:center}
+  .icon-btn{width:42px;height:42px}
+  .menu-r{max-width:calc(100vw - 28px)}
+
+  /* bottom bar: Home · Apartments · To do · Send · More */
+  .mbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(20,21,23,.96);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border-top:1px solid rgba(255,255,255,.08);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 24px rgba(16,24,40,.12)}
+  .mbar-i{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:54px;border:0;background:none;color:#9AA3B2;font:inherit;font-size:11px;font-weight:600;border-radius:12px;padding:4px 2px;-webkit-tap-highlight-color:transparent;transition:color .2s,background-color .2s}
+  .mbar-i[aria-current="page"]{color:#fff;background:rgba(255,255,255,.07)}
+  .mbar-i[aria-current="page"] .mbar-ic{color:var(--rust)}
+  .mbar-i:active{transform:scale(.95)}
+  .mbar-ic{position:relative;display:grid;place-items:center;height:24px}
+  .mbar-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .mbar-b{position:absolute;top:-6px;left:calc(100% - 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--rust);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;line-height:1;border:2px solid #141517}
+
+  /* the slide-out menu (opened by More) */
+  .side{width:min(86vw,320px);z-index:55}
+  body.side-open .side-scrim{z-index:50}
+  .side-me{margin-top:auto}
+  .side-foot{margin-top:0}
+
+  /* page heads: the title and a short line; the path is replaced by the bottom bar */
+  .layout.wrap{padding-left:14px;padding-right:14px}
+  main{gap:16px}
+  .crumb-path{display:none}
+  .proj-title{font-size:23px;line-height:1.15}
+  .crumbs h1{font-size:12px}
+  main > p.muted,main > .muted:first-child{font-size:13.5px}
+
+  /* project tabs: one swipeable row of pills, the current one kept in view */
+  .proj-tabs{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;padding:4px;border-radius:14px;margin-left:-2px;margin-right:-2px;-webkit-mask-image:linear-gradient(to right,#000 88%,transparent);mask-image:linear-gradient(to right,#000 88%,transparent)}
+  .proj-tabs button{scroll-snap-align:center;padding:9px 13px;font-size:13.5px;min-height:40px;flex:none}
+  .ptabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ptabs::-webkit-scrollbar{display:none}
+  .ptabs button{flex:none;white-space:nowrap}
+
+  /* the dark summary panel: compact */
+  .hero{padding:18px;border-radius:20px;gap:14px}
+  .hero h2{font-size:22px;line-height:1.2}
+  .hero p{font-size:14px;line-height:1.55}
+  .hero-chips{gap:6px}
+  .hchip{font-size:12px;padding:5px 10px}
+  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .hs{padding:12px;margin:0;border-radius:14px}
+  .hs .l{font-size:10px;letter-spacing:.08em}
+  .hs .v{font-size:18px}
+  .hero-date{display:none}
+  .hero-side{margin-top:4px}
+  .hero-btns{width:100%}
+  .hero-btns .btn{flex:1;justify-content:center}
+  .htg{padding:12px 14px}
+  .hstatus{font-size:13px;padding:8px 12px}
+  .hstart{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"ic t" "ic tag" "s s";row-gap:6px;padding:14px}
+  .hstart-t{flex-direction:column;gap:2px}
+  .hstart-t .v{font-size:20px}
+  .hstart-tag{justify-self:start}
+  .hstart-s{margin-top:4px}
+  .hs .s{font-size:12px}
+  .hyear-s{flex-direction:column;gap:2px}
+
+  /* cards and grids */
+  .card,.stat{padding:16px;border-radius:16px}
+  .card h3{font-size:16px}
+  .card-row{flex-wrap:wrap;gap:8px}
+  .kpis,.kpis.three{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .pgrid{gap:14px}
+  .card-row h3 small{display:block;margin:3px 0 0;font-size:12.5px}
+  .list .li{flex-wrap:wrap;row-gap:8px}
+  .list .li .t{flex:1 1 150px;min-width:0}
+  .list .li .amt{flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:6px 8px;margin-left:auto}
+  .wa-mini{width:36px !important;height:36px !important}
+  .desk{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .desk > div{border-right:0 !important}
+
+  /* forms: big enough to tap, and 16px text so iPhones don't zoom in */
+  input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px !important}
+  input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select{min-height:44px}
+  .btn{min-height:44px}
+  .btn.sm{min-height:38px}
+  .chipbtn{min-height:36px;padding:6px 13px}
+  .toolbar{gap:8px}
+  .toolbar > input,.toolbar > .search,.toolbar > label:has(input[type=search]),.toolbar > select{flex:1 1 100%;width:100%;max-width:none}
+  .rule{grid-template-columns:1fr;gap:6px}
+  .rule-in{flex-wrap:wrap}
+  .m-actions{gap:10px}
+  .m-actions .btn{flex:1 1 auto;justify-content:center}
+  .m-actions > .muted,.m-actions > span.muted{flex-basis:100%;margin-right:0 !important}
+
+  /* Settings › Monthly fees stays a small table */
+  .rate-tbl{min-width:0 !important;width:100%;table-layout:fixed}
+  .rate-tbl th,.rate-tbl td{padding-left:6px !important;padding-right:6px !important;white-space:normal !important}
+  .rate-tbl th:nth-child(1),.rate-tbl td:nth-child(1){width:30%}
+  .rate-tbl th:nth-child(2),.rate-tbl td:nth-child(2){width:28%}
+  .rate-tbl th:nth-child(3){text-align:left !important}
+  .rate-tbl .fee-in,.rate-tbl .th-date{width:100%;min-width:0;padding-left:8px;padding-right:8px}
+  .rate-tbl .th-date{margin-top:4px;display:block}
+
+  /* tables become cards: one card per row, each value with its column name */
+  .tbl-wrap:has(> [data-m="stack"]){margin:0;padding:0;overflow:visible}
+  [data-m="stack"],[data-m="stack"] tbody,[data-m="stack"] tfoot{display:block;width:100%;min-width:0 !important}
+  [data-m="stack"] thead{display:none}
+  [data-m="stack"] tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 14px;padding:14px;margin:0 0 10px;border:1px solid var(--cream-line,#E6E4DD);border-radius:14px;background:rgba(255,255,255,.75)}
+  [data-m="stack"] td{display:block;padding:0 !important;border:0 !important;text-align:left !important;min-width:0;background:none !important;white-space:normal !important}
+  [data-m="stack"] td[data-l]::before{content:attr(data-l);display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--label,#526070);margin-bottom:2px}
+  [data-m="stack"] td:first-child{grid-column:1 / -1;font-size:15px}
+  [data-m="stack"] td:first-child::before{display:none}
+  [data-m="stack"] td[data-m="empty"]{display:none}
+  [data-m="stack"] td input,[data-m="stack"] td select{width:100%}
+  [data-m="stack"] td *{max-width:100%}
+  [data-m="stack"] td span,[data-m="stack"] .sp-ok,[data-m="stack"] .recv-by{white-space:normal !important;flex-wrap:wrap}
+  [data-m="stack"] td .btn,[data-m="stack"] td form{width:100%}
+  [data-m="stack"] tr[data-m="span"]{display:block;padding:10px 4px 6px;border:0;background:none;margin:6px 0 4px;font-weight:700}
+  [data-m="stack"] tr[data-m="span"] td::before{display:none}
+  [data-m="stack"] tr[data-m="span"] td{font-size:13px}
+  [data-m="stack"] tfoot tr{background:transparent;border-style:dashed}
+  [data-m="stack"] tr.click{cursor:pointer}
+  [data-m="stack"] tr.click:active{background:#fff;transform:scale(.99)}
+  /* Apartments: apartment and status on top, owner and balance below */
+  #ownersTable [data-m="stack"] tr{grid-template-columns:minmax(0,1fr) auto}
+  #ownersTable [data-m="stack"] td:nth-child(1){grid-column:1;grid-row:1}
+  #ownersTable [data-m="stack"] td:nth-child(4){grid-column:2;grid-row:1;align-self:start}
+  #ownersTable [data-m="stack"] td:nth-child(4)::before,#ownersTable [data-m="stack"] td:nth-child(2)::before{display:none}
+  #ownersTable [data-m="stack"] td:nth-child(2){grid-column:1;grid-row:2}
+  #ownersTable [data-m="stack"] td:nth-child(3){grid-column:2;grid-row:2;text-align:right !important;font-size:15px;font-weight:700}
+  #ownersTable [data-m="stack"] td:nth-child(3)::before{text-align:right}
+  /* Payments: the arrow on the right of the card; details open under it */
+  [data-m="stack"].pay-table tr.pay-row{position:relative;padding-right:46px}
+  [data-m="stack"].pay-table .pay-x-cell{position:absolute;top:10px;right:8px;display:block}
+  [data-m="stack"].pay-table tr.pay-row td:nth-child(2){grid-column:1 / -1}
+  [data-m="stack"].pay-table .pay-x{font-size:16px;padding:6px 8px}
+  [data-m="stack"].pay-table tr.pay-row.open{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0}
+  [data-m="stack"].pay-table tr.pay-detail{display:block;margin:-1px 0 10px;border-top:0;border-top-left-radius:0;border-top-right-radius:0;background:var(--surface-2,#F6F5F1)}
+  [data-m="stack"].pay-table tr.pay-detail td::before{display:none}
+  [data-m="stack"].pay-table tr.pay-detail td:first-child{display:none}
+  .pd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pd-act .btn{flex:1 1 auto}
+
+  /* forms and pop-ups slide up from the bottom, with the buttons at the bottom within thumb reach */
+  #modal,.wa-ask{align-items:end;padding:0;place-items:end stretch}
+  #modal .m-card,.wa-ask .m-card{width:100% !important;max-width:none !important;max-height:92vh;max-height:92dvh;border-radius:22px 22px 0 0;animation:mSheet .28s var(--ease,ease-out) both;padding-bottom:env(safe-area-inset-bottom,0px)}
+  #modal .m-card::before,.wa-ask .m-card::before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:#D5D3CC;margin:8px auto 0}
+  .m-head{padding:12px 18px}
+  .m-body{padding:16px 18px 18px}
+  .m-body > .m-actions:last-child,.m-body form > .m-actions:last-child{position:sticky;bottom:0;background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 14px);padding-top:14px;margin-top:4px}
+  .wa-ask .m-actions{flex-direction:column-reverse;align-items:stretch}
+  .wa-ask .m-actions .btn{width:100%;min-height:50px;font-size:15px}
+  .wa-ask .m-actions .link-btn{margin:4px auto 0 !important;padding:10px}
+
+  /* Send on WhatsApp: one owner at a time, the main button full width */
+  .sc-acts{flex-wrap:wrap}
+  .sc-acts .btn{flex:1 1 100%;min-height:50px;font-size:15px}
+  .sc-bar{flex-wrap:wrap}
+  .sc-bar .search{flex:1 1 100%}
+
+  /* lists that are long on a phone: "Show more" */
+  [data-m="hide"]{display:none !important}
+  .m-more{display:flex;justify-content:center;padding:14px 0 4px}
+  .m-more .btn{width:100%}
+  .m-more:empty{display:none}
+
+  /* toasts sit above the bottom bar; the footer line is clear of it */
+  #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));width:calc(100% - 28px)}
+  .toast{text-align:center}
+  .foot-note{padding-bottom:12px;font-size:11px}
+  .db-hint,.next-hint{display:none}
+}
+
+@media (max-width:767px) and (prefers-reduced-motion:reduce){
+  #modal .m-card,.wa-ask .m-card{animation:none}
+  .mbar-i{transition:none}
+}
+@keyframes mSheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@media print{.mbar,.m-more{display:none !important}}

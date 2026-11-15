@@ -433,3 +433,48 @@ td{font-size:13.5px;color:#1E293B}
 .pc-sheet .stat-rows small{font-size:11.5px;color:#475569;font-weight:600}
 .pcard:hover{transform:translateY(-2px)}
 .act-av.sys{background:#E2E8F0;color:#334155;border:1px solid #CBD5E1}
+
+/* ================= Summary panel: numbers and short labels instead of sentences (Nov 2026) ================= */
+/* status: "2 things need you" (opens To do) or "Nothing needs you today" */
+.hstatus{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 14px;border-radius:9999px;font-family:var(--f-ui);font-size:13.5px;font-weight:600;line-height:1.2;border:1px solid transparent;text-decoration:none}
+.hstatus.ok{background:rgba(52,199,123,.12);border-color:rgba(52,199,123,.28);color:#BFF0D3}
+.hstatus.warn{background:rgba(217,93,57,.16);border-color:rgba(217,93,57,.4);color:#FFD9CC;cursor:pointer}
+.hstatus.warn b{color:#fff;font-weight:800}
+.hstatus.warn:hover{background:rgba(217,93,57,.26)}
+.hstatus .ico:last-child{transform:rotate(-90deg);opacity:.8}
+/* before the first bill: date, countdown, what it is for */
+.hstart{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"ic t tag" "ic s s";align-items:center;column-gap:14px;row-gap:2px;margin-top:18px;max-width:560px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.hstart-ic{grid-area:ic;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(217,93,57,.16);color:var(--rust)}
+.hstart-t{grid-area:t;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.hstart-t .l{font-family:var(--f-ui);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#AAB4C3}
+.hstart-t .v{font-family:var(--f-head);font-size:22px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.hstart-tag{grid-area:tag;padding:6px 12px;border-radius:9999px;background:var(--rust);color:#fff;font-size:12.5px;font-weight:600;white-space:nowrap}
+.hstart-tag b{font-weight:800}
+.hstart-s{grid-area:s;font-size:13px;color:#AAB4C3}
+/* the numbers: label, value, one short note */
+.hs .s{margin-top:4px;font-size:12.5px;color:#AAB4C3;line-height:1.35}
+.hs:has(.v.neon) .s{color:rgba(255,217,204,.85)}
+.hero .hs-btn{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px 18px;margin:0;text-align:left}
+.hero .hs-btn:hover{border-color:rgba(217,93,57,.45);background:rgba(255,255,255,.05)}
+.hero .hs-btn:hover .v{text-decoration:none;color:#fff}
+.hero .hs-btn:hover .v.neon{color:var(--rust)}
+.htg-sub b{color:#fff}
+/* 2026 (the office's sheet): paid of owed, as a bar */
+.hyear{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.1)}
+.hyear-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.hyear-top .l{font-family:var(--f-ui);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#AAB4C3}
+.hyear-top .l small{font-size:11px;letter-spacing:0;text-transform:none;font-weight:500;color:#8A94A6}
+.hyear-top b{font-family:var(--f-head);font-size:20px;color:#fff}
+.hyear-bar{height:8px;border-radius:9999px;background:rgba(255,255,255,.1);margin:8px 0;overflow:hidden}
+.hyear-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#34C77B,#7EE2A8);min-width:4px}
+.hyear-s{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:#AAB4C3}
+.hyear-s b{color:#fff;font-weight:600}
+
+/* ================= Billing desk and other small tiles: text sits inside the tile with even padding ================= */
+.desk{gap:12px;border-top:0;margin-top:4px}
+.desk > div{padding:14px 16px;margin-right:0;border-right:0;border:1px solid var(--cream-line);display:flex;flex-direction:column;gap:2px;min-width:0}
+.desk > div:last-child{margin-right:0}
+.desk .v{margin:4px 0 2px;line-height:1.1}
+.desk .cell-sub{line-height:1.4}
+.sheet-box > div,.tg-nums div,.ht{padding:14px 16px;border:1px solid var(--cream-line)}
+.card-row h3 small{font-weight:500}

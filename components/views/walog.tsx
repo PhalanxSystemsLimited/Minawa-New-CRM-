@@ -4,6 +4,7 @@ import { requireStaff } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
 import { GoSelect, Go, LiveSearch } from '@/components/client';
+import { PhoneMore } from '@/components/Mobile';
 import { initialsOf, WaAnswerBadges } from '@/components/views/activity';
 import { fd, rs, todayPKT, addDays, dow, t12 } from '@/lib/fmt';
 
@@ -53,6 +54,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
               <td><WaAnswerBadges sent={e.answer === 'sent'} test={e.test} /><div className="cell-sub">{e.via === 'prompt' ? 'Answered on return' : 'Marked by hand'}</div></td>
             </tr>]; })}
         </tbody></table></div>}
+      {list.length > 40 ? <PhoneMore step={40} what="rows" /> : null}
     </div>
   </>;
 }

@@ -7,7 +7,7 @@ import { Go, GlobalSearch } from './client';
 
 export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number; pays?: number }
 
-export function Sidebar({ projects, admin, approvals = 0 }: { projects: NavProject[]; admin: boolean; approvals?: number }) {
+export function Sidebar({ projects, admin, approvals = 0, me }: { projects: NavProject[]; admin: boolean; approvals?: number; me?: { name: string; role: string; signOut: () => Promise<void> } }) {
   const path = usePathname();
   const home = path === '/';
   const pid = path.startsWith('/p/') ? path.split('/')[2] : null;
@@ -32,6 +32,7 @@ export function Sidebar({ projects, admin, approvals = 0 }: { projects: NavProje
         <Go href="/log" className="side-i" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><Ic n="list" /><span className="side-l">Activity</span></Go>
         {admin ? <Go href="/admin" className="side-i" current={path === '/admin'}><Ic n="shield" /><span className="side-l">Staff & connections</span></Go> : null}
       </nav>
+      {me ? <div className="side-me"><span className="me-av">{me.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><div className="side-me-t"><b>{me.name}</b><span>{me.role}</span></div><form action={me.signOut}><button type="submit" className="btn sm">Sign out</button></form></div> : null}
       <div className="side-foot">Phase 1 · Maintenance dues</div>
     </aside>
   );
@@ -44,6 +45,7 @@ export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid,
   return (
     <div className="top-in" id="topbar">
       <button className="icon-btn only-m" data-a="side-open" aria-label="Open menu"><Ic n="menu" /></button>
+      <Go href="/" className="m-logo" ariaLabel="Dashboard"><img src="/assets/minawa-mark.png" alt="" /></Go>
       <label className="gsearch"><Ic n="search" s={16} /><GlobalSearch key={onApts ? 'a' : path} base={`/p/${pid}/apartments`} defaultValue={onApts ? sp.get('q') || '' : ''} /></label>
       <span className="top-sp"></span>
       <details className="more qa"><summary className="btn primary"><Ic n="plus" s={16} /><span className="lbl">Quick actions</span></summary><div className="menu menu-r">

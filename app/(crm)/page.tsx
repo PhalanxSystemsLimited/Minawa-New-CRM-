@@ -1,8 +1,9 @@
 // The company dashboard: every project at once (the demo's viewHome).
+import { HeroStatus, HeroStart, HeroStat, HeroYear } from '@/components/views/hero';
 import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
 import { use, projStats, sortedPayments, ownerById, upcoming } from '@/lib/engine';
-import { MONL, fm, fd, dow, dowl, rs, todayPKT, addDays } from '@/lib/fmt';
+import { MONL, fm, fd, dow, dowl, rs, todayPKT, addDays, diff } from '@/lib/fmt';
 import { Ic } from '@/components/icons';
 import { Go, A } from '@/components/client';
 import { viaHtml, when, ownerHref } from '@/components/views/bits';
@@ -61,15 +62,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <section className="hero"><div>
       <div className="hero-chips"><span className="hchip"><span className="live"></span>Maintenance live in {live.length} of {projs.length} projects</span>{admin && apvWait.length ? <Go href="/approvals" className="hchip apv-chip">{apvWait.length} change{apvWait.length === 1 ? '' : 's'} waiting for your approval</Go> : null}</div>
       <h2>Welcome back, <span>{staff.name || roleName(staff)}</span></h2>
-      <p>Across {live.length} project{live.length === 1 ? '' : 's'}, <b>{rs(tot('outstanding'))}</b> is still to collect from {owing} apartment{owing === 1 ? '' : 's'}{arrears ? <>, of which <b>{rs(arrears)}</b> is old arrears from before the system</> : null}. {target ? <>{monName}&apos;s target is <b>{rs(target)}</b> and {pct}% of it is in.</> : starts ? <>Billing starts on <b>{fd(starts)}</b>.</> : null} {y26 ? <>For 2026, <b>{rs(y26.paid)}</b> of <b>{rs(y26.due)}</b> owed (with arrears) has been paid ({y26.due ? Math.round(100 * y26.paid / y26.due) : 0}%). </> : null}{todo ? `${todo} thing${todo > 1 ? 's' : ''} need${todo > 1 ? '' : 's'} you today.` : 'Nothing needs you today.'}</p>
+      <HeroStatus todo={todo} href={`/p/${st.find(x => x.todo)?.p.id || live[0]?.id || ''}/todo`} />
+      {!target && starts ? <HeroStart date={starts} month={st.find(x => x.firstBill === starts)?.s.goLive.slice(0, 7) || starts.slice(0, 7)} today={today} extra={`${live.length} project${live.length === 1 ? '' : 's'}`} /> : null}
       <div className="hero-stats">
-        <div className="hs"><div className="l">Collected in {monName}</div><div className="v num">{rs(coll)}</div></div>
-        {target || !arrears ? <div className="hs"><div className="l">Of the target</div><div className="v num neon">{pct}%</div></div> : <div className="hs"><div className="l">Old arrears</div><div className="v num neon">{rs(arrears)}</div></div>}
-        {y26 ? <div className="hs"><div className="l">Paid for 2026</div><div className="v num">{rs(y26.paid)}</div></div> : <div className="hs"><div className="l">Flats billed</div><div className="v num">{tot('flats')}</div></div>}
-        <div className="hs"><div className="l">Flagged</div><div className="v num">{tot('flagged')}</div></div>
-      </div></div>
+        <HeroStat label={`Collected in ${monName}`} value={rs(coll)} sub={target ? `${pct}% of the ${rs(target)} target` : undefined} neon />
+        <HeroStat label="Still to collect" value={rs(tot('outstanding'))} sub={arrears && arrears >= tot('outstanding') ? 'all old arrears' : arrears ? `${rs(arrears)} old arrears` : undefined} />
+        <HeroStat label="Apartments owing" value={owing} sub={`of ${tot('flats')} billed`} />
+        <HeroStat label="Flagged" value={tot('flagged')} sub="for disconnection" />
+      </div>
+      {y26 ? <HeroYear paid={y26.paid} due={y26.due} asOf={sh.map(x => x.asOf || '').sort().pop() || null} /> : null}
+      </div>
       <div className="hero-side">
-        <div className="hero-btns"><a className="btn ghost-d" href="/api/export/payments?per=all"><Ic n="download" s={16} /> Export all payments</a>{todo ? <Go href={`/p/${st.find(x => x.todo)?.p.id}/todo`} className="btn neon"><Ic n="check" s={16} /> {todo} to do</Go> : null}</div>
+        <div className="hero-btns"><a className="btn ghost-d" href="/api/export/payments?per=all"><Ic n="download" s={16} /> Export all payments</a></div>
         <div className="hero-date">{dowl(today)}, {fd(today)}</div>
       </div>
     </section>
@@ -85,7 +89,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <div className="pgrid">{st.map(x => (
       <div className="pcard" key={x.p.id}>
         <div className="pc-top"><span className="stat-ic"><Ic n="building" s={20} /></span><div><div className="pc-name">{x.p.name}</div><div className="cell-sub">{x.p.kind} · {x.p.place} · {x.flats} flats billed</div></div>{x.todo ? <span className="chip-t down">{x.todo} to do</span> : <span className="chip-t up">All clear</span>}</div>
-        {x.firstBill ? <div className="pc-target"><div className="l">Billing starts</div><div className="v num">{fd(x.firstBill)}</div><div className="cell-sub">First bill, for {fm(x.s.goLive.slice(0, 7))}. {rs(x.coll)} collected in {monName} against old arrears.</div></div>
+        {x.firstBill ? <div className="pc-target"><div className="l">Billing starts</div><div className="v num">{fd(x.firstBill)}</div><div className="cell-sub">For {fm(x.s.goLive.slice(0, 7))} · {Math.max(0, diff(x.firstBill, today))} days to go</div></div>
           : <div className="pc-target"><div className="l">{monName} target</div><div className="v num">{rs(x.coll)} <span>of {rs(x.target)}</span></div><div className="tg-bar"><span style={{ width: `${Math.min(100, x.pct)}%` }}></span></div><div className="cell-sub">{x.pct}% collected</div></div>}
         <div className="stat-rows"><div><span>Outstanding</span><b>{rs(x.outstanding)}</b></div><div><span>Apartments owing</span><b>{x.owing}</b></div>{x.arrears ? <div title={`Owed from before ${fm(x.s.goLive.slice(0, 7))}, when the system started billing`}><span>Old arrears</span><b>{rs(x.arrears)}</b></div> : null}<div><span>Flagged for disconnection</span><b>{x.flagged}</b></div><div><span>Fines in it</span><b>{rs(x.fees)}</b></div></div>
         {x.sheet ? <div className="pc-sheet"><div className="l">2026, office sheet as on {fd(x.sheet.asOf!)}</div>

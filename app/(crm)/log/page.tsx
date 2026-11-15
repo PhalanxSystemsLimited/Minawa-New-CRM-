@@ -1,5 +1,6 @@
 // Activity: everything the system and staff did, in one place (it replaces the separate "Staff activity" page).
 // Admins can narrow it to staff only, accountants, admins or one person; everyone can filter by kind and project.
+import { PhoneMore } from '@/components/Mobile';
 import { requireStaff } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
@@ -35,6 +36,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
       <span className="muted" style={{ fontSize: 12.5, marginLeft: 'auto' }}>{list.length ? `${list.length}${list.length === 500 ? '+' : ''} action${list.length === 1 ? '' : 's'} · ${latest} on the latest day` : ''}</span>
     </div>
       <ActivityList list={list} staff={staff} projects={projs} showProject={!pid} empty={person ? `${person.name} hasn't done anything yet.` : 'Nothing yet.'} />
+      <PhoneMore what="entries" />
     </div>
   </>;
 }

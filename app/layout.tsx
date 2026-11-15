@@ -3,9 +3,11 @@ import { Suspense } from 'react';
 import '../styles/minawa-theme.css';
 import '../styles/minawa-additions.css';
 import '../styles/minawa-refresh.css';
+import '../styles/minawa-mobile.css';
 import { Toasts, Behaviour } from '@/components/client';
 
-export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and Safepay payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png' } };
+export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and Safepay payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png', apple: '/icons/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'Minawa CRM', statusBarStyle: 'default' } };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#F6F5F1' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
