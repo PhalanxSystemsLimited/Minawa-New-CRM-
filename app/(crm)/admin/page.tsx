@@ -26,7 +26,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
     <div className="card"><div className="card-row"><h3>Staff <small>who can sign in</small></h3><Go href="/admin?add=1" className="btn primary sm">+ Add someone</Go></div>
-      <div className="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
+      <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
           <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}</td>
           <td className="cell-sub">{s.email}</td>

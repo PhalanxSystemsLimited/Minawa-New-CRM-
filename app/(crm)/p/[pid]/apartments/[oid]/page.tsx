@@ -41,17 +41,17 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       : x.status === 'read' ? <span className="tag good">Read</span> : x.manual && x.status === 'sent' ? <span className="tag info">Sent by staff</span> : x.status === 'delivered' || (x.status === 'sent' && diff(S.today, x.d) >= 1) ? <span className="tag">Delivered</span> : <span className="tag">Sent</span>;
 
     const billsTab = bills.length ? <>
-      <div className="tbl-wrap"><table><thead><tr><th>Bill</th><th>Due</th><th className="r">Amount</th><th className="r">Unpaid</th><th>Status</th></tr></thead><tbody>
+      <div className="tbl-wrap"><table className="bill-tbl"><thead><tr><th>Bill</th><th>Due</th><th className="r">Amount</th><th className="r">Unpaid</th><th>Status</th></tr></thead><tbody>
         {bills.map(b => { const bo = ownerById(b.ownerId), u = unpaid(b), s = u <= 0 ? 'paid' : bo.flagged && S.today >= b.finalDate ? 'flagged' : S.today > b.dueDate ? 'overdue' : 'due';
           return <tr key={b.id}><td><A href={`${base}?tab=bills&doc=bill:${b.id}`}>{periodLabel(b)}</A>{b.extras ? <div className="cell-sub">incl. {rs(b.extras)} {b.lines.filter(l => l.kind === 'utility').map(l => l.label.split(',')[0].toLowerCase()).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</div> : null}{b.fromCredit ? <div className="cell-sub">paid from credit</div> : null}{who(b.ownerId)}</td><td>{fds(b.dueDate)}</td><td className="r num">{rs(b.net)}{b.discount ? <div className="cell-sub">after {rs(b.discount)} discount</div> : null}</td><td className="r num">{u > 0 ? rs(u) : '–'}</td><td>{pill(s)}</td></tr>; })}
       </tbody></table></div>
       {o.feeDue > 0 ? <div className="callout warn" style={{ marginTop: 12 }}><div>Fine <b className="num">{rs(o.feeDue)}</b>: {feePct()}% of {S.settings.rules.fineArrears ? 'everything owed' : 'the unpaid bills'} while a bill is overdue.</div></div> : null}
       <p className="muted" style={{ fontSize: 12, margin: '12px 0 0' }}>Tap a bill to see it. Bills go out on the {ord(S.settings.rules.billDay)}, due {S.settings.rules.dueDays} days later. The day after the due date a fine of {feePct()}% of {S.settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} is added.</p>
     </> : <p className="empty">No bills yet.</p>;
-    const paysTab = pays.length ? <div className="tbl-wrap"><table><thead><tr><th>When</th><th className="r">Amount</th><th>Received</th><th className="r">Balance after</th><th>Receipt</th></tr></thead><tbody>
+    const paysTab = pays.length ? <div className="tbl-wrap"><table className="apay-tbl"><thead><tr><th>When</th><th className="r">Amount</th><th>Received</th><th className="r">Balance after</th><th>Receipt</th></tr></thead><tbody>
       {pays.map(p => <tr key={p.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{when(p.d, p.t)}{who(p.ownerId)}</td><td className="r num"><strong>{rs(p.amount)}</strong></td><td>{viaHtml(p)}</td><td className="r num">{p.balAfter < 0 ? <span className="neg">{rs(-p.balAfter)} cr</span> : rs(p.balAfter)}</td><td><A href={`${base}?tab=payments&doc=receipt:${p.id}`} className="rcpt">{p.receipt}</A></td></tr>)}
     </tbody></table></div> : <p className="empty">No payments yet.</p>;
-    const historyTab = led.length ? <div className="tbl-wrap"><table><thead><tr><th>Date</th><th>What happened</th><th className="r">Amount</th><th className="r">Balance</th></tr></thead><tbody>
+    const historyTab = led.length ? <div className="tbl-wrap"><table className="hist-tbl"><thead><tr><th>Date</th><th>What happened</th><th className="r">Amount</th><th className="r">Balance</th></tr></thead><tbody>
       {led.map(({ e, run }) => <tr key={e.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fds(e.d)}</td><td><div>{e.desc}</div>{e.ref ? <div className="cell-sub num">{e.ref}</div> : null}{who(e.ownerId)}</td><td className={`r num ${e.amount < 0 ? 'neg' : ''}`}>{e.amount < 0 ? '−' + rs(-e.amount) : rs(e.amount)}</td><td className="r num">{run < 0 ? <span className="neg">{rs(-run)} cr</span> : rs(run)}</td></tr>)}
     </tbody></table></div> : <p className="empty">Nothing yet.</p>;
     const notesTab = <>
@@ -115,7 +115,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             <div><div className="l">Balance on the sheet</div><div className="v num">{rs(x.balance)}</div><div className="cell-sub">Owed now: {rs(bal)}</div></div>
           </div></div>; })()}
       {wa.length ? <div className="card"><div className="card-row"><h3>WhatsApp sent by hand</h3><Go href="/whatsapp" className="btn sm">WhatsApp log</Go></div>
-        <div className="tbl-wrap"><table><thead><tr><th>When</th><th>By</th><th>Message</th><th>Number</th><th>Answer</th></tr></thead><tbody>{wa.map(e =>
+        <div className="tbl-wrap"><table className="awa-tbl"><thead><tr><th>When</th><th>By</th><th>Message</th><th>Number</th><th>Answer</th></tr></thead><tbody>{wa.map(e =>
           <tr key={e.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(e.d)}, {t12(e.t)}</td><td>{e.staffName}<div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td><td>{e.title}<div className="cell-sub">Balance then {rs(e.amount)}</div></td>
             <td className="num">+{e.sentTo}{e.test ? <div className="cell-sub">test number</div> : null}</td><td>{e.answer === 'sent' ? <span className="tag good">Sent</span> : <span className="tag warn">Not sent</span>}</td></tr>)}</tbody></table></div></div> : null}
       <div className="card">

@@ -42,7 +42,7 @@ export default async function Messages({ params, searchParams }: { params: Promi
         <LiveSearch name="q" placeholder="Search apartment, owner or error" defaultValue={sp.q || ''} />
         {chips.map(([k, l]) => <Go key={k} href={`${P}?f=${k}${sp.q ? '&q=' + encodeURIComponent(sp.q) : ''}`} className="chipbtn" pressed={f === k} replace>{l} <span className="n">{count(k)}</span></Go>)}
       </div>
-        {!list.length ? <p className="empty">No messages match.</p> : <div className="tbl-wrap"><table><thead><tr><th>When</th><th>Apartment</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>
+        {!list.length ? <p className="empty">No messages match.</p> : <div className="tbl-wrap"><table className="msg-tbl"><thead><tr><th>When</th><th>Apartment</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>
           {list.map(m => { const o = ownerById(m.ownerId);
             return <tr key={m.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(m.d)}, {t12(m.t)}</td><td><A href={ownerHref(o)} className="apt-a">{o?.apt}</A><div className="cell-sub">{o?.name}</div></td>
               <td><div>{m.title}</div><div className="cell-sub">{m.pdf ? 'With PDF' : 'Message'}{m.linkId ? ` · link ${m.linkId}` : ''}</div>{m.error ? <div className="cell-sub bad-t">{m.error}</div> : null}</td>

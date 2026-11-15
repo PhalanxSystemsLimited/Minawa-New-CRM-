@@ -99,14 +99,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     </div>
     <div className="dsplit">
       <div className="card"><div className="card-row"><h3>Latest payments, all projects</h3></div>
-        {recent.length ? <div className="tbl-wrap"><table><thead><tr><th>Apartment</th><th>Received</th><th className="r">Amount</th><th>When</th><th>Receipt</th></tr></thead><tbody>{recent.map(r => r.row)}</tbody></table></div> : <p className="empty">No payments yet.</p>}</div>
+        {recent.length ? <div className="tbl-wrap"><table className="dpay-tbl"><thead><tr><th>Apartment</th><th>Received</th><th className="r">Amount</th><th>When</th><th>Receipt</th></tr></thead><tbody>{recent.map(r => r.row)}</tbody></table></div> : <p className="empty">No payments yet.</p>}</div>
       <div className="card"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic</span></div>
         {up.length ? <div className="list">{up.map((x, i) => <div className="li" key={i}><div className="t"><div className="a">{x.e.text}</div><div className="b">{x.pname} · {dow(x.d)} {fd(x.d)}</div></div><Go href={ownerHref(x.e.o)} className="btn sm go" ariaLabel={`View ${x.e.o.name}`}>View</Go></div>)}</div> : <p className="empty">Nothing scheduled in the next 14 days.</p>}</div>
     </div>
     {staff.role === 'admin' ? <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staffList} projects={projs} empty="Nothing yet. Payments, notes, utility bills, notices and links that accountants record show here." /></div> : null}
     <div className="card"><div className="card-row"><h3>WhatsApp sent by hand <small>{waSent} today{waToday.length - waSent ? `, ${waToday.length - waSent} opened but not sent` : ''} · {wa.filter(e => e.answer === 'sent').length} this month</small></h3><Go href="/whatsapp" className="btn sm">Open the log</Go></div>
-      {wa.length ? <div className="tbl-wrap"><table><thead><tr><th>When</th><th>Sent by</th><th>To</th><th>Message</th><th>Answer</th></tr></thead><tbody>{wa.slice(0, 6).map(e =>
+      {wa.length ? <div className="tbl-wrap"><table className="dwa-tbl"><thead><tr><th>When</th><th>Sent by</th><th>To</th><th>Message</th><th>Answer</th></tr></thead><tbody>{wa.slice(0, 6).map(e =>
         <tr key={e.id}><td className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{lastSeen(e.d, e.t)}</td><td><b>{e.staffName}</b><div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td>
           <td><A href={`/p/${e.project}/apartments/${e.ownerId}`} className="apt-a">{e.apt}</A><div className="cell-sub">{e.ownerName} · +{e.sentTo}</div></td><td>{e.title}<div className="cell-sub">Balance then {rs(e.amount)}</div></td>
           <td>{e.answer === 'sent' ? <span className="tag good">Sent</span> : <span className="tag warn">Not sent</span>}</td></tr>)}</tbody></table></div>
