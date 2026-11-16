@@ -105,6 +105,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       <NeedTile icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
 
+    <div className="lv-layout">
+    <div className="lv-main">
     <Lbl>Money at a glance</Lbl>
     <section className="lv-money">
       <div className="lv-money-ring"><Ring pct={ringPct} label={y26 ? '2026 PAID' : `${monName.toUpperCase()} TARGET`} tone={ringPct >= 50 ? 'green' : 'amber'} />
@@ -140,15 +142,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       {off.length ? <div className="lv-off"><span>Not set up yet:</span>{off.map(p => <Go key={p.id} href={`/p/${p.id}`} className="lv-offc">+ {p.name}</Go>)}</div> : null}
     </div>
 
-    <Lbl>What happened, what&apos;s next</Lbl>
-    <div className="lv-two">
-      <div className="card"><div className="card-row"><h3>Activity</h3><Go href="/log" className="btn sm">See all</Go></div>
+    <Lbl>What happened</Lbl>
+    <div className="card lv-act"><div className="card-row"><h3>Activity</h3><Go href="/log" className="btn sm">See all</Go></div>
         <LiveTabs tabs={[{ key: 'pay', label: 'Payments', badge: newN, body: payFeed }, { key: 'wa', label: 'WhatsApp', badge: waSent, body: waFeed },
           ...(admin ? [{ key: 'staff', label: 'Staff', body: <ActivityList list={accActs} staff={staffList} projects={projs} empty="Nothing yet. Payments, notes, utility bills, notices and links that accountants record show here." /> }] : [])]} /></div>
-      <div className="card"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic · 14 days</span></div>
+    </div>
+
+    <aside className="lv-side">
+    <Lbl>What&apos;s next</Lbl>
+    <div className="card lv-upc"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic · 14 days</span></div>
         {up.length ? <div className="lv-tl">{up.map((x, i) => <div className={`lv-ti t-${upTone(x.e.kind)}`} key={i}><div className="d">{dow(x.d)} {fd(x.d)} · {upKind(x.e.kind)}</div>
           <div className="lv-ti-r"><div><b>{x.e.text}</b><small>{x.pname}</small></div><Go href={ownerHref(x.e.o)} className="btn sm go" ariaLabel={`View ${x.e.o.name}`}>View</Go></div></div>)}</div>
           : <p className="empty">Nothing scheduled in the next 14 days.</p>}</div>
+    </aside>
     </div>
     {modal}
   </>;

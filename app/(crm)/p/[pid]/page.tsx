@@ -43,6 +43,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
         <NeedTile icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`${P}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
         <NeedTile icon="alert" tone="amber" n={flagged} label="flagged for disconnection" href={`${P}/apartments?f=flagged`} sub={flagged ? 'Still unpaid after the due date' : 'Nobody flagged'} />
       </div>
+      <div className="lv-layout"><div className="lv-main">
       <section className="lv-money lv-ov">
         {firstBill ? <div className="lv-target"><div className="l">BILLING STARTS</div>
           <div className="lv-next-r big"><CalBadge date={firstBill} /><div><b className="H">{Math.max(0, diff(firstBill, S.today))} days to go</b><small>The first bill goes out on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}</small></div></div>
@@ -83,12 +84,6 @@ export default async function Overview({ params, searchParams }: { params: Promi
           </div></div>;
       })()}
       <div className="ov2">
-        <div className="card"><div className="card-row"><h3>Who owes</h3><Go href={`${P}/apartments?f=owing`} className="btn sm">View all</Go></div>
-          {top.length ? <div className="list">{top.map(o => <GoRow as="div" key={o.id} href={ownerHref(o)} className="li click"><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name}{o.promiseUntil ? ` · promised by ${fds(o.promiseUntil)}` : ''}</div></div><div className="amt"><strong className="num">{rs(balance(o))}</strong>{pill(ownerStatus(o))}{waMini(o)}</div></GoRow>)}</div> : <p className="empty">Nobody owes anything.</p>}</div>
-        <div className="card"><div className="card-row"><h3>Latest payments</h3><Go href={`${P}/payments?per=all`} className="btn sm">View all</Go></div>
-          {recent.length ? <div className="list">{recent.map(p => { const o = ownerById(p.ownerId); return <div className="li" key={p.id}><div className="t"><A href={ownerHref(o)} className="apt-a">{o.apt}</A><div className="b">{o.name} · {when(p.d, p.t)}</div></div><div className="amt"><strong className="num">{rs(p.amount)}</strong>{badge(p)}<A href={`${P}?doc=receipt:${p.id}`} className="rcpt">{p.receipt}</A></div></div>; })}</div> : <p className="empty">No payments yet.</p>}</div>
-      </div>
-      <div className="ov2">
         <div className="card chart"><div className="card-row"><h3>Collected each month</h3><Go href={`${P}/payments?per=all`} className="btn sm">View payments</Go></div>
           <svg viewBox="0 0 360 166" role="img" aria-label="Collections per month against each month's target"><line x1="20" x2="350" y1="140" y2="140" stroke="var(--line-strong)"></line>
             {co.map(([p, v], i) => {
@@ -99,11 +94,18 @@ export default async function Overview({ params, searchParams }: { params: Promi
                 <text className="v" x={x + bw / 2} y={Math.min(y, ty) - 6} textAnchor="middle">{v ? short(v) : '0'}</text><text x={x + bw / 2} y="158" textAnchor="middle">{fmShort(p).replace('-', ' ')}</text></g>;
             })}</svg>
           <div className="legend"><span><i className="lg-bar"></i>Collected</span><span><i className="lg-tgt"></i>Monthly target</span></div></div>
-        <div className="card"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic</span></div>
+        <div className="card"><div className="card-row"><h3>Latest payments</h3><Go href={`${P}/payments?per=all`} className="btn sm">View all</Go></div>
+          {recent.length ? <div className="list">{recent.map(p => { const o = ownerById(p.ownerId); return <div className="li" key={p.id}><div className="t"><A href={ownerHref(o)} className="apt-a">{o.apt}</A><div className="b">{o.name} · {when(p.d, p.t)}</div></div><div className="amt"><strong className="num">{rs(p.amount)}</strong>{badge(p)}<A href={`${P}?doc=receipt:${p.id}`} className="rcpt">{p.receipt}</A></div></div>; })}</div> : <p className="empty">No payments yet.</p>}</div>
+      </div>
+      </div>
+      <aside className="lv-side">
+        <div className="card lv-owes"><div className="card-row"><h3>Who owes</h3><Go href={`${P}/apartments?f=owing`} className="btn sm">View all</Go></div>
+          {top.length ? <div className="list">{top.map(o => <GoRow as="div" key={o.id} href={ownerHref(o)} className="li click"><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name}{o.promiseUntil ? ` · promised by ${fds(o.promiseUntil)}` : ''}</div></div><div className="amt"><strong className="num">{rs(balance(o))}</strong>{pill(ownerStatus(o))}{waMini(o)}</div></GoRow>)}</div> : <p className="empty">Nobody owes anything.</p>}</div>
+        <div className="card lv-upc"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic</span></div>
           {up.length ? <div className="lv-tl">{up.map((x, i) => { const k = x.e.kind, tone = k === 'flag' || k === 'fine' ? 'red' : k === 'remind' ? 'amber' : k === 'bill' ? 'blue' : 'green';
             return <div className={`lv-ti t-${tone}`} key={i}><div className="d">{dow(x.d)} {fd(x.d)} · {k === 'bill' ? 'Bill' : k === 'remind' ? 'Reminder' : k === 'fine' ? 'Fine + notice' : k === 'flag' ? 'Flag' : 'Alert'}</div>
               <div className="lv-ti-r"><div><b>{x.e.text}</b></div><Go href={ownerHref(x.e.o)} className="btn sm go" ariaLabel={`View apartment ${x.e.o.apt}`}>View</Go></div></div>; })}</div> : <p className="empty">Nothing scheduled in the next 14 days.</p>}</div>
-      </div>
+      </aside></div>
     </>;
   });
 }
