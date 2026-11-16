@@ -9,8 +9,12 @@ import type { DocData } from './docdata';
 
 const pub = (...p: string[]) => path.join(process.cwd(), 'public', ...p);
 let fonts = false;
+// The brand fonts ship with the app (public/fonts, also bundled with the server via next.config.mjs). If they are
+// ever missing on the server, the PDF still comes out, in the built-in Helvetica, instead of failing.
+const haveFonts = () => ['inter-latin-400-normal.woff', 'inter-latin-600-normal.woff', 'inter-latin-700-normal.woff', 'space-grotesk-latin-500-normal.woff', 'space-grotesk-latin-700-normal.woff'].every(f => fs.existsSync(pub('fonts', f)));
 function registerFonts(Font: RPDF['Font']) {
   if (fonts) return; fonts = true;
+  if (!haveFonts()) { Font.registerHyphenationCallback(w => [w]); return; }
   Font.register({ family: 'Inter', fonts: [
     { src: pub('fonts', 'inter-latin-400-normal.woff'), fontWeight: 400 },
     { src: pub('fonts', 'inter-latin-600-normal.woff'), fontWeight: 600 },
@@ -22,7 +26,14 @@ function registerFonts(Font: RPDF['Font']) {
 }
 
 const INK = '#161B1F', LINE = '#D9D3C9', MUTED = '#565B5F', STONE = '#F3F0EA';
-const styles = () => ({
+/** Swaps in Helvetica when the brand fonts aren't on the server. */
+function withFonts<T extends Record<string, Record<string, unknown>>>(st: T): T {
+  if (haveFonts()) return st;
+  const out: Record<string, Record<string, unknown>> = { ...st };
+  for (const k of Object.keys(out)) if (out[k].fontFamily) out[k] = { ...out[k], fontFamily: 'Helvetica' };
+  return out as T;
+}
+const styles = () => withFonts({
   page: { padding: 36, fontFamily: 'Inter', fontSize: 9.5, color: '#232a30' },
   doc: { display: 'flex', flexDirection: 'column', gap: 12 },
   dh: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: INK, paddingBottom: 10 },
