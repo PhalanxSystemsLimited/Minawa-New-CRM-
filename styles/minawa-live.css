@@ -683,31 +683,44 @@ button.lv-kpi{cursor:pointer}
 .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]) svg{color:#B4441F}
 @media (prefers-reduced-motion:reduce){.apv-plane svg,.apv-send::before{animation:none!important}.btn::before{transition:none!important}}
 
-/* ===== Update 67: "Needs you" tiles are coloured buttons — white text on the colour, one click to the screen ===== */
-.lv-need{background:linear-gradient(135deg,var(--tone-a),var(--tone-b))!important;border:0!important;color:#fff;overflow:hidden;isolation:isolate;
-  -webkit-backdrop-filter:none;backdrop-filter:none;padding:14px 18px;border-radius:20px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -4px 0 rgba(0,0,0,.12),0 14px 28px -16px var(--tone-glow)!important}
-.lv-need.is-lit{background:radial-gradient(220px 140px at var(--mx,50%) var(--my,0%),rgba(255,255,255,.28),transparent 70%),linear-gradient(135deg,var(--tone-a),var(--tone-b))!important}
-.lv-need:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.12),0 22px 36px -16px var(--tone-glow)!important}
-.lv-need:active{top:0!important;box-shadow:inset 0 2px 6px rgba(0,0,0,.18),0 8px 16px -12px var(--tone-glow)!important}
-/* text */
-.lv-need .lv-need-t b,.lv-need.t-red:not(.zero) .lv-need-t b,.lv-need.zero .lv-need-t b{color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.15)}
-.lv-need .lv-need-t > span{color:rgba(255,255,255,.95)}
-.lv-need .lv-need-s{color:rgba(255,255,255,.85);border-top-color:rgba(255,255,255,.35)}
-/* the icon sits on a frosted white button */
-.lv-need .lv-need-ic{background:rgba(255,255,255,.2)!important;border:1px solid rgba(255,255,255,.35)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 0 -1px rgba(0,0,0,.14),0 10px 18px -10px rgba(0,0,0,.35)!important}
-.lv-need:hover .lv-need-ic{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 0 -1px rgba(0,0,0,.14),0 14px 22px -10px rgba(0,0,0,.4)!important}
-.lv-need .lv-need-ic svg path,.lv-need .lv-need-ic svg rect,.lv-need .lv-need-ic svg circle{fill:rgba(255,255,255,.25)}
-.lv-need .lv-need-ic.ic-phone::before,.lv-need .lv-need-ic.ic-phone::after{border-color:rgba(255,255,255,.8)}
-/* arrow button */
-.lv-need .lv-need-go,.lv-need.t-red:not(.zero) .lv-need-go{background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.35)}
-.lv-need:hover .lv-need-go{background:#fff;color:var(--tone-b)}
-.lv-need .lv-pulse{background:#fff;box-shadow:0 0 0 0 rgba(255,255,255,.7)}
-/* a light passes across the button on hover */
-.lv-need::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.3) 50%,transparent 70%);transform:translateX(-120%);transition:transform .8s var(--lv-ease);pointer-events:none}
-.lv-need:hover::after{transform:translateX(120%)}
-/* nothing waiting: the same colour, a little quieter */
-.lv-need.zero{opacity:1;filter:saturate(.7) brightness(1.04)}
-.lv-need.zero:hover{filter:none}
-.lv-need:focus-visible{outline:3px solid #fff;outline-offset:-5px}
+/* ===== Update 68: "Needs you" — calm white cards with a title, a coloured icon button and a coloured accent ===== */
+.lv-needs{gap:14px}
+.lv-needs .lv-need{display:flex!important;flex-direction:column;align-items:stretch;gap:0;padding:14px 16px 13px!important;border-radius:18px;min-height:0;
+  background:rgba(255,255,255,.86)!important;border:1px solid color-mix(in srgb,var(--tone-b) 16%,#EDE7DE)!important;color:#0F172A;filter:none!important;opacity:1;
+  -webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 10px 24px -18px rgba(20,21,23,.35)!important}
+.lv-needs .lv-need.is-lit{background:radial-gradient(220px 140px at var(--mx,50%) var(--my,0%),color-mix(in srgb,var(--tone-a) 14%,transparent),transparent 70%),rgba(255,255,255,.9)!important}
+.lv-needs .lv-need:hover{border-color:color-mix(in srgb,var(--tone-b) 40%,#fff)!important;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 32px -18px var(--tone-glow)!important}
+/* a soft tint of the colour in the corner, and an accent line along the bottom that grows on hover */
+.lv-needs .lv-need::before{content:"";position:absolute;right:-40px;top:-50px;width:150px;height:150px;border-radius:50%;z-index:-1;pointer-events:none;
+  background:radial-gradient(circle,color-mix(in srgb,var(--tone-a) 22%,transparent),transparent 65%)}
+.lv-needs .lv-need::after{content:"";position:absolute;left:16px;right:auto;bottom:0;top:auto;width:42px;height:3px;border-radius:3px 3px 0 0;z-index:0;inset:auto auto 0 16px;
+  background:linear-gradient(90deg,var(--tone-a),var(--tone-b));transform:none;transition:width .45s var(--lv-ease)}
+.lv-needs .lv-need:hover::after{transform:none;width:calc(100% - 32px)}
+/* top row: icon button, title, arrow */
+.lv-need-top{display:flex;align-items:center;gap:10px;position:relative}
+.lv-needs .lv-need .lv-need-ic{width:40px!important;height:40px!important;border-radius:12px!important;border:0!important;color:#fff;
+  background:linear-gradient(145deg,var(--tone-a),var(--tone-b))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 3px 0 -1px color-mix(in srgb,var(--tone-b) 65%,#000 35%),0 8px 16px -8px var(--tone-glow)!important}
+.lv-needs .lv-need .lv-need-ic svg{width:20px;height:20px}
+.lv-needs .lv-need .lv-need-ic.ic-phone::before,.lv-needs .lv-need .lv-need-ic.ic-phone::after{border-color:var(--tone-a)}
+.lv-need-ttl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--tone-b)}
+.lv-needs .lv-need .lv-need-go{margin-left:auto;width:30px;height:30px;border-radius:10px;background:color-mix(in srgb,var(--tone-a) 14%,#fff)!important;color:var(--tone-b)!important;border:0!important;font-size:14px}
+.lv-needs .lv-need:hover .lv-need-go{background:var(--tone-b)!important;color:#fff!important}
+.lv-needs .lv-need .lv-pulse{position:absolute;top:-3px;left:33px;right:auto;width:10px;height:10px;background:#E5484D;border:2px solid #fff}
+/* the number and what it is */
+.lv-needs .lv-need .lv-need-t{flex-direction:row;align-items:baseline;gap:8px;margin-top:12px}
+.lv-needs .lv-need .lv-need-t b{font-size:30px!important;line-height:1;color:var(--tone-b)!important;text-shadow:none}
+.lv-needs .lv-need.zero .lv-need-t b{color:#94A3B8!important}
+.lv-needs .lv-need .lv-need-t > span{font-size:13px;font-weight:600;color:#475569;margin:0}
+.lv-needs .lv-need .lv-need-s{margin-top:9px;padding-top:8px;font-size:12px;color:#64748B;border-top:1px dashed #E7E0D5}
+.lv-needs .lv-need.zero .lv-need-ic{filter:saturate(.55) brightness(1.05)}
+.lv-needs .lv-need.zero:hover .lv-need-ic{filter:none}
+@media (max-width:767px){
+  .lv-needs .lv-need{padding:12px 13px 11px!important}
+  .lv-needs .lv-need .lv-need-ic{width:36px!important;height:36px!important}
+  .lv-needs .lv-need .lv-need-t b{font-size:24px!important}
+  .lv-need-ttl{font-size:10px;letter-spacing:.08em}
+  .lv-needs .lv-need .lv-need-go{width:26px;height:26px}
+}
+.lv-needs .lv-need .lv-need-t b span{font-size:inherit!important;color:inherit;margin:0}

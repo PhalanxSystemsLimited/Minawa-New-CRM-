@@ -99,10 +99,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
     <Lbl>Needs you today</Lbl>
     <div className="lv-needs">
-      <NeedTile icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={`/p/${firstTodo}/todo`} pulse sub={todo ? st.filter(x => x.todo).map(x => `${x.p.name.replace(/ Apartments.*$/, '')} ${x.todo}`).join(' · ') : 'All clear'} />
-      <NeedTile icon="shield" tone="amber" n={apvWait.length} label={admin ? 'changes to approve' : 'of your changes waiting'} href="/approvals" sub={apvWait.length ? apvKinds : admin ? 'Nothing waiting for you' : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
-      <NeedTile icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
-      <NeedTile icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
+      <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={`/p/${firstTodo}/todo`} pulse sub={todo ? st.filter(x => x.todo).map(x => `${x.p.name.replace(/ Apartments.*$/, '')} ${x.todo}`).join(' · ') : 'All clear'} />
+      <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label={admin ? 'changes to approve' : 'of your changes waiting'} href="/approvals" sub={apvWait.length ? apvKinds : admin ? 'Nothing waiting for you' : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
+      <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+      <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
 
     <div className="lv-layout lv-dash">

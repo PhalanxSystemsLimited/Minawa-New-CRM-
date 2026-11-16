@@ -38,10 +38,10 @@ export default async function Overview({ params, searchParams }: { params: Promi
       {projHead('dashboard')}
       <Lbl>Needs you in {S.proj.name}</Lbl>
       <div className="lv-needs">
-        <NeedTile icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={`${P}/todo`} pulse sub={todo ? 'Open To do' : 'All clear'} />
-        <NeedTile icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`${P}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
-        <NeedTile icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`${P}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
-        <NeedTile icon="alert" tone="amber" n={flagged} label="flagged for disconnection" href={`${P}/apartments?f=flagged`} sub={flagged ? 'Still unpaid after the due date' : 'Nobody flagged'} />
+        <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={`${P}/todo`} pulse sub={todo ? 'Open To do' : 'All clear'} />
+        <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`${P}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+        <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`${P}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
+        <NeedTile title="Disconnection" icon="alert" tone="amber" n={flagged} label="flagged for disconnection" href={`${P}/apartments?f=flagged`} sub={flagged ? 'Still unpaid after the due date' : 'Nobody flagged'} />
       </div>
       <div className="lv-layout"><div className="lv-main">
       <section className="lv-money lv-ov">
