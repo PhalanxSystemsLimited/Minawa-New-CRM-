@@ -48,6 +48,7 @@ export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid,
       <Go href="/" className="m-logo" ariaLabel="Dashboard"><img src="/assets/minawa-mark.png" alt="" /></Go>
       <label className="gsearch"><Ic n="search" s={16} /><GlobalSearch key={onApts ? 'a' : path} base={`/p/${pid}/apartments`} defaultValue={onApts ? sp.get('q') || '' : ''} /></label>
       <span className="top-sp"></span>
+      <ThemeSwitch />
       <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} />
       <Go href={firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`} className="icon-btn bell-btn" title="To do" ariaLabel={`To do${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
       <details className="more me-menu"><summary className="me"><span className="me-av">{initials}</span><div className="me-t"><div className="me-n">{roleLabel}</div><div className="me-r">Minawa Group</div></div></summary>
@@ -92,4 +93,34 @@ function QuickActions({ projects, pid }: { projects: { id: string; name: string 
       <Go href="/approvals">Approvals</Go>
     </div>
   </details>;
+}
+
+/** Light, Dark or Frost. The choice is kept in a cookie (read before the page paints, so there is no flash). On phones
+ *  only the current theme shows; tapping it moves to the next one. */
+type Theme = 'light' | 'dark' | 'frost';
+const THEMES: [Theme, string, React.ReactNode][] = [
+  ['light', 'Light', <svg key="l" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" /></svg>],
+  ['dark', 'Dark', <svg key="d" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" /></svg>],
+  ['frost', 'Frost', <svg key="f" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6M9.5 4l2.5 2.5L14.5 4M9.5 20l2.5-2.5 2.5 2.5M4 10.5l3.4.9-.9 3.4M20 13.5l-3.4-.9.9-3.4M4 13.5l3.4-.9-.9-3.4M20 10.5l-3.4.9.9 3.4" /></svg>],
+];
+export function ThemeSwitch() {
+  const [t, setT] = useState<Theme>('light');
+  useEffect(() => {
+    const m = document.cookie.match(/(?:^|; )minawa-theme=(dark|frost)/), cur = (m ? m[1] : 'light') as Theme;
+    if (cur === 'light') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = cur;
+    setT(cur);
+    // the CRM's theme does not follow you to the sign-in page or to owners' payment pages
+    return () => { delete document.documentElement.dataset.theme; };
+  }, []);
+  const pick = (k: Theme) => {
+    const next = k === t ? THEMES[(THEMES.findIndex(x => x[0] === t) + 1) % THEMES.length][0] : k;
+    setT(next);
+    const h = document.documentElement;
+    h.classList.add('theme-swap'); setTimeout(() => h.classList.remove('theme-swap'), 450);
+    if (next === 'light') delete h.dataset.theme; else h.dataset.theme = next;
+    document.cookie = `minawa-theme=${next};path=/;max-age=31536000;samesite=lax`;
+  };
+  return <div className="thm" role="group" aria-label="Theme">
+    {THEMES.map(([k, label, ic]) => <button key={k} type="button" className={`thm-b thm-${k}${t === k ? ' on' : ''}`} aria-pressed={t === k} title={`${label} theme`} aria-label={`${label} theme`} onClick={() => pick(k)}>{ic}<span>{label}</span></button>)}
+  </div>;
 }

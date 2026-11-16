@@ -5,6 +5,8 @@ import '../styles/minawa-additions.css';
 import '../styles/minawa-refresh.css';
 import '../styles/minawa-live.css';
 import '../styles/minawa-mobile.css';
+import '../styles/minawa-themes-auto.css';
+import '../styles/minawa-themes.css';
 import { Toasts, Behaviour } from '@/components/client';
 
 export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and Safepay payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png', apple: '/icons/apple-touch-icon.png' },
@@ -13,8 +15,10 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, view
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* The CRM theme (Light, Dark or Frost) is set before the page paints. Not on sign-in or owners' payment pages. */}
+        <script dangerouslySetInnerHTML={{ __html: "try{var m=document.cookie.match(/(?:^|; )minawa-theme=(dark|frost)/);if(m&&!/^\\/(login|pay)(\\/|$)/.test(location.pathname))document.documentElement.dataset.theme=m[1]}catch(e){}" }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
