@@ -724,3 +724,12 @@ button.lv-kpi{cursor:pointer}
   .lv-needs .lv-need .lv-need-go{width:26px;height:26px}
 }
 .lv-needs .lv-need .lv-need-t b span{font-size:inherit!important;color:inherit;margin:0}
+
+/* ===== Update 69: sidebar projects — a quieter, professional hover: soft frosted row, a gentle light passing left to right, a rust edge ===== */
+.side-p::before{background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.14) 18%,rgba(255,255,255,0) 36%,rgba(255,255,255,0) 50%,rgba(255,255,255,0) 100%),linear-gradient(90deg,rgba(217,93,57,.16),rgba(255,255,255,.045) 60%)!important;
+  background-size:220% 100%,100% 100%!important;background-position:120% 0,0 0!important;border:1px solid rgba(255,255,255,.07)}
+.side-p:hover::before{animation:lvSheen 2.6s ease-in-out infinite!important}
+@keyframes lvSheen{0%{background-position:120% 0,0 0}60%,100%{background-position:-60% 0,0 0}}
+.side-p::after{background:linear-gradient(180deg,#FF9A75,#D95D39)!important;box-shadow:0 0 10px rgba(217,93,57,.6)}
+.side-p:hover small{color:#CBD5E1!important}
+@media (prefers-reduced-motion:reduce){.side-p:hover::before{animation:none!important}}
