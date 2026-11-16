@@ -108,7 +108,7 @@ html[data-theme=dark] .shell{scrollbar-color:rgba(255,255,255,.18) transparent}
   --good:#86EFAC;--warn:#FCD34D;--bad:#FCA5A5;--info:#93C5FD;--rust-soft:rgba(255,154,117,.22);
   --shadow:0 1px 0 rgba(255,255,255,.2) inset;--shadow-float:0 12px 30px rgba(0,0,0,.35)}
 html[data-theme=frost],html[data-theme=frost] body{background:#3D4A47 url('/themes/frost.jpg') center/cover fixed no-repeat!important}
-html[data-theme=frost] body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(14,22,20,.28),rgba(14,22,20,.2) 45%,rgba(10,16,14,.3))}
+html[data-theme=frost] body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,20,18,.12),rgba(10,20,18,.18) 50%,rgba(8,14,12,.22))}
 html[data-theme=frost] .lv-aurora{display:none}
 html[data-theme=frost] .app{background:transparent;position:relative;z-index:1}
 @media screen and (min-width:901px){
