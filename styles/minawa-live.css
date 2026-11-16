@@ -463,3 +463,11 @@ button.lv-kpi{cursor:pointer}
   .shell > .layout{flex:1 0 auto}
 }
 @media print{html,body{height:auto!important;overflow:visible!important;padding:0!important}.app{height:auto!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}.app::after{display:none}.shell{height:auto!important;overflow:visible!important}}
+
+/* ===== Update 58: Dashboard money panel stacked — the ring and the next-bills calendar on top, the three figures below ===== */
+@media (min-width:768px){
+  .lv-money:not(.lv-ov){grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px 24px;align-items:stretch}
+  .lv-money:not(.lv-ov) > .lv-money-ring{align-self:center}
+  .lv-money:not(.lv-ov) .lv-kpis{grid-column:1 / -1;order:3}
+  .lv-money:not(.lv-ov) .lv-next{justify-content:center}
+}
