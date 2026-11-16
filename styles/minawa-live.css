@@ -471,3 +471,25 @@ button.lv-kpi{cursor:pointer}
   .lv-money:not(.lv-ov) .lv-kpis{grid-column:1 / -1;order:3}
   .lv-money:not(.lv-ov) .lv-next{justify-content:center}
 }
+
+/* ===== Update 59: Dashboard — a compact money panel with Activity beside it; Coming up moves under the projects ===== */
+@media (min-width:1101px){
+  .lv-layout.lv-dash{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+}
+.lv-side{container-type:inline-size;container-name:lvside}
+/* Activity in the side column: on a narrower column the method and receipt go on a second line */
+@container lvside (max-width:600px){
+  .lv-fi{grid-template-columns:40px minmax(0,1fr) auto;row-gap:6px}
+  .lv-fi > .lv-fi-m,.lv-fi > .rcpt{grid-row:2}
+  .lv-fi > .lv-fi-m{grid-column:2;justify-self:start}
+  .lv-fi > .rcpt{grid-column:3;justify-self:end}
+}
+/* projects table in a narrow main column: the name on its own line, the four figures in a row under it */
+@container lvmain (max-width:760px){
+  .lv-lane.hd{display:none}
+  .lv-lane{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px}
+  .lv-lane > .lv-lane-n{grid-column:1 / 4}
+  .lv-lane > .lv-open{grid-column:4;grid-row:1;justify-self:end}
+  .lv-lane > :nth-child(5){display:block}
+  .lv-lane [data-l]::before{content:attr(data-l);display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin-bottom:2px}
+}
