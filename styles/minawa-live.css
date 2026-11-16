@@ -357,3 +357,67 @@ button.lv-kpi{cursor:pointer}
   .lv-ti:hover{transform:scale(1.025);background:rgba(255,255,255,.85);box-shadow:0 10px 22px -14px rgba(20,21,23,.3)}
 }
 @media (prefers-reduced-motion:reduce){.lv-lane.click,.lv-fi,.list .li,.lv-ti{transform:none!important}}
+
+/* ===== Update 55: sidebar colour flow, coloured System buttons, solid needs-you icons ===== */
+/* Maintenance projects: colours flow left to right through the row on hover */
+.side-p{position:relative;isolation:isolate}
+.side-p::before{content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;opacity:0;transition:opacity .3s;
+  background:linear-gradient(90deg,rgba(217,93,57,.42) 0%,rgba(245,158,11,.34) 16.66%,rgba(20,184,166,.32) 33.33%,rgba(217,93,57,.42) 50%,rgba(245,158,11,.34) 66.66%,rgba(20,184,166,.32) 83.33%,rgba(217,93,57,.42) 100%);background-size:200% 100%;background-position:100% 0}
+.side-p::after{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:3px;background:linear-gradient(180deg,#FF8A65,#FBBF24,#2DD4BF);opacity:0;transform:scaleY(.3);transition:opacity .3s,transform .35s var(--lv-ease)}
+.side-p:hover::before{opacity:1;animation:lvFlow 2.2s linear infinite}
+.side-p:hover::after{opacity:1;transform:scaleY(1)}
+.side-p:hover,.side-p:hover small{color:#fff!important}
+.side-p:hover{background:transparent!important}
+@keyframes lvFlow{from{background-position:100% 0}to{background-position:0 0}}
+
+/* System: each item gets a coloured button that acts out what it is */
+.side-i.si{padding-top:7px;padding-bottom:7px}
+.si-ic{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;color:#fff;position:relative;background:linear-gradient(145deg,var(--si-a),var(--si-b));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 14px -6px var(--si-g);transition:transform .35s var(--lv-ease),box-shadow .35s var(--lv-ease)}
+.si-ic svg{width:17px;height:17px;color:#fff!important;transform-origin:50% 55%}
+.si-wa{--si-a:#4ADE80;--si-b:#16A34A;--si-g:rgba(34,197,94,.7)}
+.si-apv{--si-a:#60A5FA;--si-b:#4F46E5;--si-g:rgba(79,70,229,.7)}
+.si-log{--si-a:#FBBF24;--si-b:#EA580C;--si-g:rgba(234,88,12,.7)}
+.si-adm{--si-a:#A78BFA;--si-b:#7C3AED;--si-g:rgba(124,58,237,.7)}
+.si-apv .si-ic svg rect,.si-adm .si-ic svg path{fill:rgba(255,255,255,.22)}
+.side-i.si:hover .si-ic,.side-i.si[aria-current="page"] .si-ic{transform:scale(1.1) rotate(-4deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 20px -6px var(--si-g)}
+.side-i.si[aria-current="page"] .si-ic{box-shadow:0 0 0 2px rgba(255,255,255,.55),0 10px 20px -6px var(--si-g)}
+/* WhatsApp: rings like an incoming chat, with waves */
+.si-wa .si-ic::before,.si-wa .si-ic::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid #4ADE80;opacity:0;pointer-events:none}
+.si-wa:hover .si-ic svg{animation:lvBuzz .55s linear infinite}
+.si-wa:hover .si-ic::before{animation:lvWave 1.2s ease-out infinite}
+.si-wa:hover .si-ic::after{animation:lvWave 1.2s ease-out infinite .6s}
+/* Approvals: the tick draws itself and the button gives a nod */
+.si-apv .si-ic svg path{stroke-dasharray:16;stroke-dashoffset:0}
+.si-apv:hover .si-ic svg path{animation:lvTick 1.2s var(--lv-ease) infinite}
+.si-apv:hover .si-ic svg{animation:lvNod 1.2s var(--lv-ease) infinite}
+@keyframes lvTick{0%{stroke-dashoffset:16}45%,100%{stroke-dashoffset:0}}
+@keyframes lvNod{0%,40%,100%{transform:scale(1)}55%{transform:scale(1.22)}70%{transform:scale(.95)}85%{transform:scale(1.04)}}
+/* Activity: the lines write themselves out, like a log filling up */
+.si-log:hover .si-ic svg{animation:lvWrite 1.1s var(--lv-ease) infinite;transform-origin:15% 50%}
+@keyframes lvWrite{0%{transform:scaleX(.2);opacity:.4}50%,100%{transform:scaleX(1);opacity:1}}
+.si-log .si-ic::after{content:"";position:absolute;right:5px;top:5px;width:6px;height:6px;border-radius:50%;background:#fff;opacity:0}
+.si-log:hover .si-ic::after{animation:lvBlip 1.1s ease-out infinite}
+@keyframes lvBlip{0%,50%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(1)}}
+/* Staff & connections: the shield pulses with a light passing over it */
+.si-adm .si-ic{overflow:hidden}
+.si-adm .si-ic::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%);background-size:250% 100%;background-position:150% 0;pointer-events:none}
+.si-adm:hover .si-ic::after{animation:lvGlint 1.1s ease-in-out infinite}
+.si-adm:hover .si-ic svg{animation:lvBeat 1.1s ease-in-out infinite}
+
+/* Needs you: solid colour-filled icon tiles with white icons */
+.lv-need.t-red{--tone-a:#F87171;--tone-b:#DC2626}
+.lv-need.t-amber{--tone-a:#FDBA74;--tone-b:#EA580C}
+.lv-need.t-green{--tone-a:#4ADE80;--tone-b:#059669}
+.lv-need.t-blue{--tone-a:#60A5FA;--tone-b:#4F46E5}
+.lv-need-ic{background:linear-gradient(145deg,var(--tone-a),var(--tone-b));border:0;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 18px -8px var(--tone-glow)}
+.lv-need-ic svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.lv-need-ic svg path,.lv-need-ic svg rect,.lv-need-ic svg circle{fill:rgba(255,255,255,.28)}
+.lv-need-ic.ic-wallet svg circle{fill:#fff}
+.lv-need-ic.ic-alert svg path:last-child{fill:none}
+.lv-need:hover .lv-need-ic{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 12px 24px -8px var(--tone-glow)}
+.lv-need-ic.ic-phone::before,.lv-need-ic.ic-phone::after{border-color:var(--tone-a)}
+.lv-need-ic.ic-shield::after{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.7) 50%,transparent 65%);background-size:250% 100%;background-position:150% 0}
+.lv-need.zero .lv-need-ic{filter:saturate(.75)}
+
+@media (prefers-reduced-motion:reduce){.side-p::before,.si-ic,.si-ic svg,.si-ic svg path,.si-ic::before,.si-ic::after{animation:none!important}}
+@media (hover:none){.side-p::before,.si-ic svg,.si-ic svg path,.si-ic::before,.si-ic::after{animation:none!important}}

@@ -2,7 +2,7 @@
 // Sidebar and top bar, the demo's markup (renderNav, renderTop). Client components only to know the current page.
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Ic } from './icons';
+import { Ic, Wa } from './icons';
 import { Go, GlobalSearch } from './client';
 
 export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number; pays?: number }
@@ -27,10 +27,10 @@ export function Sidebar({ projects, admin, approvals = 0, me }: { projects: NavP
             </Go>))}
         </div>
         <div className="side-h">System</div>
-        <Go href="/whatsapp" className="side-i" current={path.startsWith('/whatsapp') || path.startsWith('/messages')}><Ic n="phone" /><span className="side-l">WhatsApp</span></Go>
-        <Go href="/approvals" className="side-i" current={path.startsWith('/approvals')}><Ic n="check" /><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
-        <Go href="/log" className="side-i" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><Ic n="list" /><span className="side-l">Activity</span></Go>
-        {admin ? <Go href="/admin" className="side-i" current={path === '/admin'}><Ic n="shield" /><span className="side-l">Staff & connections</span></Go> : null}
+        <Go href="/whatsapp" className="side-i si si-wa" current={path.startsWith('/whatsapp') || path.startsWith('/messages')}><span className="si-ic" aria-hidden="true"><Wa /></span><span className="side-l">WhatsApp</span></Go>
+        <Go href="/approvals" className="side-i si si-apv" current={path.startsWith('/approvals')}><span className="si-ic" aria-hidden="true"><Ic n="check" /></span><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
+        <Go href="/log" className="side-i si si-log" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">Activity</span></Go>
+        {admin ? <Go href="/admin" className="side-i si si-adm" current={path === '/admin'}><span className="si-ic" aria-hidden="true"><Ic n="shield" /></span><span className="side-l">Staff & connections</span></Go> : null}
       </nav>
       {me ? <div className="side-me"><span className="me-av">{me.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><div className="side-me-t"><b>{me.name}</b><span>{me.role}</span></div><form action={me.signOut}><button type="submit" className="btn sm">Sign out</button></form></div> : null}
       <div className="side-foot">Phase 1 · Maintenance dues</div>
