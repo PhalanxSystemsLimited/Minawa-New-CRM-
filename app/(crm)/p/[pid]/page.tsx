@@ -7,7 +7,7 @@ import { pendingCount } from '@/lib/manual-send';
 import { Ic } from '@/components/icons';
 import { Go, A, GoRow } from '@/components/client';
 import { projectPage, projHead, newPayments } from '@/components/views/project';
-import { NeedTile, Kpi, Cycle, CalBadge, Lbl, Num } from '@/components/views/live';
+import { NeedTile, Kpi, Cycle, CalBadge, Lbl, Num, KIcon, Stack, MiniRing, Bars } from '@/components/views/live';
 import { pill, waMini, when, ownerHref } from '@/components/views/bits';
 
 export const dynamic = 'force-dynamic';
@@ -51,21 +51,39 @@ export default async function Overview({ params, searchParams }: { params: Promi
             return <>
               <div className="lv-mini-cycle lv-pre-cyc"><span><b>{ord(r.billDay)}</b>Bill</span>{r.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(+addDays(firstBill, r.dueDays).slice(8))}</b>Due</span><span><b>{r.feePct}%</b>Fine after</span></div>
               <div className="lv-pre">
-                {open ? <div><span className="k">Old arrears recovered</span><b className="H"><Num v={rec}>{rs(rec)}</Num> <small>of {rs(open)}</small></b><div className="lv-bar g"><span style={{ width: `${Math.min(100, rp)}%` }}></span></div><small>{rp}% recovered so far</small></div>
-                  : <div><span className="k">Old arrears</span><b className="H">None</b><small>No earlier dues were brought in</small></div>}
-                <div><span className="k">On the first bill</span><b className="H"><Num v={onBill}>{onBill}</Num> <small>flat{onBill === 1 ? '' : 's'} of {act.length}</small></b><div className="lv-bar a"><span style={{ width: `${act.length ? Math.round(100 * onBill / act.length) : 0}%` }}></span></div><small>{act.length - onBill ? `${act.length - onBill} get possession later` : 'Every apartment is included'}</small></div>
+                {open ? <div><span className="lv-pre-h"><KIcon icon="bank" tone="teal" /><span className="k">Old arrears recovered</span></span><b className="H"><Num v={rec}>{rs(rec)}</Num> <small>of {rs(open)}</small></b><div className="lv-bar g"><span style={{ width: `${Math.min(100, rp)}%` }}></span></div><small>{rp}% recovered so far</small></div>
+                  : <div><span className="lv-pre-h"><KIcon icon="bank" tone="teal" /><span className="k">Old arrears</span></span><b className="H">None</b><small>No earlier dues were brought in</small></div>}
+                <div><span className="lv-pre-h"><KIcon icon="users" tone="violet" /><span className="k">On the first bill</span></span><b className="H"><Num v={onBill}>{onBill}</Num> <small>flat{onBill === 1 ? '' : 's'} of {act.length}</small></b><div className="lv-bar a"><span style={{ width: `${act.length ? Math.round(100 * onBill / act.length) : 0}%` }}></span></div><small>{act.length - onBill ? `${act.length - onBill} get possession later` : 'Every apartment is included'}</small></div>
               </div></>; })()}
           <div className="lv-sub"><span>Until then, payments go to old arrears: <b>{rs(arrears)}</b></span></div></div>
           : <div className="lv-target"><div className="l">{monName.toUpperCase()} TARGET <Go href={`${P}?m=target`} className="htg-link">Breakdown</Go></div>
           <div className="v H"><Num v={coll}>{rs(coll)}</Num> <small>of {rs(tg.total)}</small></div>
           <div className="lv-pace" role="img" aria-label={`${tgPct}% of the target collected`}><span style={{ width: `${Math.min(100, tgPct)}%` }}></span><i style={{ left: `${pace}%` }}><em>where you should be today</em></i></div>
-          <div className="lv-sub"><span><b>{tgPct}%</b> collected</span><span>{tgLeft ? <>{rs(tgLeft)} to go · {daysLeft} day{daysLeft === 1 ? '' : 's'} left · <b>{rs(Math.ceil(tgLeft / Math.max(1, daysLeft)))} a day</b></> : 'Target met'}</span></div></div>}
+          <div className="lv-sub"><span><b>{tgPct}%</b> collected</span><span>{tgLeft ? <>{rs(tgLeft)} to go · {daysLeft} day{daysLeft === 1 ? '' : 's'} left · <b>{rs(Math.ceil(tgLeft / Math.max(1, daysLeft)))} a day</b></> : 'Target met'}</span></div>
+          {(() => { const paidUp = act.length - owe.length, pu = act.length ? Math.round(100 * paidUp / act.length) : 0, perDay = Math.round(coll / Math.max(1, dom));
+            return <div className="lv-pre lv-pre-ov">
+              <div><span className="lv-pre-h"><KIcon icon="check" tone="teal" /><span className="k">Apartments paid up</span></span><b className="H"><Num v={paidUp}>{paidUp}</Num> <small>of {act.length}</small></b><div className="lv-bar g"><span style={{ width: `${pu}%` }}></span></div><small>{pu}% owe nothing</small></div>
+              <div><span className="lv-pre-h"><KIcon icon="pulse" tone="violet" /><span className="k">Coming in a day</span></span><b className="H"><Num v={perDay}>{rs(perDay)}</Num></b><small>average so far this month · {payN} payment{payN === 1 ? '' : 's'}</small></div>
+            </div>; })()}</div>}
         <div className="lv-kpis two">
-          <Kpi label="Still to collect" value={<Num v={outstanding}>{rs(outstanding)}</Num>} sub={arrears && arrears >= outstanding ? 'all old arrears' : arrears ? `${rs(arrears)} old arrears` : `from ${owe.length} apartments`} href={`${P}/apartments?f=owing`} />
-          <Kpi label="Apartments owing" value={<><Num v={owe.length}>{owe.length}</Num><small> of {act.length}</small></>} sub={`${flagged} flagged`} href={`${P}/apartments?f=owing`} />
-          <Kpi label="Fines in it" value={<Num v={fees}>{rs(fees)}</Num>} sub={`${S.settings.rules.feePct}% after the due date`} href={`${P}/apartments?f=fine`} />
-          {(() => { const y = sheetStats().sheet; return y ? <Kpi hl label="2026 paid" value={<><Num v={y.pct}>{y.pct}</Num>%</>} sub={`office sheet ${fd(y.asOf!)}`} />
-            : <Kpi hl label={`Collected in ${monName}`} value={<Num v={coll}>{rs(coll)}</Num>} sub={`${payN} payment${payN === 1 ? '' : 's'}`} href={`${P}/payments?per=month`} />; })()}
+          {(() => {
+            // Money in over the last six months (all payments, old arrears included), for the small column chart.
+            const ms: string[] = []; for (let i = 5; i >= 0; i--) { const d = new Date(+mon.slice(0, 4), +mon.slice(5, 7) - 1 - i, 1); ms.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }
+            const mv = ms.map(m => S.payments.filter(p => p.d.slice(0, 7) === m).reduce((a, p) => a + p.amount, 0)), ml = ms.map(m => MONL[+m.slice(5) - 1].slice(0, 3));
+            const fineN = act.filter(o => (o.feeDue || 0) > 0).length, billsOwed = Math.max(0, outstanding - arrears - fees);
+            const y = sheetStats().sheet;
+            return <>
+              <Kpi icon="wallet" tone="amber" label="Still to collect" value={<Num v={outstanding}>{rs(outstanding)}</Num>} sub={arrears && arrears >= outstanding ? 'all old arrears' : arrears ? `${rs(arrears)} old arrears` : `from ${owe.length} apartments`} href={`${P}/apartments?f=owing`}>
+                <Stack parts={[{ v: arrears, label: 'Old arrears', tone: 'amber' }, { v: billsOwed, label: 'Bills', tone: 'rust' }, { v: fees, label: 'Fines', tone: 'red' }]} /></Kpi>
+              <Kpi icon="building" tone="blue" label="Apartments owing" value={<><Num v={owe.length}>{owe.length}</Num><small> of {act.length}</small></>} sub={`${flagged} flagged · ${act.length - owe.length} paid up`} href={`${P}/apartments?f=owing`}
+                chart={<MiniRing pct={act.length ? 100 * owe.length / act.length : 0} tone="blue" />} />
+              <Kpi icon="percent" tone="red" label="Fines in it" value={<Num v={fees}>{rs(fees)}</Num>} sub={`${S.settings.rules.feePct}% after the due date`} href={`${P}/apartments?f=fine`}>
+                <div className="lv-kmeta"><span>{fineN} flat{fineN === 1 ? '' : 's'} with a fine</span><span>{owe.length ? Math.round(100 * fineN / owe.length) : 0}% of those owing</span></div>
+                <div className="lv-bar r"><span style={{ width: `${owe.length ? Math.round(100 * fineN / owe.length) : 0}%` }}></span></div></Kpi>
+              {y ? <Kpi hl icon="trend" tone="green" label="2026 paid" value={<><Num v={y.pct}>{y.pct}</Num>%</>} sub={`office sheet ${fd(y.asOf!)} · money in, last 6 months`}><Bars values={mv} labels={ml} tone="green" /></Kpi>
+                : <Kpi hl icon="trend" tone="green" label={`Collected in ${monName}`} value={<Num v={coll}>{rs(coll)}</Num>} sub={`${payN} payment${payN === 1 ? '' : 's'} · last 6 months`} href={`${P}/payments?per=month`}><Bars values={mv} labels={ml} tone="green" /></Kpi>}
+            </>;
+          })()}
         </div>
       </section>
       {(() => {

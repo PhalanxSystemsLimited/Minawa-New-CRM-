@@ -6,7 +6,7 @@ import { pendingCount } from '@/lib/manual-send';
 import { KIND_LABEL } from '@/lib/approvals';
 import { cookies } from 'next/headers';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
-import { NeedTile, Ring, Spark, Kpi, CalBadge, Lbl, Num, initials } from '@/components/views/live';
+import { NeedTile, Ring, Spark, Kpi, CalBadge, Lbl, Num, initials, Stack } from '@/components/views/live';
 import { LiveTabs } from '@/components/Live';
 import { MONL, fm, fd, fds, dow, dowl, rs, todayPKT, addDays, diff, nowPKT, ord, hour12, short } from '@/lib/fmt';
 import { Ic } from '@/components/icons';
@@ -28,7 +28,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const today = todayPKT(), mon = today.slice(0, 7), monName = MONL[+mon.slice(5) - 1];
   const st = states.map(s => use(s, () => ({ p: s.proj, s, ...projStats() })));
   const tot = (k: 'coll' | 'target' | 'todo' | 'owing' | 'outstanding' | 'flats' | 'flagged') => st.reduce((a, x) => a + x[k], 0);
-  const arrears = st.reduce((a, x) => a + x.arrears, 0), starts = st.map(x => x.firstBill).filter(Boolean).sort()[0] as string | undefined;
+  const arrears = st.reduce((a, x) => a + x.arrears, 0), fees = st.reduce((a, x) => a + (x.fees || 0), 0), starts = st.map(x => x.firstBill).filter(Boolean).sort()[0] as string | undefined;
   // The office's 2026 sheets (before the CRM): owed for the year with arrears, received (on the sheet and in the CRM since).
   const sh = st.map(x => x.sheet).filter(Boolean) as NonNullable<typeof st[number]['sheet']>[];
   const y26 = sh.length ? { due: sh.reduce((a, x) => a + x.due, 0), paid: sh.reduce((a, x) => a + x.paid, 0), balance: sh.reduce((a, x) => a + x.balance, 0) } : null;
@@ -113,9 +113,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <div className="lv-money-rt">{y26 ? <><b className="H"><Num v={y26.paid}>{rs(y26.paid)}</Num> paid</b><span>of {rs(y26.due)} owed for 2026 with arrears{sh.length ? ` · office sheets ${fd(sh.map(x => x.asOf || '').sort().pop()!)}` : ''}</span></>
           : <><b className="H"><Num v={coll}>{rs(coll)}</Num> collected</b><span>of the {rs(target)} {monName} target</span></>}</div></div>
       <div className="lv-kpis">
-        <Kpi hl label={`Collected in ${monName}`} value={<Num v={coll}>{rs(coll)}</Num>} sub={target ? `${pct}% of the ${rs(target)} target` : `${st.reduce((a, x) => a + x.s.payments.filter(p => p.d.slice(0, 7) === mon).length, 0)} payments`}><Spark values={spark} tone="rust" /></Kpi>
-        <Kpi label="Still to collect" value={<Num v={tot('outstanding')}>{rs(tot('outstanding'))}</Num>} sub={arrears && arrears >= tot('outstanding') ? 'all old arrears' : arrears ? `${rs(arrears)} old arrears` : `from ${owing} apartments`} />
-        <Kpi label="Apartments owing" value={<><Num v={owing}>{owing}</Num><small> / {tot('flats')}</small></>} sub={`${tot('flagged')} flagged for disconnection`}>
+        <Kpi hl icon="trend" tone="green" label={`Collected in ${monName}`} value={<Num v={coll}>{rs(coll)}</Num>} sub={target ? `${pct}% of the ${rs(target)} target` : `${st.reduce((a, x) => a + x.s.payments.filter(p => p.d.slice(0, 7) === mon).length, 0)} payments`}><Spark values={spark} tone="rust" /></Kpi>
+        <Kpi icon="wallet" tone="amber" label="Still to collect" value={<Num v={tot('outstanding')}>{rs(tot('outstanding'))}</Num>} sub={arrears && arrears >= tot('outstanding') ? 'all old arrears' : arrears ? `${rs(arrears)} old arrears` : `from ${owing} apartments`}>
+          <Stack parts={[{ v: arrears, label: 'Old arrears', tone: 'amber' }, { v: Math.max(0, tot('outstanding') - arrears - fees), label: 'Bills', tone: 'rust' }, { v: fees, label: 'Fines', tone: 'red' }]} /></Kpi>
+        <Kpi icon="building" tone="blue" label="Apartments owing" value={<><Num v={owing}>{owing}</Num><small> / {tot('flats')}</small></>} sub={`${tot('flagged')} flagged for disconnection`}>
           <div className="lv-bar r"><span style={{ width: `${tot('flats') ? Math.round(100 * owing / tot('flats')) : 0}%` }}></span></div></Kpi>
       </div>
       <div className="lv-next"><div className="l">{starts ? 'BILLING STARTS' : 'NEXT BILLS'}</div>

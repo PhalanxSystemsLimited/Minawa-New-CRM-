@@ -41,9 +41,17 @@ export function Spark({ values, tone = 'rust' }: { values: number[]; tone?: 'rus
   </svg>;
 }
 
+export type KTone = 'rust' | 'amber' | 'blue' | 'green' | 'violet' | 'red' | 'teal';
+
+/** A small coloured icon button for a figure; it plays its own animation when the figure is hovered. */
+export const KIcon = ({ icon, tone = 'rust' }: { icon: string; tone?: KTone }) =>
+  <span className={`lv-kic k-${tone} ki-${icon}`} aria-hidden="true"><Ic n={icon} s={18} /></span>;
+
 /** A figure in the dark money panel. */
-export function Kpi({ label, value, sub, hl, children, href }: { label: string; value: React.ReactNode; sub?: React.ReactNode; hl?: boolean; children?: React.ReactNode; href?: string }) {
-  const body = <><div className="l">{label}</div><div className="v H">{value}</div>{sub ? <div className="s">{sub}</div> : null}{children}</>;
+export function Kpi({ label, value, sub, hl, children, href, icon, tone, chart }: { label: string; value: React.ReactNode; sub?: React.ReactNode; hl?: boolean; children?: React.ReactNode; href?: string; icon?: string; tone?: KTone; chart?: React.ReactNode }) {
+  const head = icon ? <div className="lv-kh"><KIcon icon={icon} tone={tone} /><div className="l">{label}</div></div> : <div className="l">{label}</div>;
+  const val = chart ? <div className="lv-kv"><div className="v H">{value}</div>{chart}</div> : <div className="v H">{value}</div>;
+  const body = <>{head}{val}{sub ? <div className="s">{sub}</div> : null}{children}</>;
   return href ? <Go href={href} className={`lv-kpi${hl ? ' hl' : ''}`}>{body}</Go> : <div className={`lv-kpi${hl ? ' hl' : ''}`}>{body}</div>;
 }
 
@@ -67,3 +75,32 @@ export const Lbl = ({ children }: { children: React.ReactNode }) => <div classNa
 
 /** Initials for an avatar. */
 export const initials = (s: string) => s.split(/[\s·-]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+/** One bar split into parts (e.g. what is owed: old arrears, bills, fines), with a small key. */
+export function Stack({ parts }: { parts: { v: number; label: string; tone: KTone }[] }) {
+  const all = parts.reduce((a, p) => a + Math.max(0, p.v), 0), shown = parts.filter(p => p.v > 0);
+  return <div className="lv-stack">
+    <div className="lv-stack-bar" role="img" aria-label={shown.map(p => `${p.label} ${Math.round(100 * p.v / Math.max(1, all))}%`).join(', ')}>
+      {shown.map((p, i) => <span key={i} className={`k-${p.tone}`} style={{ width: `${Math.max(3, 100 * p.v / Math.max(1, all))}%`, animationDelay: `${.15 * i}s` }}></span>)}
+      {!shown.length ? <span className="k-none" style={{ width: '100%' }}></span> : null}
+    </div>
+    <div className="lv-stack-k">{parts.map((p, i) => <span key={i}><i className={`k-${p.tone}`}></i>{p.label} <b>{Math.round(100 * Math.max(0, p.v) / Math.max(1, all))}%</b></span>)}</div>
+  </div>;
+}
+
+/** A small ring for a share (e.g. apartments owing out of all). */
+export function MiniRing({ pct, tone = 'blue' }: { pct: number; tone?: KTone }) {
+  const p = Math.max(0, Math.min(100, Math.round(pct))), r = 19, c = 2 * Math.PI * r;
+  return <svg className={`lv-mring k-${tone}`} viewBox="0 0 48 48" role="img" aria-label={`${p}%`}>
+    <circle cx="24" cy="24" r={r} className="bg" /><circle cx="24" cy="24" r={r} className="fg" style={{ strokeDasharray: `${(c * p / 100).toFixed(1)} ${c.toFixed(1)}` }} />
+    <text x="24" y="27.5" textAnchor="middle">{p}%</text>
+  </svg>;
+}
+
+/** Small columns for the last few months (oldest first); the latest is highlighted. */
+export function Bars({ values, labels, tone = 'green' }: { values: number[]; labels: string[]; tone?: KTone }) {
+  const max = Math.max(1, ...values);
+  return <div className={`lv-bars k-${tone}`} role="img" aria-label={values.map((v, i) => `${labels[i]}: ${v}`).join(', ')}>
+    {values.map((v, i) => <div key={i} className={i === values.length - 1 ? 'on' : ''}><span style={{ height: `${Math.max(v ? 8 : 3, Math.round(100 * v / max))}%`, animationDelay: `${.06 * i}s` }}></span><i>{labels[i]}</i></div>)}
+  </div>;
+}

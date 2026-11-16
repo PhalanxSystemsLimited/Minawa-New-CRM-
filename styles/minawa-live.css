@@ -544,3 +544,62 @@ button.lv-kpi{cursor:pointer}
 @media (max-width:767px){.lv-need-ic{width:46px;height:46px;border-radius:14px}.lv-need-ic svg{width:22px;height:22px}}
 @media (prefers-reduced-motion:reduce){.lv-need-ic,.lv-need-go{animation:none!important}}
 @media (hover:none){.lv-need-ic,.lv-need-go{animation:none!important}}
+
+/* ===== Update 63: graphics and icon buttons in the dark money panel ===== */
+/* figures grow on hover without a 3D tilt, so their icons and text stay sharp */
+.lv-kpi{transform:scale(var(--lv-s,1))!important}
+.lv-kpi:hover{--lv-s:1.03}
+/* icon buttons */
+.lv-kh{display:flex;align-items:center;gap:10px;min-height:34px}
+.lv-kh .l{min-height:0}
+.lv-kic{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:#fff;position:relative;
+  background:linear-gradient(145deg,var(--ka),var(--kb));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 -1px color-mix(in srgb,var(--kb) 65%,#000 35%),0 8px 16px -8px var(--kb)}
+.lv-kic svg{width:18px;height:18px}
+.lv-kic svg path,.lv-kic svg rect,.lv-kic svg circle{fill:rgba(255,255,255,.22)}
+.k-rust{--ka:#FF9A75;--kb:#D95D39}.k-amber{--ka:#FCD34D;--kb:#EA580C}.k-blue{--ka:#7DB4FF;--kb:#4F46E5}.k-green{--ka:#6EE7B7;--kb:#059669}
+.k-violet{--ka:#C4B5FD;--kb:#7C3AED}.k-red{--ka:#FCA5A5;--kb:#DC2626}.k-teal{--ka:#5EEAD4;--kb:#0D9488}
+/* each icon button moves its own way when its box is hovered */
+.lv-kpi:hover .ki-wallet,.lv-pre > div:hover .ki-wallet{animation:lvHop 1.3s var(--lv-ease) infinite}
+.lv-kpi:hover .ki-building,.lv-pre > div:hover .ki-building{animation:lvJumpShake 1.2s var(--lv-ease) infinite}
+.lv-kpi:hover .ki-percent,.lv-pre > div:hover .ki-percent{animation:lvSpin 1.4s var(--lv-ease) infinite}
+.lv-kpi:hover .ki-trend,.lv-pre > div:hover .ki-trend{animation:lvClimb 1.2s var(--lv-ease) infinite}
+.lv-kpi:hover .ki-bank,.lv-pre > div:hover .ki-bank{animation:lvRattle 1s linear infinite}
+.lv-kpi:hover .ki-users,.lv-pre > div:hover .ki-users{animation:lvHop 1.1s var(--lv-ease) infinite}
+@keyframes lvSpin{0%{transform:rotate(0)}55%,100%{transform:rotate(360deg)}}
+@keyframes lvClimb{0%,100%{transform:translate(0,0)}35%{transform:translate(3px,-6px)}55%{transform:translate(3px,-6px) rotate(-8deg)}75%{transform:translate(0,0)}}
+/* value with a chart beside it */
+.lv-kv{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.lv-kv .v{margin-top:0}
+.lv-mring{width:52px;height:52px;flex:none;transform:rotate(-90deg)}
+.lv-mring circle{fill:none;stroke-width:5}
+.lv-mring .bg{stroke:rgba(255,255,255,.1)}
+.lv-mring .fg{stroke:var(--ka);stroke-linecap:round;filter:drop-shadow(0 0 6px var(--kb));animation:lvRingDraw 1.4s var(--lv-ease) both}
+.lv-mring text{transform:rotate(90deg);transform-origin:24px 24px;fill:#fff;font-size:11px;font-weight:800}
+@keyframes lvRingDraw{from{stroke-dasharray:0 200}}
+/* stacked bar */
+.lv-stack{margin-top:10px}
+.lv-stack-bar{display:flex;gap:3px;height:8px;border-radius:8px;overflow:hidden;background:rgba(255,255,255,.08)}
+.lv-stack-bar span{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--ka),var(--kb));transform-origin:left;animation:lvGrowX 1s var(--lv-ease) both}
+.lv-stack-bar .k-none{background:rgba(255,255,255,.08)}
+@keyframes lvGrowX{from{transform:scaleX(0)}}
+.lv-stack-k{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:11px;color:#A9B4C4}
+.lv-stack-k span{display:inline-flex;align-items:center;gap:5px}.lv-stack-k b{color:#fff;font-weight:700}
+.lv-stack-k i{width:8px;height:8px;border-radius:3px;background:linear-gradient(145deg,var(--ka),var(--kb))}
+/* small meta line + bar */
+.lv-kmeta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#A9B4C4;margin-top:10px}
+/* month columns */
+.lv-bars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;align-items:end;height:62px;margin-top:10px}
+.lv-bars > div{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;gap:3px;min-width:0}
+.lv-bars span{display:block;border-radius:5px 5px 2px 2px;background:rgba(255,255,255,.16);transform-origin:bottom;animation:lvGrowY .9s var(--lv-ease) both;transition:background-color .25s,filter .25s}
+.lv-bars .on span{background:linear-gradient(180deg,var(--ka),var(--kb));box-shadow:0 0 14px -2px var(--kb)}
+.lv-bars i{font-style:normal;font-size:9.5px;color:#A9B4C4;text-align:center;line-height:1}
+.lv-bars > div:hover span{background:linear-gradient(180deg,var(--ka),var(--kb))}
+@keyframes lvGrowY{from{transform:scaleY(0)}}
+.lv-bars > div{position:relative}
+/* the two boxes on the left before billing starts */
+.lv-pre-h{display:flex;align-items:center;gap:10px}
+@media (prefers-reduced-motion:reduce){.lv-kic,.lv-mring .fg,.lv-stack-bar span,.lv-bars span{animation:none!important}}
+@media (hover:none){.lv-kic{animation:none!important}}
+.lv-pre-ov{margin:18px 0 0}
+.lv-kpi:hover .ki-check,.lv-pre > div:hover .ki-check{animation:lvJumpShake 1.2s var(--lv-ease) infinite}
+.lv-kpi:hover .ki-pulse,.lv-pre > div:hover .ki-pulse{animation:lvRattle .9s linear infinite}

@@ -66,7 +66,7 @@ function tabInk() {
 }
 
 const LIT = '.card,.pcard,.lv-need,.lv-kpi,.lv-lane,.kpi,.apv,.hs';
-const TILT = '.lv-kpi';
+const TILT = '.lv-tilt'; // nothing tilts now: a 3D tilt made the browser blur the icons inside
 
 export function LiveEffects() {
   const path = usePathname();
