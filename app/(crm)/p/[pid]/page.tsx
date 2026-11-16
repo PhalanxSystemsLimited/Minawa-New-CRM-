@@ -47,6 +47,14 @@ export default async function Overview({ params, searchParams }: { params: Promi
       <section className="lv-money lv-ov">
         {firstBill ? <div className="lv-target"><div className="l">BILLING STARTS</div>
           <div className="lv-next-r big"><CalBadge date={firstBill} /><div><b className="H">{Math.max(0, diff(firstBill, S.today))} days to go</b><small>The first bill goes out on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}</small></div></div>
+          {(() => { const r = S.settings.rules, open = act.reduce((a, o) => a + (o.opening || 0), 0), rec = Math.max(0, open - arrears), rp = open ? Math.round(100 * rec / open) : 0, onBill = act.filter(o => o.possession <= firstBill).length;
+            return <>
+              <div className="lv-mini-cycle lv-pre-cyc"><span><b>{ord(r.billDay)}</b>Bill</span>{r.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(+addDays(firstBill, r.dueDays).slice(8))}</b>Due</span><span><b>{r.feePct}%</b>Fine after</span></div>
+              <div className="lv-pre">
+                {open ? <div><span className="k">Old arrears recovered</span><b className="H"><Num v={rec}>{rs(rec)}</Num> <small>of {rs(open)}</small></b><div className="lv-bar g"><span style={{ width: `${Math.min(100, rp)}%` }}></span></div><small>{rp}% recovered so far</small></div>
+                  : <div><span className="k">Old arrears</span><b className="H">None</b><small>No earlier dues were brought in</small></div>}
+                <div><span className="k">On the first bill</span><b className="H"><Num v={onBill}>{onBill}</Num> <small>flat{onBill === 1 ? '' : 's'} of {act.length}</small></b><div className="lv-bar a"><span style={{ width: `${act.length ? Math.round(100 * onBill / act.length) : 0}%` }}></span></div><small>{act.length - onBill ? `${act.length - onBill} get possession later` : 'Every apartment is included'}</small></div>
+              </div></>; })()}
           <div className="lv-sub"><span>Until then, payments go to old arrears: <b>{rs(arrears)}</b></span></div></div>
           : <div className="lv-target"><div className="l">{monName.toUpperCase()} TARGET <Go href={`${P}?m=target`} className="htg-link">Breakdown</Go></div>
           <div className="v H"><Num v={coll}>{rs(coll)}</Num> <small>of {rs(tg.total)}</small></div>
