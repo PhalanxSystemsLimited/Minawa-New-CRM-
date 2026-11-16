@@ -88,12 +88,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <div className="sec-row"><h3 className="sec-h">Maintenance by project</h3><span className="muted">{fm(mon)}</span></div>
     <div className="pgrid">{st.map(x => (
       <div className="pcard" key={x.p.id}>
-        <div className="pc-top"><span className="stat-ic"><Ic n="building" s={20} /></span><div><div className="pc-name">{x.p.name}</div><div className="cell-sub">{x.p.kind} · {x.p.place} · {x.flats} flats billed</div></div>{x.todo ? <span className="chip-t down">{x.todo} to do</span> : <span className="chip-t up">All clear</span>}</div>
+        <div className="pc-top"><span className="stat-ic"><Ic n="building" s={20} /></span><div><div className="pc-name">{x.p.name}</div><div className="cell-sub">{x.p.kind} · {x.p.place} · {x.flats} flats billed</div></div>{x.todo ? <span className={`chip-t down${x.todo >= 10 ? ' hot' : ' mild'}`}>{x.todo} to do</span> : <span className="chip-t up">All clear</span>}</div>
         {x.firstBill ? <div className="pc-target"><div className="l">Billing starts</div><div className="v num">{fd(x.firstBill)}</div><div className="cell-sub">For {fm(x.s.goLive.slice(0, 7))} · {Math.max(0, diff(x.firstBill, today))} days to go</div></div>
           : <div className="pc-target"><div className="l">{monName} target</div><div className="v num">{rs(x.coll)} <span>of {rs(x.target)}</span></div><div className="tg-bar"><span style={{ width: `${Math.min(100, x.pct)}%` }}></span></div><div className="cell-sub">{x.pct}% collected</div></div>}
-        <div className="stat-rows"><div><span>Outstanding</span><b>{rs(x.outstanding)}</b></div><div><span>Apartments owing</span><b>{x.owing}</b></div>{x.arrears ? <div title={`Owed from before ${fm(x.s.goLive.slice(0, 7))}, when the system started billing`}><span>Old arrears</span><b>{rs(x.arrears)}</b></div> : null}<div><span>Flagged for disconnection</span><b>{x.flagged}</b></div><div><span>Fines in it</span><b>{rs(x.fees)}</b></div></div>
+        <div className="stat-rows"><div className="big"><span>Outstanding</span><b>{rs(x.outstanding)}</b></div><div><span>Apartments owing</span><b>{x.owing}</b></div>{x.arrears ? <div title={`Owed from before ${fm(x.s.goLive.slice(0, 7))}, when the system started billing`}><span>Old arrears</span><b>{rs(x.arrears)}</b></div> : null}<div><span>Flagged for disconnection</span><b>{x.flagged}</b></div><div><span>Fines in it</span><b>{rs(x.fees)}</b></div></div>
         {x.sheet ? <div className="pc-sheet"><div className="l">2026, office sheet as on {fd(x.sheet.asOf!)}</div>
-          <div className="stat-rows"><div><span>Owed for 2026 (with arrears)</span><b>{rs(x.sheet.due)}</b></div><div><span>Paid</span><b>{rs(x.sheet.paid)} <small className="muted">{x.sheet.pct}%</small></b></div>{x.sheet.since ? <div><span>of which in the CRM since</span><b>{rs(x.sheet.since)}</b></div> : null}<div><span>Still due</span><b>{rs(x.outstanding)}</b></div></div></div> : null}
+          <div className="stat-rows">
+            <div><span>Owed for 2026 <i>(with arrears)</i></span><b>{rs(x.sheet.due)}</b></div>
+            <div className="paid"><span>Paid</span><b>{rs(x.sheet.paid)} <small className={x.sheet.pct >= 50 ? 'good' : 'warn'}>{x.sheet.pct}%</small></b></div>
+            <div className={`pc-bar ${x.sheet.pct >= 50 ? 'good' : 'warn'}`} role="img" aria-label={`${x.sheet.pct}% of 2026 paid`}><span style={{ width: `${Math.min(100, x.sheet.pct)}%` }}></span></div>
+            <div className="small"><span>of which in the CRM since</span><b>{x.sheet.since ? rs(x.sheet.since) : '—'}</b></div>
+            <div className="due"><span>Still due</span><b>{rs(x.outstanding)}</b></div>
+          </div></div> : null}
         <div className="stat-foot"><Go href={`/p/${x.p.id}`} className="btn sm stat-go">Open maintenance<span aria-hidden="true">→</span></Go></div>
       </div>))}
     </div>

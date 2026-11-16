@@ -499,3 +499,42 @@ td{font-size:13.5px;color:#1E293B}
   #modal .doc{margin:0 auto !important;max-width:none !important}
   #modal .doc *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* ================= Dashboard project cards (Nov 2026 reference): inset "billing starts" box, compact rows,
+   2026 sheet on a soft panel with a progress bar and the amount still due in red ================= */
+.pcard{border-radius:20px;background:#fff}
+.pc-top{border-bottom:0;padding:20px 20px 4px}
+.pc-name{font-size:17px;line-height:1.25}
+.chip-t.down.hot{background:#FEECEC;color:#D92D20;border-color:#FDD3D0}
+.chip-t.down.mild{background:#FFF4E5;color:#C2410C;border-color:#FED7AA}
+/* billing starts / this month's target: a rounded box inside the card, tinted per project */
+.pc-target{margin:14px 20px 16px;padding:14px 16px;border-radius:14px;border:1px solid rgba(253,230,138,.9);background:#FFFBEB}
+.pgrid .pcard:nth-child(3n+2) .pc-target{background:#F0FDF7;border-color:#BBF0D6}
+.pgrid .pcard:nth-child(3n+3) .pc-target{background:#F2F7FF;border-color:#CFE0FB}
+.pc-target .l{font-size:10.5px;letter-spacing:.1em;color:#334155}
+.pc-target .v{font-size:19px;margin-top:4px}
+.pc-target .cell-sub{color:#B45309;font-weight:500}
+.pgrid .pcard:nth-child(3n+2) .pc-target .cell-sub{color:#047857}
+.pgrid .pcard:nth-child(3n+3) .pc-target .cell-sub{color:#1D4ED8}
+/* the numbers: no lines between rows, the first one bigger */
+.pcard > .stat-rows{padding:12px 20px 16px;border-top:1px solid #F1EFE9;gap:2px}
+.pcard .stat-rows div{border-bottom:0;padding:5px 0;font-size:13px}
+.pcard .stat-rows div.big b{font-size:16px;font-weight:800}
+/* 2026: soft panel, paid in green with its %, a bar, and the amount still due in red */
+.pc-sheet{margin:0;padding:16px 20px 18px;border-top:1px solid #EEF0F3;background:#F8FAFC}
+.pc-sheet>.l{font-size:11px;letter-spacing:.08em;color:#64748B;margin-bottom:8px}
+.pc-sheet .stat-rows i{font-style:normal;color:#94A3B8}
+.pc-sheet .stat-rows .paid span,.pc-sheet .stat-rows .paid b{color:#047857}
+.pc-sheet .stat-rows .paid small{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:7px;font-size:11px;font-weight:700}
+.pc-sheet .stat-rows .paid small.good{background:#DCFCE7;color:#15803D}
+.pc-sheet .stat-rows .paid small.warn{background:#FEF3C7;color:#B45309}
+.pcard .stat-rows div.pc-bar{display:block;height:8px;padding:0;margin:4px 0 8px;border-radius:9999px;background:#E2E8F0;overflow:hidden}
+.pc-bar span{display:block;height:100%;border-radius:inherit;min-width:4px}
+.pc-bar.good span{background:#10B981}
+.pc-bar.warn span{background:#F59E0B}
+.pcard .stat-rows div.small{font-size:12px;color:#64748B}
+.pcard .stat-rows div.small b{font-weight:600;color:#334155}
+.pcard .stat-rows div.due{margin-top:6px;padding-top:10px;border-top:1px solid #E2E8F0;font-weight:600;color:#0F172A}
+.pcard .stat-rows div.due b{font-size:17px;font-weight:800;color:#DC2626}
+.pcard .stat-foot{background:#fff;border-top:1px solid #F1EFE9;padding:14px 20px}
+.pcard .stat-go{width:100%;justify-content:space-between}
