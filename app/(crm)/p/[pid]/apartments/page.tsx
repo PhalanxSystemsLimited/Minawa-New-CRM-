@@ -42,7 +42,7 @@ export default async function Apartments({ params, searchParams }: { params: Pro
         {!rows.length ? <p className="empty">No apartments match. Clear the search or pick another filter.</p> :
           <div className="tbl-wrap"><table className="sortable"><thead><tr>{sortTh('apt', 'Apartment')}{sortTh('owner', 'Owner')}{sortTh('bal', 'Balance', 'r')}{sortTh('status', 'Status')}</tr></thead><tbody>
             {rows.map(o => { const bal = balance(o), earlier = accountsOf(o).length - 1;
-              return <GoRow key={o.id} href={ownerHref(o)} className="click"><td><div className="cell-main apt-t">{o.apt}</div><div className="cell-sub">Block {o.block} · {o.type}{o.plan && o.plan !== 'monthly' ? ` · ${PLAN_LABEL[o.plan].toLowerCase()}` : ''}</div></td>
+              return <GoRow key={o.id} href={ownerHref(o)} className={`click st-${ownerStatus(o)}`}><td><div className="cell-main apt-t">{o.apt}</div><div className="cell-sub">Block {o.block} · {o.type}{o.plan && o.plan !== 'monthly' ? ` · ${PLAN_LABEL[o.plan].toLowerCase()}` : ''}</div></td>
                 <td><div>{o.name}{o.director ? <> <span className="tag">Director</span></> : null}</div><div className="cell-sub">{ownerSince(o)}{earlier ? ` · ${earlier} earlier owner${earlier > 1 ? 's' : ''}` : ''}</div></td>
                 <td className="r num">{bal < 0 ? <span className="neg">{rs(-bal)} credit</span> : bal > 0 ? rs(bal) : <span className="muted">–</span>}{o.feeDue > 0 && o.status === 'active' ? <div className="cell-sub">incl. {rs(o.feeDue)} fine</div> : null}</td><td>{pill(ownerStatus(o))}</td></GoRow>; })}
           </tbody></table></div>}

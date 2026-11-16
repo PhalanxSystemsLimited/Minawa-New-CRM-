@@ -5,6 +5,7 @@ import { use, followCount } from '@/lib/engine';
 import { Sidebar, Topbar, type NavProject } from '@/components/Shell';
 import { signOut } from '../login/actions';
 import { MobileBar, MobileTables } from '@/components/Mobile';
+import { LiveEffects } from '@/components/Live';
 import { WaReturnPrompt } from '@/components/WaReturnPrompt';
 import { LivePayments } from '@/components/LivePayments';
 import { cookies } from 'next/headers';
@@ -32,6 +33,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   const defaultPid = nav.find(p => p.live)?.id || 'cc';
   return (
     <>
+      <LiveEffects />
       <div className="app">
         <Suspense><Sidebar projects={nav} admin={staff.role === 'admin'} approvals={approvals} me={{ name: staff.name, role: roleName(staff), signOut }} /></Suspense>
         <div className="side-scrim" data-a="side-close"></div>

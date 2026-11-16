@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import '../styles/minawa-theme.css';
 import '../styles/minawa-additions.css';
 import '../styles/minawa-refresh.css';
+import '../styles/minawa-live.css';
 import '../styles/minawa-mobile.css';
 import { Toasts, Behaviour } from '@/components/client';
 
