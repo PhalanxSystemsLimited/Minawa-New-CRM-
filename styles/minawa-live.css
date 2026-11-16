@@ -682,3 +682,32 @@ button.lv-kpi{cursor:pointer}
 .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]){color:#B4441F;border-color:#F5B9A0;background:#fff;box-shadow:0 8px 18px -10px rgba(217,93,57,.45)}
 .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]) svg{color:#B4441F}
 @media (prefers-reduced-motion:reduce){.apv-plane svg,.apv-send::before{animation:none!important}.btn::before{transition:none!important}}
+
+/* ===== Update 67: "Needs you" tiles are coloured buttons — white text on the colour, one click to the screen ===== */
+.lv-need{background:linear-gradient(135deg,var(--tone-a),var(--tone-b))!important;border:0!important;color:#fff;overflow:hidden;isolation:isolate;
+  -webkit-backdrop-filter:none;backdrop-filter:none;padding:14px 18px;border-radius:20px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -4px 0 rgba(0,0,0,.12),0 14px 28px -16px var(--tone-glow)!important}
+.lv-need.is-lit{background:radial-gradient(220px 140px at var(--mx,50%) var(--my,0%),rgba(255,255,255,.28),transparent 70%),linear-gradient(135deg,var(--tone-a),var(--tone-b))!important}
+.lv-need:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.12),0 22px 36px -16px var(--tone-glow)!important}
+.lv-need:active{top:0!important;box-shadow:inset 0 2px 6px rgba(0,0,0,.18),0 8px 16px -12px var(--tone-glow)!important}
+/* text */
+.lv-need .lv-need-t b,.lv-need.t-red:not(.zero) .lv-need-t b,.lv-need.zero .lv-need-t b{color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.15)}
+.lv-need .lv-need-t > span{color:rgba(255,255,255,.95)}
+.lv-need .lv-need-s{color:rgba(255,255,255,.85);border-top-color:rgba(255,255,255,.35)}
+/* the icon sits on a frosted white button */
+.lv-need .lv-need-ic{background:rgba(255,255,255,.2)!important;border:1px solid rgba(255,255,255,.35)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 0 -1px rgba(0,0,0,.14),0 10px 18px -10px rgba(0,0,0,.35)!important}
+.lv-need:hover .lv-need-ic{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 0 -1px rgba(0,0,0,.14),0 14px 22px -10px rgba(0,0,0,.4)!important}
+.lv-need .lv-need-ic svg path,.lv-need .lv-need-ic svg rect,.lv-need .lv-need-ic svg circle{fill:rgba(255,255,255,.25)}
+.lv-need .lv-need-ic.ic-phone::before,.lv-need .lv-need-ic.ic-phone::after{border-color:rgba(255,255,255,.8)}
+/* arrow button */
+.lv-need .lv-need-go,.lv-need.t-red:not(.zero) .lv-need-go{background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.lv-need:hover .lv-need-go{background:#fff;color:var(--tone-b)}
+.lv-need .lv-pulse{background:#fff;box-shadow:0 0 0 0 rgba(255,255,255,.7)}
+/* a light passes across the button on hover */
+.lv-need::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.3) 50%,transparent 70%);transform:translateX(-120%);transition:transform .8s var(--lv-ease);pointer-events:none}
+.lv-need:hover::after{transform:translateX(120%)}
+/* nothing waiting: the same colour, a little quieter */
+.lv-need.zero{opacity:1;filter:saturate(.7) brightness(1.04)}
+.lv-need.zero:hover{filter:none}
+.lv-need:focus-visible{outline:3px solid #fff;outline-offset:-5px}
