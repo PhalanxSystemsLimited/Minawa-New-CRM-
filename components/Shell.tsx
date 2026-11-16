@@ -1,7 +1,7 @@
 'use client';
 // Sidebar and top bar, the demo's markup (renderNav, renderTop). Client components only to know the current page.
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Ic } from './icons';
 import { Go, GlobalSearch } from './client';
 
@@ -38,7 +38,7 @@ export function Sidebar({ projects, admin, approvals = 0, me }: { projects: NavP
   );
 }
 
-export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid, signOut }: { todo: number; firstTodo: string | null; roleLabel: string; initials: string; name: string; defaultPid: string; signOut: () => Promise<void> }) {
+export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid, signOut, projects = [] }: { todo: number; firstTodo: string | null; roleLabel: string; initials: string; name: string; defaultPid: string; signOut: () => Promise<void>; projects?: { id: string; name: string }[] }) {
   const path = usePathname(), sp = useSearchParams();
   const pid = path.startsWith('/p/') ? path.split('/')[2] : defaultPid;
   const onApts = path === `/p/${pid}/apartments`;
@@ -48,16 +48,48 @@ export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid,
       <Go href="/" className="m-logo" ariaLabel="Dashboard"><img src="/assets/minawa-mark.png" alt="" /></Go>
       <label className="gsearch"><Ic n="search" s={16} /><GlobalSearch key={onApts ? 'a' : path} base={`/p/${pid}/apartments`} defaultValue={onApts ? sp.get('q') || '' : ''} /></label>
       <span className="top-sp"></span>
-      <details className="more qa"><summary className="btn primary"><Ic n="plus" s={16} /><span className="lbl">Quick actions</span></summary><div className="menu menu-r">
-        <Go href={`/p/${pid}?m=sendpick`}>Send a payment link</Go>
-        <Go href={`/p/${pid}/apartments?f=owing`}>Record a payment</Go>
-        <Go href={`/p/${pid}/send?mode=announce`}>Send an announcement</Go>
-        <a href={`/api/export/payments?project=${pid}&per=all`} className="menu-a">Export payments (CSV)</a>
-      </div></details>
+      <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} />
       <Go href={firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`} className="icon-btn" title="To do" ariaLabel={`To do${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
       <details className="more me-menu"><summary className="me"><span className="me-av">{initials}</span><div className="me-t"><div className="me-n">{roleLabel}</div><div className="me-r">Minawa Group</div></div></summary>
         <div className="menu menu-r"><div className="menu-who"><b>{name}</b><span>{roleLabel}</span></div><form action={signOut}><button type="submit">Sign out</button></form></div>
       </details>
     </div>
   );
+}
+
+/** Quick actions. Inside a project they act on that project. Elsewhere (Dashboard, WhatsApp, Approvals, Activity) each
+ *  action first asks which project, and the export covers every project. */
+function QuickActions({ projects, pid }: { projects: { id: string; name: string }[]; pid: string | null }) {
+  const path = usePathname(), ref = useRef<HTMLDetailsElement>(null), [pick, setPick] = useState<string | null>(null);
+  useEffect(() => { ref.current?.removeAttribute('open'); setPick(null); }, [path]);   // close after going somewhere
+  const here = pid ? projects.find(p => p.id === pid) : null;
+  const acts: [string, string, (id: string) => string][] = [
+    ['link', 'Send a payment link', id => `/p/${id}?m=sendpick`],
+    ['pay', 'Record a payment', id => `/p/${id}/apartments?f=owing`],
+    ['ann', 'Send an announcement', id => `/p/${id}/send?mode=announce`],
+    ['notice', 'Send a maintenance notice', id => `/p/${id}/send?mode=notice`]
+  ];
+  return <details ref={ref} className="more qa" onToggle={e => { if (!(e.currentTarget as HTMLDetailsElement).open) setPick(null); }}>
+    <summary className="btn primary"><Ic n="plus" s={16} /><span className="lbl">Quick actions</span></summary>
+    <div className="menu menu-r qa-menu">
+      {here ? <>
+        <div className="qa-h">{here.name}</div>
+        {acts.map(([k, l, href]) => <Go key={k} href={href(here.id)}>{l}</Go>)}
+        <a href={`/api/export/payments?project=${here.id}&per=all`} className="menu-a">Export this project&apos;s payments (CSV)</a>
+        <hr />
+        <div className="qa-h">All projects</div>
+      </> : <>
+        <div className="qa-h">Choose a project</div>
+        {acts.map(([k, l, href]) => projects.length === 1 ? <Go key={k} href={href(projects[0].id)}>{l}</Go> : <div key={k} className="qa-grp">
+          <button type="button" className="qa-open" aria-expanded={pick === k} onClick={() => setPick(pick === k ? null : k)}>{l}<span aria-hidden="true">{pick === k ? '▾' : '›'}</span></button>
+          {pick === k ? <div className="qa-sub">{projects.map(p => <Go key={p.id} href={href(p.id)}>{p.name}</Go>)}</div> : null}
+        </div>)}
+        <hr />
+        <div className="qa-h">All projects</div>
+      </>}
+      <a href="/api/export/payments?per=all" className="menu-a">Export all payments (CSV)</a>
+      <Go href="/whatsapp">WhatsApp log</Go>
+      <Go href="/approvals">Approvals</Go>
+    </div>
+  </details>;
 }

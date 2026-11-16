@@ -37,7 +37,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
         <div className="side-scrim" data-a="side-close"></div>
         <div className="shell">
           <header className="top">
-            <Suspense><Topbar todo={todo} firstTodo={firstTodo} roleLabel={roleName(staff)} initials={staff.role === 'admin' ? 'AD' : 'AC'} name={staff.name} defaultPid={defaultPid} signOut={signOut} /></Suspense>
+            <Suspense><Topbar todo={todo} firstTodo={firstTodo} roleLabel={roleName(staff)} initials={staff.role === 'admin' ? 'AD' : 'AC'} name={staff.name} defaultPid={defaultPid} signOut={signOut} projects={nav.filter(p => p.live).map(p => ({ id: p.id, name: p.name }))} /></Suspense>
           </header>
           <div className="layout wrap">
             <main id="main">{children}</main>
