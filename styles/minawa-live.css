@@ -505,3 +505,10 @@ button.lv-kpi{cursor:pointer}
 .lv-pre .lv-bar{margin-top:8px}
 @media (max-width:767px){.lv-pre{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){.lv-pre > div{transform:none!important}}
+
+/* ===== Update 61: needs-you tiles stay sharp on hover =====
+   A 3D tilt/scale on the tile made the browser stretch a picture of it, so the icon went soft while it animated.
+   The tile now lifts by moving (no scaling or tilting), and the icon keeps its own crisp animation. */
+.lv-need{transform:none!important;top:0;transition:top .35s var(--lv-ease),box-shadow .35s var(--lv-ease),background-color .25s}
+.lv-need:hover{top:-4px}
+@media (prefers-reduced-motion:reduce){.lv-need:hover{top:0}}

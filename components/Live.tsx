@@ -66,7 +66,7 @@ function tabInk() {
 }
 
 const LIT = '.card,.pcard,.lv-need,.lv-kpi,.lv-lane,.kpi,.apv,.hs';
-const TILT = '.lv-need,.lv-kpi';
+const TILT = '.lv-kpi';
 
 export function LiveEffects() {
   const path = usePathname();
