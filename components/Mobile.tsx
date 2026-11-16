@@ -24,7 +24,24 @@ export function MobileBar({ projects, defaultPid }: { projects: NavProject[]; de
   ];
   // More is lit on the pages only it leads to (WhatsApp, Approvals, Activity, Staff); project pages have their tab row.
   const elsewhere = !path.startsWith('/p/') && !items.some(i => i[3]);
-  return <nav className="mbar" aria-label="Quick menu">
+  // Keep the bar on the bottom edge of what is actually on screen. On phones the browser's own bars (address bar,
+  // the strip above the gesture bar) grow and shrink while scrolling, and for a moment the page's bottom edge is
+  // under them; the bar is lifted by that much so it is never cut off.
+  const bar = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const vv = window.visualViewport, el = bar.current;
+    if (!vv || !el) return;
+    let raf = 0;
+    const fit = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      if (vv.scale > 1.01) { el.style.removeProperty('--mbar-lift'); return; }   // zoomed in: leave it where it is
+      const hidden = Math.round(window.innerHeight - (vv.height + vv.offsetTop));
+      if (hidden > 0 && hidden < 200) el.style.setProperty('--mbar-lift', hidden + 'px'); else el.style.removeProperty('--mbar-lift');
+    }); };
+    fit();
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); window.addEventListener('scroll', fit, { passive: true });
+    return () => { cancelAnimationFrame(raf); vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); window.removeEventListener('scroll', fit); };
+  }, []);
+  return <nav className="mbar" aria-label="Quick menu" ref={bar}>
     {items.map(([ic, l, href, cur, n]) => <Go key={l} href={href} className="mbar-i" current={cur}><span className="mbar-ic"><Ic n={ic} s={22} />{n ? <span className="mbar-b">{n > 99 ? '99+' : n}</span> : null}</span><span className="mbar-l">{l}</span></Go>)}
     <button type="button" className="mbar-i" data-a="side-open" aria-current={elsewhere ? 'page' : undefined} aria-label="More: every page and project"><span className="mbar-ic"><Ic n="menu" s={22} /></span><span className="mbar-l">More</span></button>
   </nav>;
