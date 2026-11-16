@@ -8,7 +8,7 @@ import { projectPage, projHead } from '@/components/views/project';
 import { TargetOpts } from '@/components/views/modals';
 import { ApprovalItem } from '@/components/views/approvals';
 import { pendingProject } from '@/lib/approvals';
-import { ratesAction, rulesAction, runDailyAction, projectBankAction, fineAction } from '@/lib/actions';
+import { ratesAction, rulesAction, projectBankAction, fineAction } from '@/lib/actions';
 import { waTestNumber } from '@/lib/whatsapp';
 import { safepayConfigured, safepayMode } from '@/lib/safepay';
 
@@ -31,8 +31,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
     const lateOwners = S.owners.filter(o => o.status === 'active' && !o.exempt && o.feeDue > 0 && balance(o) > 0), late = lateOwners.length, lateFines = lateOwners.reduce((a, o) => a + o.feeDue, 0);
     return <>
       {projHead('settings')}
-      <div className="page-head"><div><h2>Settings</h2><p>{ad ? 'Admins (the CEO and directors) can change everything here. Changes accountants make to the fees, the billing schedule and the fine come to you for approval. Announcements are in Send on WhatsApp.' : 'You can change the monthly fees, the billing schedule and the fine. Each change goes to an admin for approval with your reason, and applies only once approved.'}</p></div>
-        {ad ? <form action={runDailyAction}>{hid}<Submit className="btn" pendingText="Running…">Run today&apos;s billing now</Submit></form> : null}</div>
+      <div className="page-head"><div><h2>Settings</h2><p>{ad ? 'Admins (the CEO and directors) can change everything here. Changes accountants make to the fees, the billing schedule and the fine come to you for approval. Announcements are in Send on WhatsApp.' : 'You can change the monthly fees, the billing schedule and the fine. Each change goes to an admin for approval with your reason, and applies only once approved.'}</p></div></div>
       {waiting.length ? <div className="card apv-card"><div className="card-row"><h3>Waiting for approval <small>{waiting.length} change{waiting.length === 1 ? '' : 's'} to {S.proj.name}&apos;s settings</small></h3><Go href="/approvals" className="btn sm">Approvals</Go></div>
         <div className="apv-list">{waiting.map(a => <ApprovalItem key={a.id} v={{ a, apt: '', owner: '', pname: S.proj.name }} admin={ad} meId={S.staffId || ''} back={`/p/${pid}/settings`} />)}</div></div> : null}
       <div className="grid2">

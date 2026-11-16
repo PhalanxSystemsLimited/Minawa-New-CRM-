@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Owner, State } from './types';
 import { requireStaff, requireAdmin, roleName, staffName } from './session';
-import { mutate, runDailyAll, load, staffLog } from './ops';
+import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, cancelLinks, unitOf, log, at, nid, rateTypes,
@@ -196,12 +196,6 @@ export async function announceAction(fdata: FormData) {
   if (!S(fdata, 'text')) go(back, 'Write the message first');
   const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'announce', { aud: S(fdata, 'aud') || 'all', text: S(fdata, 'text') }, S(fdata, 'why'))));
   go(back, failed(r) ? r.error : r.text);
-}
-export async function runDailyAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid');
-  const out = await runDailyAll(staff) as Record<string, { days: string[] }>;
-  const days = Object.values(out)[0]?.days || [];
-  go(`/p/${pid}/settings`, days.length ? `Daily run done for ${days.length} day${days.length === 1 ? '' : 's'}` : 'Already up to date for today');
 }
 export async function projectBankAction(fdata: FormData) {
   const staff = await requireAdmin();
