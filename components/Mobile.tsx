@@ -78,3 +78,26 @@ export function PhoneMore({ step = 50, what = 'entries' }: { step?: number; what
   const left = total - shown;
   return <div ref={ref} className="m-more">{left > 0 ? <button type="button" className="btn" onClick={() => setShown(s => s + step)}>Show {Math.min(step, left)} more {what} <span className="muted">({left} left)</span></button> : null}</div>;
 }
+
+/** Phones: when a row of tabs is wider than the screen, small arrow buttons on its ends scroll it left and right.
+ *  The tabs themselves stay as they are; the arrows only show on small screens and only when there is more to see. */
+export function TabScroller({ children }: { children: React.ReactNode }) {
+  const box = useRef<HTMLDivElement>(null), [l, setL] = useState(false), [r, setR] = useState(false);
+  useEffect(() => {
+    const el = box.current?.querySelector<HTMLElement>('.proj-tabs, nav, [role="tablist"]');
+    if (!el) return;
+    const upd = () => { setL(el.scrollLeft > 4); setR(el.scrollLeft + el.clientWidth < el.scrollWidth - 4); };
+    // start with the open tab in view
+    const on = el.querySelector<HTMLElement>('[aria-current="page"]');
+    if (on && el.scrollWidth > el.clientWidth) el.scrollLeft = Math.max(0, on.offsetLeft - (el.clientWidth - on.offsetWidth) / 2);
+    upd();
+    el.addEventListener('scroll', upd, { passive: true }); window.addEventListener('resize', upd);
+    return () => { el.removeEventListener('scroll', upd); window.removeEventListener('resize', upd); };
+  }, []);
+  const go = (dir: number) => { const el = box.current?.querySelector<HTMLElement>('.proj-tabs, nav, [role="tablist"]'); el?.scrollBy({ left: dir * el.clientWidth * .6, behavior: 'smooth' }); };
+  return <div className={`tab-scroll${l ? ' can-l' : ''}${r ? ' can-r' : ''}`} ref={box}>
+    <button type="button" className="ts-btn ts-l" aria-label="Show earlier tabs" tabIndex={l ? 0 : -1} onClick={() => go(-1)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg></button>
+    {children}
+    <button type="button" className="ts-btn ts-r" aria-label="Show more tabs" tabIndex={r ? 0 : -1} onClick={() => go(1)}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg></button>
+  </div>;
+}

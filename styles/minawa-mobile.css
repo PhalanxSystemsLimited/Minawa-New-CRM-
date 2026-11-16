@@ -376,3 +376,51 @@
   .lv-fi .rcpt{grid-column:2 / -1;justify-self:start}
   .lv-ti-r{align-items:flex-start}
 }
+
+/* ===== Update 74: phone fixes (nothing here applies at 768px and wider) ===== */
+.tab-scroll{position:relative;min-width:0}
+.ts-btn{display:none}
+@media (max-width:767px){
+  /* tab rows: arrow buttons on the ends when there are more tabs to see */
+  .tab-scroll .ts-btn{display:grid;place-items:center;position:absolute;top:50%;z-index:3;width:32px;height:32px;margin-top:-16px;border-radius:50%;border:1px solid var(--cream-line,#E6E4DD);
+    background:#fff;color:#0F172A;box-shadow:0 4px 12px rgba(16,24,40,.18);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;padding:0;cursor:pointer}
+  .tab-scroll .ts-l{left:-6px}.tab-scroll .ts-r{right:-6px}
+  .tab-scroll.can-l .ts-l,.tab-scroll.can-r .ts-r{opacity:1;pointer-events:auto}
+  .tab-scroll .ts-btn:active{transform:scale(.92)}
+  /* the fade at the ends follows the arrows, so a tab is never hidden under one without a way to reach it */
+  .tab-scroll .proj-tabs{-webkit-mask-image:none;mask-image:none;scroll-behavior:smooth}
+  .tab-scroll.can-r .proj-tabs{-webkit-mask-image:linear-gradient(to right,#000 80%,transparent);mask-image:linear-gradient(to right,#000 80%,transparent)}
+  .tab-scroll.can-l .proj-tabs{-webkit-mask-image:linear-gradient(to right,transparent,#000 20%);mask-image:linear-gradient(to right,transparent,#000 20%)}
+  .tab-scroll.can-l.can-r .proj-tabs{-webkit-mask-image:linear-gradient(to right,transparent,#000 18%,#000 82%,transparent);mask-image:linear-gradient(to right,transparent,#000 18%,#000 82%,transparent)}
+  .tab-scroll .proj-tabs{padding-left:6px;padding-right:6px}
+
+  /* apartment cards: the coloured status bar runs down the card's edge, clear of the text */
+  [data-m="stack"] tr.click td:first-child{box-shadow:none !important}
+  [data-m="stack"] tr.click[class*="st-"]{padding-left:18px;box-shadow:inset 4px 0 0 #CBD5E1}
+  [data-m="stack"] tr.click.st-paid{box-shadow:inset 4px 0 0 var(--lv-green)}
+  [data-m="stack"] tr.click.st-due{box-shadow:inset 4px 0 0 var(--lv-blue)}
+  [data-m="stack"] tr.click.st-overdue{box-shadow:inset 4px 0 0 var(--lv-amber)}
+  [data-m="stack"] tr.click.st-flagged{box-shadow:inset 4px 0 0 var(--lv-red)}
+
+  /* money panel: one column, the ring and the next-bill box each full width */
+  .lv-money,.lv-money:not(.lv-ov){grid-template-columns:minmax(0,1fr) !important}
+  .lv-money > *{grid-column:auto !important}
+  .lv-money-ring{gap:16px}
+  .lv-money-rt{min-width:0}
+  .lv-money-rt b{font-size:16px}
+  .lv-next-r{gap:12px}
+  .lv-next-r b{font-size:19px}
+  .lv-mini-cycle{flex-wrap:nowrap}
+  .lv-mini-cycle span{min-width:0;font-size:10px;padding:6px 2px}
+
+  /* projects: name across the top, the figures in two columns under it, Open at the bottom */
+  .lv-lane{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px 14px !important}
+  .lv-lane > .lv-lane-n{grid-column:1 / -1 !important}
+  .lv-lane > .lv-open{grid-column:1 / -1 !important;grid-row:auto !important;justify-self:stretch !important}
+  .lv-lane-n b{font-size:15px}
+
+  /* settings: rate card fits the screen */
+  .rate-tbl th,.rate-tbl td{padding-left:4px !important;padding-right:4px !important}
+  .rate-tbl input[type=date]{min-width:0;width:100%;font-size:14px}
+  .rate-tbl input[type=number]{min-width:0;width:100%}
+}

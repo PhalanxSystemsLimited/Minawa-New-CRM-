@@ -10,6 +10,7 @@ import { cookies } from 'next/headers';
 import { addDays } from '@/lib/fmt';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { Go, A } from '../client';
+import { TabScroller } from '../Mobile';
 import { DocModal, OwnerModal, SendPickModal, TargetModal, PossessionModal } from './modals';
 
 export type Tab = 'dashboard' | 'owners' | 'payments' | 'utilities' | 'notices' | 'generator' | 'send' | 'follow' | 'messages' | 'settings';
@@ -29,8 +30,8 @@ export function projHead(tab: Tab, ownerTitle?: string) {
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
-    <nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
-      <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}</nav>
+    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
+      <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}</nav></TabScroller>
   </>;
 }
 

@@ -1039,7 +1039,7 @@ html[data-theme=dark] .lv-need-ic.ic-shield::after{background:linear-gradient(11
 @media screen and (min-width:901px){html[data-theme=dark] .app{box-shadow:0 0 0 1px rgba(255,255,255,.09),0 0 0 2px rgba(0,0,0,.6),0 30px 80px -20px rgba(0,0,0,.8),0 0 0 100vmax #0B0C0E}
 html[data-theme=dark] .app::after{box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.04)}
 html[data-theme=dark] .side{border-right-color:rgba(255,255,255,.06)}}
-@container lvmain (max-width:760px){html[data-theme=dark] .lv-lane [data-l]::before{color:#94A3B8}}
+@media (min-width:768px){@container lvmain (max-width:760px){html[data-theme=dark] .lv-lane [data-l]::before{color:#94A3B8}}}
 html[data-theme=dark] .lv-pre > div{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
 html[data-theme=dark] .lv-pre > div:hover{border-color:rgba(255,160,130,.4);background:rgba(255,255,255,.08)}
 html[data-theme=dark] .lv-pre .k{color:#A9B4C4}
@@ -1146,6 +1146,13 @@ html[data-theme=dark] main details.more[open] > summary::before{background:rgba(
 html[data-theme=dark] main details.more[open] > .menu{background:#191a1d;box-shadow:0 20px 50px rgba(16,24,40,.3)}
 html[data-theme=dark] main details.more[open] > .menu > hr{border:0;border-top:1px solid var(--cream-line,rgba(255,255,255,0.118))}}
 @media (max-width:767px){html[data-theme=dark] .lv-lane [data-l]::before{color:#94A3B8}}
+@media (max-width:767px){html[data-theme=dark] .tab-scroll .ts-btn{border:1px solid var(--cream-line,rgba(255,255,255,0.118));background:#191a1d;color:#dbdce1;box-shadow:0 4px 12px rgba(16,24,40,.18)}
+html[data-theme=dark] [data-m="stack"] tr.click td:first-child{box-shadow:none !important}
+html[data-theme=dark] [data-m="stack"] tr.click[class*="st-"]{box-shadow:inset 4px 0 0 #CBD5E1}
+html[data-theme=dark] [data-m="stack"] tr.click.st-paid{box-shadow:inset 4px 0 0 var(--lv-green)}
+html[data-theme=dark] [data-m="stack"] tr.click.st-due{box-shadow:inset 4px 0 0 var(--lv-blue)}
+html[data-theme=dark] [data-m="stack"] tr.click.st-overdue{box-shadow:inset 4px 0 0 var(--lv-amber)}
+html[data-theme=dark] [data-m="stack"] tr.click.st-flagged{box-shadow:inset 4px 0 0 var(--lv-red)}}
 /* ---------- frost ---------- */
 html[data-theme=frost],html[data-theme=frost] body{background:var(--bg);color:#E8EAED}
 html[data-theme=frost] body::before{background:var(--bg)}
@@ -2186,7 +2193,7 @@ html[data-theme=frost] .lv-need-ic.ic-shield::after{background:linear-gradient(1
 @media screen and (min-width:901px){html[data-theme=frost] .app{box-shadow:0 0 0 1px rgba(255,255,255,.09),0 0 0 2px rgba(0,0,0,.6),0 30px 80px -20px rgba(0,0,0,.8),0 0 0 100vmax #0B0C0E}
 html[data-theme=frost] .app::after{box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.04)}
 html[data-theme=frost] .side{border-right-color:rgba(255,255,255,.06)}}
-@container lvmain (max-width:760px){html[data-theme=frost] .lv-lane [data-l]::before{color:#94A3B8}}
+@media (min-width:768px){@container lvmain (max-width:760px){html[data-theme=frost] .lv-lane [data-l]::before{color:#94A3B8}}}
 html[data-theme=frost] .lv-pre > div{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
 html[data-theme=frost] .lv-pre > div:hover{border-color:rgba(255,160,130,.4);background:rgba(255,255,255,.08)}
 html[data-theme=frost] .lv-pre .k{color:#A9B4C4}
@@ -2293,3 +2300,10 @@ html[data-theme=frost] main details.more[open] > summary::before{background:rgba
 html[data-theme=frost] main details.more[open] > .menu{background:rgba(255,255,255,0.15);box-shadow:0 20px 50px rgba(16,24,40,.3)}
 html[data-theme=frost] main details.more[open] > .menu > hr{border:0;border-top:1px solid var(--cream-line,rgba(255,255,255,0.238))}}
 @media (max-width:767px){html[data-theme=frost] .lv-lane [data-l]::before{color:#94A3B8}}
+@media (max-width:767px){html[data-theme=frost] .tab-scroll .ts-btn{border:1px solid var(--cream-line,rgba(255,255,255,0.238));background:rgba(255,255,255,0.15);color:#dbdce1;box-shadow:0 4px 12px rgba(16,24,40,.18)}
+html[data-theme=frost] [data-m="stack"] tr.click td:first-child{box-shadow:none !important}
+html[data-theme=frost] [data-m="stack"] tr.click[class*="st-"]{box-shadow:inset 4px 0 0 #CBD5E1}
+html[data-theme=frost] [data-m="stack"] tr.click.st-paid{box-shadow:inset 4px 0 0 var(--lv-green)}
+html[data-theme=frost] [data-m="stack"] tr.click.st-due{box-shadow:inset 4px 0 0 var(--lv-blue)}
+html[data-theme=frost] [data-m="stack"] tr.click.st-overdue{box-shadow:inset 4px 0 0 var(--lv-amber)}
+html[data-theme=frost] [data-m="stack"] tr.click.st-flagged{box-shadow:inset 4px 0 0 var(--lv-red)}}

@@ -432,18 +432,18 @@ button.lv-kpi{cursor:pointer}
 .lv-side .lv-tl{max-height:none}
 .lv-side .li .amt{flex-wrap:wrap;justify-content:flex-end;gap:6px 8px}
 /* main column narrower than a full page: the same compact layouts the smaller laptops use */
-@container lvmain (max-width:1080px){
+@media (min-width:768px){@container lvmain (max-width:1080px){
   .lv-money:not(.lv-ov){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .lv-money:not(.lv-ov) .lv-kpis{grid-column:1 / -1;order:3}
   .lv-lane{grid-template-columns:minmax(0,1.8fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) 84px}
   .lv-lane > :nth-child(5){display:none}
-}
-@container lvmain (max-width:820px){
+}}
+@media (min-width:768px){@container lvmain (max-width:820px){
   .lv-ov{grid-template-columns:minmax(0,1fr)}
-}
-@container lvmain (max-width:700px){
+}}
+@media (min-width:768px){@container lvmain (max-width:700px){
   .lv-main .ov2{grid-template-columns:minmax(0,1fr)}
-}
+}}
 @media (max-width:1100px){
   .lv-layout{grid-template-columns:minmax(0,1fr)}
 }
@@ -478,21 +478,21 @@ button.lv-kpi{cursor:pointer}
 }
 .lv-side{container-type:inline-size;container-name:lvside}
 /* Activity in the side column: on a narrower column the method and receipt go on a second line */
-@container lvside (max-width:600px){
+@media (min-width:768px){@container lvside (max-width:600px){
   .lv-fi{grid-template-columns:40px minmax(0,1fr) auto;row-gap:6px}
   .lv-fi > .lv-fi-m,.lv-fi > .rcpt{grid-row:2}
   .lv-fi > .lv-fi-m{grid-column:2;justify-self:start}
   .lv-fi > .rcpt{grid-column:3;justify-self:end}
-}
+}}
 /* projects table in a narrow main column: the name on its own line, the four figures in a row under it */
-@container lvmain (max-width:760px){
+@media (min-width:768px){@container lvmain (max-width:760px){
   .lv-lane.hd{display:none}
   .lv-lane{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px}
   .lv-lane > .lv-lane-n{grid-column:1 / 4}
   .lv-lane > .lv-open{grid-column:4;grid-row:1;justify-self:end}
   .lv-lane > :nth-child(5){display:block}
   .lv-lane [data-l]::before{content:attr(data-l);display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin-bottom:2px}
-}
+}}
 
 /* ===== Update 60: Overview before billing starts — the schedule and how old arrears are going fill the panel ===== */
 .lv-target .lv-pre-cyc{margin:2px 0 14px}
