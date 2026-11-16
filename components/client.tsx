@@ -141,7 +141,11 @@ export function Submit({ className = 'btn primary', children, pendingText = 'Wor
 import { useFormStatus } from 'react-dom';
 function SubmitInner({ className, children, pendingText, disabled }: { className: string; children: ReactNode; pendingText: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
-  return <button className={className} type="submit" disabled={pending || disabled}>{pending ? pendingText : children}</button>;
+  // "Send for approval" buttons carry a paper plane that takes off on hover.
+  const apv = typeof children === 'string' && /send for approval/i.test(children);
+  return <button className={apv ? `${className} apv-send` : className} type="submit" disabled={pending || disabled}>
+    {apv && !pending ? <span className="apv-plane" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2.5 10.5 13.5" /><path d="M21.5 2.5 14.5 21.5l-4-8-8-4z" /></svg></span> : null}
+    {pending ? pendingText : children}</button>;
 }
 
 /** Password box with an eye button: click to show the password, click again to hide it. */
