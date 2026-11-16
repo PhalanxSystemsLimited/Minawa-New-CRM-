@@ -43,6 +43,9 @@ function tabInk() {
     if (!ink) { ink = document.createElement('span'); ink.className = 'tab-ink'; ink.setAttribute('aria-hidden', 'true'); bar.prepend(ink); }
     const place = (b: HTMLElement | null, instant = false) => {
       if (!b || !ink) return;
+      // The tab under the dark highlight gets the white text, so the text never sits white-on-white while the next page loads.
+      bar.querySelectorAll('button.ink-on').forEach(x => { if (x !== b) x.classList.remove('ink-on'); });
+      b.classList.add('ink-on');
       if (instant) ink.style.transition = 'none';
       ink.style.width = b.offsetWidth + 'px'; ink.style.transform = `translateX(${b.offsetLeft}px)`; ink.style.height = b.offsetHeight + 'px'; ink.style.top = b.offsetTop + 'px';
       ink.style.opacity = '1';

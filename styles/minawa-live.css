@@ -258,3 +258,8 @@ button.lv-kpi{cursor:pointer}
 .bell-btn:hover svg{animation:lvRing 1s ease-in-out infinite}
 @keyframes lvRing{0%{transform:rotate(0)}10%{transform:rotate(16deg)}20%{transform:rotate(-14deg)}30%{transform:rotate(11deg)}40%{transform:rotate(-8deg)}50%{transform:rotate(5deg)}60%{transform:rotate(-3deg)}70%,100%{transform:rotate(0)}}
 @media (prefers-reduced-motion:reduce){.bell-btn:hover svg{animation:none}}
+/* Tabs: white text follows the dark highlight (not the page that is still open), so nothing disappears mid-navigation */
+.proj-tabs.has-ink button[aria-current="page"]:not(.ink-on){color:#475569}
+.proj-tabs.has-ink button.ink-on,.proj-tabs.has-ink button.ink-on:hover{color:#fff;background:transparent!important}
+/* List rows: room between the orange hover bar and the text */
+.list .li:not(.click){padding-left:12px;padding-right:12px;margin-left:-12px;margin-right:-12px}
