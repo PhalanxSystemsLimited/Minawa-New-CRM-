@@ -733,3 +733,19 @@ button.lv-kpi{cursor:pointer}
 .side-p::after{background:linear-gradient(180deg,#FF9A75,#D95D39)!important;box-shadow:0 0 10px rgba(217,93,57,.6)}
 .side-p:hover small{color:#CBD5E1!important}
 @media (prefers-reduced-motion:reduce){.side-p:hover::before{animation:none!important}}
+
+/* ===== Update 72: sign-in button — lifts, glows, a light sweeps across, the arrow slides on ===== */
+.signin-page .signin-btn{position:relative;overflow:hidden;isolation:isolate;gap:10px;background:linear-gradient(135deg,#B4552B,#964724 55%,#7E3A1D);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 6px 16px -8px rgba(150,71,36,.7);transition:transform .25s var(--lv-ease),box-shadow .3s var(--lv-ease),filter .3s}
+.signin-page .signin-btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);transition:transform .7s var(--lv-ease)}
+.signin-page .signin-btn:hover:not([disabled]){background:linear-gradient(135deg,#C2602F,#A04C26 55%,#84401F);transform:translateY(-2px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 14px 28px -10px rgba(150,71,36,.75),0 0 0 4px rgba(150,71,36,.12)}
+.signin-page .signin-btn:hover:not([disabled])::after{transform:translateX(120%)}
+.signin-page .signin-btn:active:not([disabled]){transform:translateY(0) scale(.98);box-shadow:inset 0 2px 6px rgba(0,0,0,.25)}
+.signin-arr{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.18);transition:transform .3s var(--lv-ease),background-color .3s}
+.signin-page .signin-btn:hover:not([disabled]) .signin-arr{background:#fff;color:#964724;animation:lvSignArrow 1s var(--lv-ease) infinite}
+@keyframes lvSignArrow{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+/* while signing in, a soft shimmer runs across the button */
+.signin-page .signin-btn[disabled]{background:linear-gradient(90deg,#964724 0%,#B4552B 50%,#964724 100%);background-size:200% 100%;animation:lvSignWait 1.2s linear infinite;cursor:progress}
+@keyframes lvSignWait{from{background-position:100% 0}to{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.signin-page .signin-btn,.signin-arr,.signin-page .signin-btn[disabled]{animation:none!important;transition:none!important}}
