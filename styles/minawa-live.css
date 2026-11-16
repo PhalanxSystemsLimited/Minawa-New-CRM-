@@ -603,3 +603,19 @@ button.lv-kpi{cursor:pointer}
 .lv-pre-ov{margin:18px 0 0}
 .lv-kpi:hover .ki-check,.lv-pre > div:hover .ki-check{animation:lvJumpShake 1.2s var(--lv-ease) infinite}
 .lv-kpi:hover .ki-pulse,.lv-pre > div:hover .ki-pulse{animation:lvRattle .9s linear infinite}
+
+/* ===== Update 64: table and list rows grow on hover, like the rows on the Dashboard and Overview =====
+   Apartments, Payments, Generator charges, Messages, Utility bills, Send on WhatsApp and every other table. */
+@media (hover:hover){
+  .tbl-wrap tbody tr{transition:transform .3s var(--lv-ease),box-shadow .3s var(--lv-ease)}
+  .tbl-wrap tbody tr:hover{transform:scale(1.008);position:relative;z-index:2;box-shadow:0 14px 28px -18px rgba(20,21,23,.4)}
+  .tbl-wrap tbody tr:hover td{background:#FFFBF8;border-bottom-color:transparent}
+  .tbl-wrap tbody tr:hover td:first-child{border-radius:10px 0 0 10px;box-shadow:inset 3px 0 0 var(--rust)}
+  .tbl-wrap tbody tr:hover td:last-child{border-radius:0 10px 10px 0}
+  .tbl-wrap tbody tr.sel:hover td{background:#FFF4EF}
+  /* Send on WhatsApp: the people list */
+  .sc-list{padding:2px 10px}
+  .tg-row{transition:transform .3s var(--lv-ease),box-shadow .3s var(--lv-ease),background-color .2s;border-radius:10px}
+  .tg-row:hover{transform:scale(1.008);position:relative;z-index:2;background:linear-gradient(90deg,#FFF4EF,#FFFFFF 75%);border-bottom-color:transparent;box-shadow:inset 3px 0 0 var(--rust),0 12px 24px -16px rgba(20,21,23,.35)}
+}
+@media (prefers-reduced-motion:reduce){.tbl-wrap tbody tr,.tg-row{transform:none!important}}
