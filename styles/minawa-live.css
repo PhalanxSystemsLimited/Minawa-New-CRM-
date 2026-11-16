@@ -512,3 +512,35 @@ button.lv-kpi{cursor:pointer}
 .lv-need{transform:none!important;top:0;transition:top .35s var(--lv-ease),box-shadow .35s var(--lv-ease),background-color .25s}
 .lv-need:hover{top:-4px}
 @media (prefers-reduced-motion:reduce){.lv-need:hover{top:0}}
+
+/* ===== Update 62: needs-you icons as big buttons that move on hover =====
+   The whole button moves (jumps, flips, rattles, hops), not only the drawing inside it. Movements only translate,
+   rotate or shrink, so the icon stays sharp. */
+.lv-need-ic{width:60px;height:60px;border-radius:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.12),0 5px 0 -1px color-mix(in srgb,var(--tone-b) 70%,#000 30%),0 12px 22px -10px var(--tone-glow);
+  transition:box-shadow .3s var(--lv-ease)}
+.lv-need-ic svg{width:28px;height:28px}
+.lv-need:hover .lv-need-ic{transform:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.12),0 6px 0 -1px color-mix(in srgb,var(--tone-b) 70%,#000 30%),0 18px 28px -10px var(--tone-glow)}
+/* the drawings inside no longer wobble on their own (the button does the moving) — except the details below */
+.lv-need:hover .ic-alert svg,.lv-need:hover .ic-shield svg,.lv-need:hover .ic-phone svg,.lv-need:hover .ic-wallet svg{animation:none}
+/* to do: the button jumps and shakes, the "!" blinks */
+.lv-need:hover .ic-alert{animation:lvJumpShake 1.1s var(--lv-ease) infinite}
+@keyframes lvJumpShake{0%,100%{transform:translateY(0) rotate(0)}18%{transform:translateY(-9px) rotate(0)}30%{transform:translateY(-9px) rotate(-12deg)}42%{transform:translateY(-9px) rotate(10deg)}54%{transform:translateY(-9px) rotate(-6deg)}66%{transform:translateY(0) rotate(0)}74%{transform:translateY(0) scale(1,.92)}84%{transform:translateY(0) scale(1)}}
+/* changes waiting: the button flips round like a badge being checked, with a shine */
+.lv-need:hover .ic-shield{animation:lvFlipY 1.6s var(--lv-ease) infinite}
+@keyframes lvFlipY{0%{transform:perspective(300px) rotateY(0)}45%,100%{transform:perspective(300px) rotateY(360deg)}}
+/* WhatsApp to send: the button rattles like a phone ringing, with rings spreading out */
+.lv-need:hover .ic-phone{animation:lvRattle .9s linear infinite}
+@keyframes lvRattle{0%,60%,100%{transform:translate(0,0) rotate(0)}6%{transform:translate(-3px,-1px) rotate(-8deg)}12%{transform:translate(3px,-2px) rotate(8deg)}18%{transform:translate(-3px,-2px) rotate(-7deg)}24%{transform:translate(3px,-1px) rotate(7deg)}30%{transform:translate(-2px,0) rotate(-5deg)}36%{transform:translate(2px,0) rotate(5deg)}42%{transform:translate(0,0) rotate(0)}}
+/* new payments: the button hops up to catch the coin and squashes as it lands */
+.lv-need:hover .ic-wallet{animation:lvHop 1.3s var(--lv-ease) infinite}
+@keyframes lvHop{0%,100%{transform:translateY(0) scale(1)}25%{transform:translateY(-10px) scale(1)}50%{transform:translateY(0) scale(1)}58%{transform:translateY(0) scale(1,.86)}70%{transform:translateY(-3px) scale(.96,1)}82%{transform:translateY(0) scale(1)}}
+.lv-need-ic.ic-wallet::after{top:-10px;width:22px;height:22px;margin-left:-11px;font-size:11.5px}
+@keyframes lvCoin{0%{transform:translateY(-18px) scale(.9);opacity:0}12%{opacity:1}50%{transform:translateY(22px) scale(.75);opacity:1}56%,100%{transform:translateY(26px) scale(.5);opacity:0}}
+/* the arrow button on the right slides on hover too */
+.lv-need:hover .lv-need-go{animation:lvNudge 1.1s var(--lv-ease) infinite}
+@keyframes lvNudge{0%,100%{transform:translateX(3px)}50%{transform:translateX(8px)}}
+/* phones: a little smaller, still a button */
+@media (max-width:767px){.lv-need-ic{width:46px;height:46px;border-radius:14px}.lv-need-ic svg{width:22px;height:22px}}
+@media (prefers-reduced-motion:reduce){.lv-need-ic,.lv-need-go{animation:none!important}}
+@media (hover:none){.lv-need-ic,.lv-need-go{animation:none!important}}

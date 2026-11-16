@@ -13,7 +13,7 @@ export function Num({ v, children, className }: { v: number; children: React.Rea
 /** "Needs you" tile: a big count, what it is, a short note, and where it goes. */
 export function NeedTile({ icon, tone, n, label, sub, href, pulse }: { icon: string; tone: Tone; n: number; label: string; sub?: React.ReactNode; href: string; pulse?: boolean }) {
   return <Go href={href} className={`lv-need lv-float t-${tone}${n ? '' : ' zero'}`} ariaLabel={`${n} ${label}`}>
-    <span className={`lv-need-ic ic-${icon}`} aria-hidden="true"><Ic n={icon} s={22} /></span>
+    <span className={`lv-need-ic ic-${icon}`} aria-hidden="true"><Ic n={icon} s={28} /></span>
     <span className="lv-need-t"><b className="H"><Num v={n}>{n}</Num></b><span>{label}</span></span>
     {pulse && n ? <span className="lv-pulse" aria-hidden="true"></span> : null}
     <span className="lv-need-go" aria-hidden="true">→</span>
