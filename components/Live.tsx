@@ -72,6 +72,9 @@ export function LiveEffects() {
   const path = usePathname();
   // Per page: count-ups and the tab highlight.
   useEffect(() => {
+    // On laptops the page scrolls inside the rounded app window: start each new page at its top.
+    const sh = document.querySelector<HTMLElement>('.shell');
+    if (sh && sh.scrollHeight > sh.clientHeight && getComputedStyle(sh).overflowY !== 'visible') sh.scrollTop = 0;
     const main = document.getElementById('main') || document.body;
     let stopCount = countUp(main);
     const mo = new MutationObserver(() => { stopCount(); stopCount = countUp(main); });
