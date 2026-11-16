@@ -8,6 +8,7 @@ import { Submit } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
 import { ownerHref } from '@/components/views/bits';
 import { verifyAction, rejectAction, alertDoneAction } from '@/lib/actions';
+import { Wa } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,9 +22,9 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
     if (!tsN && !pr.length && !fl.length && !al.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
     return <>
       {projHead('follow')}{head}
-      {tsN ? <div className="card"><div className="card-row"><h3>Send on WhatsApp <small>{tsN} owner{tsN === 1 ? '' : 's'} waiting · one by one</small></h3><Go href={`/p/${pid}/send?type=queue&kind=all&go=1`} className="btn sm wa">Send all, one by one</Go></div>
+      {tsN ? <div className="card"><div className="card-row"><h3>Send on WhatsApp <small>{tsN} owner{tsN === 1 ? '' : 's'} waiting · one by one</small></h3><Go href={`/p/${pid}/send?type=queue&kind=all&go=1`} className="btn sm wa"><Wa /> Send all, one by one</Go></div>
         <div className="list">{ts.map(g => <div className="li" key={g.key}><div className="t"><div className="a">{g.label} · <span className="num">{g.n}</span> owner{g.n === 1 ? '' : 's'}</div><div className="b">{g.hint} · waiting since {fds(g.since)}</div></div>
-          <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa">Send {g.n === 1 ? 'it' : 'one by one'}</Go></div>)}</div>
+          <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa"><Wa /> Send {g.n === 1 ? 'it' : 'one by one'}</Go></div>)}</div>
         <p className="cell-sub" style={{ margin: '10px 0 0' }}>Each owner&apos;s chat opens with the message and Pay Now link typed in. When you come back you confirm it was sent, and they leave this list.</p>
       </div> : null}
       {pr.length ? <div className="card"><h3>Check these bank transfers <small>owners sent a screenshot</small></h3>

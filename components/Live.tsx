@@ -65,6 +65,21 @@ function tabInk() {
   return () => offs.forEach(f => f());
 }
 
+/** Table headings get a small icon that fits the column (set as an attribute, so React keeps owning the text). */
+const HEAD_ICONS: [RegExp, string][] = [
+  [/^(when|date|time|period|last month|last active|month|from|since|bill|due)\b/, 'cal'], [/access/, 'build'], [/apartment|flat type|^flats?\b|^to$|^apt/, 'home'],
+  [/owner|sent by|^by$|name|staff|who/, 'user'], [/project/, 'build'], [/status|state/, 'pulse'], [/message|notice|text|note|event/, 'msg'],
+  [/receipt/, 'card'], [/received|method|via|source/, 'bank'], [/unit|electric|generator|kwh/, 'bolt'], [/email/, 'mail'], [/role/, 'shield'],
+  [/%|percent|paid %/, 'pct'], [/balance|amount|owes|outstanding|fee|rate|subtotal|total|paid|rs\b|price|charge|collected/, 'cash'],
+];
+function tagHeads(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>('.tbl-wrap thead th:not([data-ic])').forEach(th => {
+    const t = (th.textContent || '').trim().toLowerCase();
+    const hit = t ? HEAD_ICONS.find(([re]) => re.test(t)) : null;
+    th.setAttribute('data-ic', hit ? hit[1] : '');
+  });
+}
+
 const LIT = '.card,.pcard,.lv-need,.lv-kpi,.lv-lane,.kpi,.apv,.hs';
 const TILT = '.lv-tilt'; // nothing tilts now: a 3D tilt made the browser blur the icons inside
 
@@ -76,8 +91,8 @@ export function LiveEffects() {
     const sh = document.querySelector<HTMLElement>('.shell');
     if (sh && sh.scrollHeight > sh.clientHeight && getComputedStyle(sh).overflowY !== 'visible') sh.scrollTop = 0;
     const main = document.getElementById('main') || document.body;
-    let stopCount = countUp(main);
-    const mo = new MutationObserver(() => { stopCount(); stopCount = countUp(main); });
+    let stopCount = countUp(main); tagHeads(main);
+    const mo = new MutationObserver(() => { stopCount(); stopCount = countUp(main); tagHeads(main); });
     mo.observe(main, { childList: true, subtree: true });
     const stopInk = reduced() ? () => {} : tabInk();
     try { if (!document.querySelector('.proj-tabs')) sessionStorage.removeItem('minawa.tabInk'); } catch { /* ignore */ }

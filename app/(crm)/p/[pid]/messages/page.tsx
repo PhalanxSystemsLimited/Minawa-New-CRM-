@@ -11,6 +11,7 @@ import { ownerHref } from '@/components/views/bits';
 import { retryMessageAction } from '@/lib/actions';
 import { waTestNumber } from '@/lib/whatsapp';
 import { WaLogBody } from '@/components/views/walog';
+import { Wa } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export default async function Messages({ params, searchParams }: { params: Promi
     if (sp.view === 'log') return <>{projHead('messages')}{views}<WaLogBody sp={sp as Record<string, string>} fixedProject={pid} /></>;
     return <>
       {projHead('messages')}{views}
-      <div className="page-head"><div><h2>WhatsApp messages</h2><p>Bills, reminders, notices, payment links and receipts from the last {days} days. They are all sent by hand from Send on WhatsApp.</p></div><Go href={`/p/${pid}/send`} className="btn wa">Send on WhatsApp</Go></div>
+      <div className="page-head"><div><h2>WhatsApp messages</h2><p>Bills, reminders, notices, payment links and receipts from the last {days} days. They are all sent by hand from Send on WhatsApp.</p></div><Go href={`/p/${pid}/send`} className="btn wa"><Wa /> Send on WhatsApp</Go></div>
       <div className="callout" style={{ marginBottom: 14 }}><div><b>Sent by hand.</b> Messages the CRM prepares wait under <b>To send</b> until someone sends them from <A href={`/p/${pid}/send`}>Send on WhatsApp</A>.{waTestNumber() ? <> Testing: chats open with +{waTestNumber()}, not the owners. Remove WHATSAPP_TEST_NUMBER to go live.</> : null}</div></div>
       <div className={`callout ${failed ? 'warn' : 'good'}`} style={{ marginBottom: 14 }}><div><b>{delivered} of {all.length}</b> sent{toSend ? `, ${toSend} still to send` : ''}.{failed ? ` ${failed} couldn't go out; fix the number or put them back to send.` : ''}</div></div>
       <div className="card"><div className="toolbar" style={{ marginBottom: 14 }}>
