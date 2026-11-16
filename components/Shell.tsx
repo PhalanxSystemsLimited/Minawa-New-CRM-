@@ -49,7 +49,7 @@ export function Topbar({ todo, firstTodo, roleLabel, initials, name, defaultPid,
       <label className="gsearch"><Ic n="search" s={16} /><GlobalSearch key={onApts ? 'a' : path} base={`/p/${pid}/apartments`} defaultValue={onApts ? sp.get('q') || '' : ''} /></label>
       <span className="top-sp"></span>
       <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} />
-      <Go href={firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`} className="icon-btn" title="To do" ariaLabel={`To do${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
+      <Go href={firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`} className="icon-btn bell-btn" title="To do" ariaLabel={`To do${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
       <details className="more me-menu"><summary className="me"><span className="me-av">{initials}</span><div className="me-t"><div className="me-n">{roleLabel}</div><div className="me-r">Minawa Group</div></div></summary>
         <div className="menu menu-r"><div className="menu-who"><b>{name}</b><span>{roleLabel}</span></div><form action={signOut}><button type="submit">Sign out</button></form></div>
       </details>

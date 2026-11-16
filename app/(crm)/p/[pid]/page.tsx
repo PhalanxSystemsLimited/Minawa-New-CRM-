@@ -46,7 +46,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
       <section className="lv-money lv-ov">
         {firstBill ? <div className="lv-target"><div className="l">BILLING STARTS</div>
           <div className="lv-next-r big"><CalBadge date={firstBill} /><div><b className="H">{Math.max(0, diff(firstBill, S.today))} days to go</b><small>The first bill goes out on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}</small></div></div>
-          <div className="lv-sub">Until then, payments go to old arrears: <b>{rs(arrears)}</b></div></div>
+          <div className="lv-sub"><span>Until then, payments go to old arrears: <b>{rs(arrears)}</b></span></div></div>
           : <div className="lv-target"><div className="l">{monName.toUpperCase()} TARGET <Go href={`${P}?m=target`} className="htg-link">Breakdown</Go></div>
           <div className="v H"><Num v={coll}>{rs(coll)}</Num> <small>of {rs(tg.total)}</small></div>
           <div className="lv-pace" role="img" aria-label={`${tgPct}% of the target collected`}><span style={{ width: `${Math.min(100, tgPct)}%` }}></span><i style={{ left: `${pace}%` }}><em>where you should be today</em></i></div>
