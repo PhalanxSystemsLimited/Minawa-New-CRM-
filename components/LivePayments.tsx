@@ -1,8 +1,7 @@
 'use client';
 // Keeps every open CRM screen live. Every few seconds (while the tab is visible, and straight away when you come back
-// to it) it asks the server, which also checks Safepay for new payments and starts the day's billing at 11:00 AM.
-// The server answers with a revision number that changes whenever anything is saved by anyone: a payment (Safepay or
-// recorded by hand), a bill, a sent message, a change in Settings… When it changes, the screen reloads its data in
+// to it) it asks the server, which also starts the day's billing at 11:00 AM. The server answers with a revision
+// number that changes whenever anything is saved by anyone: a payment entered or confirmed, a bill, a sent message, a change in Settings… When it changes, the screen reloads its data in
 // place. If you are typing in a field at that moment, the refresh waits until you leave the field.
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,10 +21,10 @@ export function LivePayments({ counts }: { counts: Record<string, number> }) {
       try {
         const r = await fetch('/api/live', { cache: 'no-store' });
         if (r.ok) {
-          const j = await r.json() as { counts: Record<string, number>; recorded: number; ran?: number; rev?: number };
+          const j = await r.json() as { counts: Record<string, number>; ran?: number; rev?: number };
           const revChanged = typeof j.rev === 'number' && rev.current !== null && j.rev !== rev.current;
           if (typeof j.rev === 'number') rev.current = j.rev;
-          const changed = revChanged || j.recorded > 0 || (j.ran || 0) > 0 || Object.keys(j.counts).some(k => (j.counts[k] || 0) !== (last.current[k] || 0));
+          const changed = revChanged || (j.ran || 0) > 0 || Object.keys(j.counts).some(k => (j.counts[k] || 0) !== (last.current[k] || 0));
           if (changed) refresh();
         }
       } catch { /* offline: try again next time */ }

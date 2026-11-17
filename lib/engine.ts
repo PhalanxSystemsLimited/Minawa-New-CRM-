@@ -13,9 +13,9 @@
 // Promises to pay pause notices; payments pay the fine in proportion and dues oldest first.
 //
 // Engine functions are synchronous and work on one project's State, set with use(). The store loads the
-// State, the engine changes it, and the store saves what changed. Messages and payment links are only
-// recorded here; lib/dispatch.ts creates the Safepay links and sends the WhatsApp messages afterwards.
-import type { State, Owner, Bill, PayLink, Message, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
+// State, the engine changes it, and the store saves what changed. Messages are only recorded here: staff send
+// them by hand from Send on WhatsApp. Payments are entered by staff (building managers' wait for the accountant).
+import type { State, Owner, Bill, Message, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
 import { PLAN_MONTHS } from './types';
 import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT, addMonths, monthsBetween, dayIn } from './fmt';
 
@@ -53,7 +53,6 @@ export const balance = (o: Owner) => S.entries.reduce((s, e) => e.ownerId === o.
 export const unpaidMaint = (b: Bill) => b.net - b.paid;
 export const unpaid = (b: Bill) => (b.net - b.paid) + (b.fine - b.finePaid);
 export const promiseOn = (o: Owner, d: string) => !!o.promiseUntil && d <= o.promiseUntil;
-export const activeLink = (o: Owner) => S.links.find(l => l.ownerId === o.id && l.status === 'active');
 export const isAdmin = () => S.role === 'admin';
 export const goLive = () => S.goLive;
 /** Opening balances (arrears from the accountant's sheet) fall due with the first bill, not on go-live day. */
@@ -350,23 +349,9 @@ export function waive(o: Owner, amt: number, reason: string, d: string, t: strin
   if (balance(o) <= 0 && o.flagged) { o.flagged = false; log(d, t, 'flag', `${o.apt} flag cleared: nothing owed after the adjustment`, o.id); }
   return applied;
 }
-export function cancelLinks(o: Owner, d: string, t: string, why: string) {
-  for (const l of S.links) if (l.ownerId === o.id && l.status === 'active') {
-    l.status = 'cancelled'; l.cancelledOn = d;
-    log(d, t, 'link', `Link ${l.id} cancelled (${why})`, o.id);
-  }
-}
-export function createLink(o: Owner, d: string, t: string, amount: number, why: string) {
-  cancelLinks(o, d, t, why);
-  const l: PayLink = { id: 'PL-' + (4800 + nid('link')), ownerId: o.id, project: S.project, amount, status: 'active', created: d,
-    cancelledOn: null, paidOn: null, sp: null, spSettled: false, spError: null };
-  S.links.push(l);
-  log(d, t, 'link', `Payment link ${l.id} created for ${rs(amount)}`, o.id);
-  return l;
-}
 type MsgIn = Partial<Message> & { kind: string; title: string; text: string };
 export function pushMsg(o: Owner, d: string, t: string, m: MsgIn) {
-  const msg: Message = { id: 'M' + nid('msg'), ownerId: o.id, project: S.project, d, t, from: 'biz', tpl: null, vars: null, linkId: null, pdf: null,
+  const msg: Message = { id: 'M' + nid('msg'), ownerId: o.id, project: S.project, d, t, from: 'biz', tpl: null, vars: null, pdf: null,
     status: 'queued', waId: null, error: null, manual: false, shot: false, sentAt: null, ...m };
   if (msg.from === 'biz') {
     if (o.invalidPhone) { msg.status = 'failed'; msg.error = o.noPhone ? 'No WhatsApp number on file' : 'Number not on WhatsApp'; }
@@ -389,60 +374,54 @@ export function sendBill(o: Owner, b: Bill, d: string) {
       vars: { name: first(o.name), month: periodLabel(b), amount: rs(b.net), apt: o.apt, credit: rs(-bal) },
       text: `Hi ${first(o.name)}, your ${periodLabel(b)} maintenance of ${rs(b.net)} for Apt ${o.apt} was paid from your advance credit. Credit left: ${rs(-bal)}.` });
   } else {
-    const l = createLink(o, d, t, bal, 'replaced by the new bill');
     const bd = b.bd = duesBreakdown(o);
     const vars = { name: first(o.name), apt: o.apt, month: periodLabel(b), amount: rs(b.net), ...bdVars(bd), total: rs(bal), due: fd(b.dueDate) };
-    pushMsg(o, d, t, { kind: 'bill', title: `Bill · ${periodLabel(b)}`, text: fill(S.templates.bill.text, vars), tpl: 'bill', vars, linkId: l.id, pdf: { kind: 'bill', id: b.id } });
+    pushMsg(o, d, t, { kind: 'bill', title: `Bill · ${periodLabel(b)}`, text: fill(S.templates.bill.text, vars), tpl: 'bill', vars, pdf: { kind: 'bill', id: b.id } });
   }
   if (!o.invalidPhone) log(d, t, 'message', `Bill for ${periodLabel(b)} ready to send to ${o.apt} (Send on WhatsApp)`, o.id);
 }
 function sendNotice(o: Owner, b: Bill, d: string, newBill?: Bill) {
   const bal = balance(o), t = '11:00';
-  const l = createLink(o, d, t, bal, 'replaced by the disconnection notice');
   const bd = (newBill || b).bd = duesBreakdown(o);
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), month: periodLabel(b), final: fd(b.finalDate) };
   let text = fill(S.templates.notice.text, vars);
   if (newBill) text += `\n\nThis total includes your new ${periodLabel(newBill)} bill.`;
-  pushMsg(o, d, t, { kind: 'notice', title: 'Final notice', text, tpl: 'notice', vars, linkId: l.id, pdf: { kind: 'bill', id: (newBill || b).id } });
+  pushMsg(o, d, t, { kind: 'notice', title: 'Final notice', text, tpl: 'notice', vars, pdf: { kind: 'bill', id: (newBill || b).id } });
   if (!o.invalidPhone) log(d, t, 'message', `Disconnection notice ready to send to ${o.apt}: ${rs(bal)}, final deadline ${fd(b.finalDate)}`, o.id);
 }
-// New: a friendly reminder a few days before the due date, with a fresh payment link.
+// A friendly reminder before the due date.
 function sendReminder(o: Owner, b: Bill, d: string) {
   const bal = balance(o), t = '11:00';
   if (bal <= 0) return;
-  const l = createLink(o, d, t, bal, 'replaced by the reminder');
   const bd = duesBreakdown(o);
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), due: fd(b.dueDate) };
-  pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, pdf: { kind: 'statement', id: o.id } });
   if (!o.invalidPhone) log(d, t, 'message', `Reminder ready to send to ${o.apt}: ${rs(bal)} due ${fd(b.dueDate)}`, o.id);
 }
 // Go-live: the statement of what a customer owes, and the final notice for old arrears left unpaid after it.
 function sendStatement(o: Owner, d: string) {
   const bal = balance(o), t = '11:00';
   if (bal <= 0) return;
-  const l = createLink(o, d, t, bal, 'replaced by the statement');
   const bd = duesBreakdown(o), due = openingDue();
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), due: fd(due) };
-  pushMsg(o, d, t, { kind: 'bill', title: 'Statement · dues to date', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  pushMsg(o, d, t, { kind: 'bill', title: 'Statement · dues to date', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, pdf: { kind: 'statement', id: o.id } });
   log(d, t, 'bill', `Statement for ${o.apt}: ${rs(bal)} owed at go-live, due ${fd(due)}`, o.id);
   if (!o.invalidPhone) log(d, t, 'message', `Statement ready to send to ${o.apt} (Send on WhatsApp)`, o.id);
 }
 function sendOpeningNotice(o: Owner, d: string) {
   const bal = balance(o), t = '11:00', final = addDays(openingDue(), R().flagDays);
   if (bal <= 0) return;
-  const l = createLink(o, d, t, bal, 'replaced by the disconnection notice');
   const bd = duesBreakdown(o);
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), month: 'earlier dues', final: fd(final) };
-  pushMsg(o, d, t, { kind: 'notice', title: 'Final notice', text: fill(S.templates.notice.text, vars), tpl: 'notice', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  pushMsg(o, d, t, { kind: 'notice', title: 'Final notice', text: fill(S.templates.notice.text, vars), tpl: 'notice', vars, pdf: { kind: 'statement', id: o.id } });
   if (!o.invalidPhone) log(d, t, 'message', `Disconnection notice ready to send to ${o.apt}: ${rs(bal)} of earlier dues unpaid, final deadline ${fd(final)}`, o.id);
 }
 function sendOpeningReminder(o: Owner, d: string) {
   const bal = balance(o), t = '11:00';
   if (bal <= 0) return;
-  const l = createLink(o, d, t, bal, 'replaced by the reminder');
   const bd = duesBreakdown(o), due = openingDue();
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), due: fd(due) };
-  pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, pdf: { kind: 'statement', id: o.id } });
   if (!o.invalidPhone) log(d, t, 'message', `Reminder ready to send to ${o.apt}: ${rs(bal)} due ${fd(due)}`, o.id);
 }
 function flag(o: Owner, d: string) {
@@ -526,39 +505,21 @@ export function runDaily(d: string) {
 }
 export function recordPayment(o: Owner, amt: number, method: string, ref: string | null, d: string, source: Payment['source'], t: string, by: string, extra?: Partial<Payment>) {
   const pid = 'PAY-' + (1000 + nid('pay')), before = balance(o);
-  addEntry(o.id, d, 'payment', -amt, `Payment · ${method}${extra && extra.gateway ? ' · ' + extra.gateway : ''}`, { ref: ref || pid, pid });
+  addEntry(o.id, d, 'payment', -amt, `Payment · ${method}`, { ref: ref || pid, pid });
   const applied = allocate(o, amt);
   const bal = balance(o);
   const p: Payment = { id: pid, ownerId: o.id, project: S.project, d, t, amount: amt, method, ref: ref || pid, source, by: by || 'Provider', before, applied, balAfter: bal,
-    receipt: 'RC-' + d.slice(0, 4) + '-' + String(nid('rc' + d.slice(0, 4))).padStart(4, '0'), gateway: null, gwMode: null, linkId: null, spLink: null, spTracker: null, ...(extra || {}) };
+    receipt: 'RC-' + d.slice(0, 4) + '-' + String(nid('rc' + d.slice(0, 4))).padStart(4, '0'), ...(extra || {}) };
   S.payments.push(p);
-  if (source !== 'link') cancelLinks(o, d, t, 'payment recorded another way');
-  log(d, t, 'payment', `${rs(amt)} recorded for ${o.apt} · ${method}${source === 'link' ? '' : ` · by ${p.by}`}. Allocated to oldest dues first`, o.id);
+  log(d, t, 'payment', `${rs(amt)} recorded for ${o.apt} · ${method} · by ${p.by}. Allocated to oldest dues first`, o.id);
   if (bal <= 0 && o.flagged) {
     o.flagged = false;
     const susp = o.suspensions.some(s => !s.to);
     log(d, t, 'flag', `${o.apt} flag cleared: all dues paid${susp ? '. Restore suspended services' : ''}`, o.id);
   }
-  let linkId: string | null = null;
-  if (bal > 0) linkId = createLink(o, d, t, bal, 'balance changed').id;
   const vars = { name: first(o.name), paid: rs(amt), apt: o.apt, date: fd(d), balance: bal > 0 ? rs(bal) : bal < 0 ? `Rs 0 (credit ${rs(-bal)})` : 'Rs 0' };
-  pushMsg(o, d, t, { kind: 'receipt', title: 'Payment received', text: fill(S.templates.receipt.text, vars) + (bal > 0 ? '\nTap Pay Now to pay the rest.' : ''), tpl: 'receipt', vars, linkId, pdf: { kind: 'receipt', id: pid } });
+  pushMsg(o, d, t, { kind: 'receipt', title: 'Payment received', text: fill(S.templates.receipt.text, vars), tpl: 'receipt', vars, pdf: { kind: 'receipt', id: pid } });
   return p;
-}
-export function payLink(l: PayLink, method: string, d: string, t: string, mode: Payment['gwMode'] = 'simulated') {
-  const o = ownerById(l.ownerId);
-  log(d, t, 'webhook', `Safepay payment confirmed for ${l.id}: ${rs(l.amount)} by ${method}${mode === 'simulated' ? ' (simulated)' : ''}. Status re-checked with Safepay`, o.id);
-  l.status = 'paid'; l.paidOn = d; l.spSettled = true;
-  return recordPayment(o, l.amount, method, l.sp?.tracker || l.id, d, 'link', t, 'Safepay',
-    { gateway: 'Safepay', gwMode: mode, linkId: l.id, spLink: l.sp?.id || null, spTracker: l.sp?.tracker || null });
-}
-// A Safepay link that was paid after it had been replaced: still money received, recorded; any extra becomes credit.
-export function payStaleLink(l: PayLink, d: string, t: string, mode: Payment['gwMode']) {
-  const o = ownerById(l.ownerId);
-  l.spSettled = true;
-  log(d, t, 'webhook', `Safepay: older link ${l.id} was paid after it was replaced. Recorded; any extra becomes credit`, o.id);
-  return recordPayment(o, l.sp?.amount || l.amount, 'Card', l.sp?.tracker || l.id, d, 'link', t, 'Safepay',
-    { gateway: 'Safepay', gwMode: mode, linkId: l.id, spLink: l.sp?.id || null, spTracker: l.sp?.tracker || null });
 }
 export function ownerProof(o: Owner, amt: number, d: string, t: string, media?: string | null, text?: string) {
   const m = pushMsg(o, d, t, { from: 'owner', kind: 'reply', title: 'Owner reply', shot: true, text: text || `Paid ${rs(amt)} by bank transfer to Minawa Group's account. Screenshot attached.` });
@@ -571,39 +532,38 @@ export function verifyProof(p: Proof, d: string, t: string, by: string, amount?:
   const o = ownerById(p.ownerId);
   if (amount && amount > 0) p.amount = amount;
   p.status = 'verified'; p.doneOn = d; p.checkedBy = by;
-  // Cash a building manager took: only now does it count (receipt, balance, Pay Now link, message to the owner).
-  if (p.kind === 'cash') return recordPayment(o, p.amount, `Cash${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || 'Cash #' + p.id, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`);
+  // A payment a building manager entered: only now does it count (receipt, balance, message to the owner).
+  if (p.kind === 'cash') { const m = p.method || 'Cash'; return recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`); }
   return recordPayment(o, p.amount, 'Bank transfer (screenshot checked)', 'Proof #' + p.id, d, 'proof', t, by);
 }
-/** A building manager records cash they were handed: it waits for an accountant to confirm it, and the owner's
- *  balance only changes then (verifyProof). */
-export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string) {
+/** A building manager enters a payment (cash, bank transfer or cheque): it waits for an accountant to confirm it, and
+ *  the owner's balance only changes then (verifyProof). Proofs of kind 'cash' are these manager entries. */
+export const MANAGER_METHODS = ['Cash', 'Bank transfer', 'Cheque'];
+export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash') {
   const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
-    kind: 'cash', ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null };
+    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null };
   S.proofs.push(pr);
-  log(d, t, 'payment', `${rs(amount)} cash for ${o.apt} recorded by ${byName}${ref ? ` (receipt ${ref})` : ''}, paid ${fd(paidOn)}. Waiting for the accountant to confirm it`, o.id);
+  log(d, t, 'payment', `${rs(amount)} ${method.toLowerCase()} for ${o.apt} entered by ${byName}${ref ? ` (ref ${ref})` : ''}, paid ${fd(paidOn)}. Waiting for the accountant to confirm it`, o.id);
   return pr;
 }
 export function rejectProof(p: Proof, d: string, t: string, by = '', reason = '') {
   const o = ownerById(p.ownerId);
   p.status = 'rejected'; p.doneOn = d; p.checkedBy = by || null; p.reply = reason || null;
   if (p.kind === 'cash') {   // nothing goes to the owner: it's between the accountant and the building manager
-    log(d, t, 'payment', `Cash of ${rs(p.amount)} for ${o.apt} recorded by ${p.byName || 'a building manager'} was not confirmed by ${by || 'the accountant'}${reason ? `: ${reason}` : ''}. The balance is unchanged`, o.id);
+    log(d, t, 'payment', `${p.method || 'Cash'} of ${rs(p.amount)} for ${o.apt} entered by ${p.byName || 'a building manager'} was not confirmed by ${by || 'the accountant'}${reason ? `: ${reason}` : ''}. The balance is unchanged`, o.id);
     return;
   }
-  pushMsg(o, d, t, { kind: 'info', title: 'About your transfer', manual: true, text: `We couldn't find your transfer of ${rs(p.amount)} in our bank account. Please check the reference, or use Pay Now so it is confirmed automatically.` });
+  pushMsg(o, d, t, { kind: 'info', title: 'About your transfer', manual: true, text: `We couldn't find your transfer of ${rs(p.amount)} in our bank account. Please check the reference and send the bank receipt again, or contact your building manager.` });
   log(d, t, 'message', `Screenshot from ${o.apt} not matched in the bank statement; owner told on WhatsApp`, o.id);
 }
-// Staff send a payment link any time (the "Send on WhatsApp" button).
-export function sendPaymentLink(o: Owner, d: string, t: string) {
+// Staff send an owner their dues any time (the "Send on WhatsApp" button). Kind 'link' is the dues message.
+export function sendDues(o: Owner, d: string, t: string) {
   const bal = balance(o);
   if (bal <= 0) return null;
-  let l = activeLink(o);
-  if (!l || l.amount !== bal) l = createLink(o, d, t, bal, 'replaced by a new payment link');
   const bd = duesBreakdown(o);
   const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal) };
-  const m = pushMsg(o, d, t, { kind: 'link', title: 'Payment link', text: fill(S.templates.link.text, vars), tpl: 'link', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id }, manual: true });
-  log(d, t, 'message', `Payment link for ${rs(bal)} ready to send to ${o.apt} by ${S.by}`, o.id);
+  const m = pushMsg(o, d, t, { kind: 'link', title: 'Your dues', text: fill(S.templates.link.text, vars), tpl: 'link', vars, pdf: { kind: 'statement', id: o.id }, manual: true });
+  log(d, t, 'message', `Dues of ${rs(bal)} ready to send to ${o.apt} by ${S.by}`, o.id);
   return m;
 }
 

@@ -24,13 +24,11 @@ export interface Store {
   getWaLog(q: WaLogQuery): Promise<WaLog[]>;
   listStaff(): Promise<Staff[]>;
   saveStaff(s: Staff): Promise<void>;
-  /** Where an owner (by WhatsApp digits), a payment link (by our id or Safepay's) or a WhatsApp message lives. */
-  locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }): Promise<{ project: string; id: string } | null>;
   /** Raw import of a whole sample or migration (replaces a project's data). */
   replaceProjectData(pid: string, s: State): Promise<void>;
   saveTemplates(t: Record<string, Template>): Promise<void>;
   saveSettings(s: ProjectSettings): Promise<void>;
-  /** True at most once per `seconds` for this name, across all servers (e.g. how often Safepay is checked). */
+  /** True at most once per `seconds` for this name, across all servers (e.g. how often the daily run is tried). */
   throttle(name: string, seconds: number): Promise<boolean>;
   /** Payments on or after a date (id, day and time only): for the "new payments" badges. */
   paymentsSince(project: string, since: string): Promise<{ id: string; d: string; t: string }[]>;

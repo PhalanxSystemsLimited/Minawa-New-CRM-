@@ -10,7 +10,6 @@ import { ApprovalItem } from '@/components/views/approvals';
 import { pendingProject } from '@/lib/approvals';
 import { ratesAction, rulesAction, projectBankAction, fineAction } from '@/lib/actions';
 import { waTestNumber } from '@/lib/whatsapp';
-import { safepayConfigured, safepayMode } from '@/lib/safepay';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,10 +71,10 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <p className="muted" style={{ margin: '-6px 0 12px', fontSize: 13 }}>Set on the 1st: what every billed flat owes for the month at the rate card. By default discounts come off and exempt or on-hold flats aren&apos;t counted. Turn either on for every flat, or pick flats one by one.</p>
         {TargetOpts('s')}</div>
       <div className="grid2">
-        <div className="card"><h3>WhatsApp and Safepay <small>{S.proj.name}</small></h3>
+        <div className="card"><h3>WhatsApp and payments <small>{S.proj.name}</small></h3>
           <div className="list">
             <div className="li"><div className="t"><div className="a"><Wa inl /> WhatsApp</div><div className="b">Sent by hand from Send on WhatsApp{waTestNumber() ? ` · testing: chats open with +${waTestNumber()}` : ''}</div></div><span className={`tag ${waTestNumber() ? 'warn' : 'good'}`}>{waTestNumber() ? 'Testing' : 'By hand'}</span></div>
-            <div className="li"><div className="t"><div className="a">Safepay payment links</div><div className="b">{safepayConfigured() ? (safepayMode() === 'live' ? 'Live: real card payments' : 'Sandbox: test payments only') : 'Not connected: Pay Now opens a simulated checkout'}</div></div>{safepayConfigured() ? <span className={`tag ${safepayMode() === 'live' ? 'good' : 'warn'}`}>{safepayMode() === 'live' ? 'Live' : 'Sandbox'}</span> : <span className="tag">Off</span>}</div>
+            <div className="li"><div className="t"><div className="a">Payments</div><div className="b">Entered by hand: the building manager enters cash, bank transfers and cheques, and the Accountant confirms them</div></div><span className="tag good">By hand</span></div>
           </div>
           {ad ? <p className="cell-sub" style={{ margin: '10px 0 0' }}>Keys are set on the server. See <Go href="/admin" className="link-btn">Staff &amp; connections</Go> for what each one does.</p> : null}</div>
         <div className="card"><h3>Bank account <small>printed on bills</small></h3>
@@ -87,9 +86,9 @@ export default async function Settings({ params, searchParams }: { params: Promi
         {r.startOn ? <li>Go-live on {fd(r.startOn)}: every customer with a balance gets a statement for it, due on the {ord(r.dueDays)} of the next month. Monthly charges start in {fm(S.goLive.slice(0, 7))}; the months before are in the opening balances.</li> : null}
         <li>Each customer has a billing date. New customers (possessions recorded here and approved by the Admin): {r.graceDays} days after possession (possession 10 Nov → 5 Dec). Existing customers: the day of their possession date (possessed on the 5th → billed on the 5th); with no possession date on file, the {ord(r.billDay)}. Flats without a possession are not billed.</li>
         <li>Bills repeat on that date at {hour12(r.sendHour)}: every month, every 3 months (quarterly) or every 12 months (annual); in a shorter month on its last day. A monthly bill is for that month (a new customer&apos;s for the month before, the first one from the possession date); quarterly and annual bills cover the next 3 or 12 months. Electricity and other utility bills entered by the accountant go on the next bill. The bill is the first reminder.</li>
-        <li>Every bill is due on the {ord(r.dueDays)} of the month after it (5 Dec → {ord(r.dueDays)} Jan); a customer can have their own due day once the Admin approves it. {r.remindOn.length ? `Reminders go out on the ${r.remindOn.map(ord).join(' and ')} of the due month while the bill is unpaid, each with a fresh payment link.` : ''} The day after the due date the fine ({r.feePct}% of the unpaid bills{r.fineArrears ? ' and old arrears' : ''}, changed with an admin's approval) is added and a final notice goes out.</li>
+        <li>Every bill is due on the {ord(r.dueDays)} of the month after it (5 Dec → {ord(r.dueDays)} Jan); a customer can have their own due day once the Admin approves it. {r.remindOn.length ? `Reminders go out on the ${r.remindOn.map(ord).join(' and ')} of the due month while the bill is unpaid.` : ''} The day after the due date the fine ({r.feePct}% of the unpaid bills{r.fineArrears ? ' and old arrears' : ''}, changed with an admin's approval) is added and a final notice goes out.</li>
         <li>{r.flagDays} days after the due date, flats still unpaid are flagged for disconnection. Paying in full clears the flag.</li>
-        <li>Every message carries a fresh payment link for the exact amount; the old one is cancelled. Payments are confirmed by Safepay&apos;s webhook and re-checked with Safepay; while the CRM is open it also checks Safepay every minute, so a missed webhook is caught.</li>
+        <li>Payments are entered by hand. A building manager enters cash, bank transfers and cheques with the receipt or reference number; the owner&apos;s balance changes once the Accountant confirms it. The Accountant can also record bank payments directly. Every message tells the owner how to pay: to the building manager, or by bank transfer to the account below.</li>
         <li>A payment covers dues and the late fee in proportion, so the fee stays {r.feePct}% of what is still owed; dues are paid oldest first. Extra money becomes advance credit for the next bills.</li>
         <li>A promise to pay pauses notices until the promised date; if it passes unpaid, the accountant is alerted.</li>
         <li>Directors&apos; apartments are exempt. Discounts can be a percentage or fixed, with an optional end date.</li>

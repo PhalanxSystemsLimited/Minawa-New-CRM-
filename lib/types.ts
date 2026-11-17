@@ -108,32 +108,26 @@ export interface Notice {
 
 export interface Entry { id: string; ownerId: string; project: string; d: ISODate; kind: string; amount: number; desc: string; ref: string | null; pid: string | null }
 
-export interface SafepayLink { id: string; url: string; tracker: string | null; amount: number }
-export interface PayLink {
-  id: string; ownerId: string; project: string; amount: number; status: 'active' | 'paid' | 'cancelled'; created: ISODate;
-  cancelledOn: ISODate | null; paidOn: ISODate | null; sp: SafepayLink | null; spSettled: boolean; spError: string | null;
-}
-
 // pending: waiting for the accountant to send it by hand on WhatsApp Web (automatic sending off).
 export type MsgStatus = 'pending' | 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | 'skipped';
 export interface Message {
   id: string; ownerId: string; project: string; d: ISODate; t: string; from: 'biz' | 'owner';
   kind: string; title: string; text: string; tpl: string | null; vars: Record<string, string> | null;
-  linkId: string | null; pdf: { kind: 'bill' | 'receipt' | 'statement'; id: string } | null;
+  pdf: { kind: 'bill' | 'receipt' | 'statement'; id: string } | null;
   status: MsgStatus; waId: string | null; error: string | null; manual: boolean; shot: boolean; sentAt: string | null;
 }
 
 export interface Applied { kind: 'dues' | 'fee' | 'credit'; label: string; amount: number }
 export interface Payment {
   id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; method: string; ref: string;
+  /** staff: entered by staff; proof: a checked bank screenshot or a building manager's entry. ('link' only on old records.) */
   source: 'link' | 'staff' | 'proof'; by: string; before: number; applied: Applied[]; balAfter: number; receipt: string;
-  gateway: string | null; gwMode: 'live' | 'sandbox' | 'simulated' | null; linkId: string | null; spLink: string | null; spTracker: string | null;
 }
 
 /** Money waiting for an accountant to check: a bank-transfer screenshot an owner sent (`transfer`), or cash a building
  *  manager recorded (`cash`: the balance changes only once the accountant confirms it). */
 export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected'; msgId: string | null; doneOn: ISODate | null; media: string | null;
-  kind?: 'transfer' | 'cash'; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null }
+  kind?: 'transfer' | 'cash'; method?: string | null; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null }
 export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean }
 export interface Clearance { no: string; ownerId: string; project: string; d: ISODate; by: string }
 /** One flat's line on the office's yearly sheet: what it owed (arrears + the year's charges) and what was paid. */
@@ -145,7 +139,7 @@ export interface SheetSummary {
 export interface WaLog {
   id: string; project: string; ownerId: string | null; apt: string; ownerName: string; block: string;
   phone: string; sentTo: string; answer: 'sent' | 'not_sent'; via: 'prompt' | 'button';
-  messageId: string | null; kind: string; title: string; text: string; amount: number; linkId: string | null; payUrl: string | null;
+  messageId: string | null; kind: string; title: string; text: string; amount: number;
   staffId: string | null; staffName: string; staffRole: string; d: ISODate; t: string; at: string; test: boolean;
 }
 export interface LogEntry { id: string; project: string | null; d: ISODate; t: string; kind: string; text: string; ownerId: string | null;
@@ -168,7 +162,7 @@ export interface State {
   /** Who is acting right now: their log entries carry it, so admins can see each person's activity. */
   staffId?: string | null; staffName?: string | null;
   rates: Rate[]; templates: Record<string, Template>; settings: ProjectSettings;
-  owners: Owner[]; bills: Bill[]; entries: Entry[]; links: PayLink[]; messages: Message[]; payments: Payment[];
+  owners: Owner[]; bills: Bill[]; entries: Entry[]; messages: Message[]; payments: Payment[];
   proofs: Proof[]; alerts: Alert[]; clearances: Clearance[]; charges: Charge[]; notices: Notice[];
   /** Changes to an owner's charges that an accountant asked for, waiting for (or decided by) an admin. */
   approvals: Approval[];

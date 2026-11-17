@@ -28,7 +28,7 @@ export const IC: Record<string, React.ReactNode> = {
   bang: P('<path d="M12 5v9M12 18.5v.5"/>')
 };
 const KINDS: Record<string, [string, Tone, string]> = {
-  payment: ['Payment', 'good', 'card'], webhook: ['Online payment', 'good', 'card'], link: ['Payment link', 'info', 'link'], message: ['Message', 'info', 'msg'],
+  payment: ['Payment', 'good', 'card'], webhook: ['Online payment (old)', 'good', 'card'], link: ['Payment link (old)', 'info', 'link'], message: ['Message', 'info', 'msg'],
   whatsapp: ['WhatsApp', 'wa', 'wa'], bill: ['Bill', 'accent', 'doc'], fine: ['Fine', 'bad', 'pct'], flag: ['Flag', 'bad', 'flag'], alert: ['Alert', 'warn', 'alert'],
   job: ['Setup', 'accent', 'gear'], admin: ['Change', 'warn', 'edit'], signin: ['Sign in', 'in', 'in'], signout: ['Sign out', 'muted', 'out'],
   approval: ['Approval', 'accent', 'shield']

@@ -50,7 +50,7 @@ export function Topbar({ todo, firstTodo, bell, roleLabel, initials, name, defau
       <label className="gsearch"><Ic n="search" s={16} /><GlobalSearch key={onApts ? 'a' : path} base={`/p/${pid}/apartments`} defaultValue={onApts ? sp.get('q') || '' : ''} /></label>
       <span className="top-sp"></span>
       <ThemeSwitch />
-      <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} />
+      <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} role={roleLabel} />
       <Go href={bell?.href || (firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`)} className="icon-btn bell-btn" title={bell?.label || 'To do'} ariaLabel={`${bell?.label || 'To do'}${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
       <details className="more me-menu"><summary className="me"><span className="me-av">{initials}</span><div className="me-t"><div className="me-n">{roleLabel}</div><div className="me-r">Minawa Group</div></div></summary>
         <div className="menu menu-r"><div className="menu-who"><b>{name}</b><span>{roleLabel}</span></div><form action={signOut}><button type="submit">Sign out</button></form></div>
@@ -61,16 +61,18 @@ export function Topbar({ todo, firstTodo, bell, roleLabel, initials, name, defau
 
 /** Quick actions. Inside a project they act on that project. Elsewhere (Dashboard, WhatsApp, Approvals, Activity) each
  *  action first asks which project, and the export covers every project. */
-function QuickActions({ projects, pid }: { projects: { id: string; name: string }[]; pid: string | null }) {
+function QuickActions({ projects, pid, role }: { projects: { id: string; name: string }[]; pid: string | null; role: string }) {
   const path = usePathname(), ref = useRef<HTMLDetailsElement>(null), [pick, setPick] = useState<string | null>(null);
   useEffect(() => { ref.current?.removeAttribute('open'); setPick(null); }, [path]);   // close after going somewhere
   const here = pid ? projects.find(p => p.id === pid) : null;
-  const acts: [string, string, (id: string) => string][] = [
-    ['link', 'Send a payment link', id => `/p/${id}?m=sendpick`],
+  // Sending on WhatsApp is the building manager's work; payments are entered by building managers and accountants.
+  const mgr = role === 'Building manager', all: [string, string, (id: string) => string][] = [
+    ['link', 'Send dues on WhatsApp', id => `/p/${id}?m=sendpick`],
     ['pay', 'Record a payment', id => `/p/${id}/apartments?f=owing`],
     ['ann', 'Send an announcement', id => `/p/${id}/send?mode=announce`],
     ['notice', 'Send a maintenance notice', id => `/p/${id}/send?mode=notice`]
   ];
+  const acts = all.filter(([k]) => k === 'pay' ? role !== 'Admin' : mgr);
   return <details ref={ref} className="more qa" onToggle={e => { if (!(e.currentTarget as HTMLDetailsElement).open) setPick(null); }}>
     <summary className="btn primary"><Ic n="plus" s={16} /><span className="lbl">Quick actions</span></summary>
     <div className="menu menu-r qa-menu">

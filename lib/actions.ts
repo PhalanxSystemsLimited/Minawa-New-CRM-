@@ -4,12 +4,12 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Owner, State, Staff } from './types';
-import { requireStaff, requireAdmin, roleName, staffName } from './session';
+import { requireStaff, requireRole, requireAdmin, roleName, staffName } from './session';
 import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
 import {
-  ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, cancelLinks, unitOf, log, at, nid, rateTypes,
-  verifyProof, rejectProof, sendPaymentLink, setTargetOption, pushMsg, payLink, resyncFines, apartments, monthsToBill, billDateOf, recordCash } from './engine';
+  ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
+  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, MANAGER_METHODS } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
@@ -29,12 +29,16 @@ export async function recordPaymentAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
   const amt = Math.round(+S(fdata, 'amt'));
   if (!(amt > 0)) go(ownerPath(pid, oid), 'Enter an amount');
-  // A building manager records cash; it waits for the accountant, and the balance changes only once confirmed.
+  // Payments are entered by building managers and accountants only (no online payments).
+  if (staff.role === 'admin') go(ownerPath(pid, oid), 'Payments are entered by the building manager or the Accountant');
+  // A building manager enters cash, a bank transfer or a cheque; it waits for the accountant, and the balance changes
+  // only once confirmed.
   if (staff.role === 'manager') {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
-    if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
-    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff)), { send: false });
-    go(ownerPath(pid, oid), `Cash of Rs ${amt.toLocaleString('en-US')} recorded. The accountant confirms it; the balance changes then.`);
+    const method = MANAGER_METHODS.includes(S(fdata, 'method')) ? S(fdata, 'method') : 'Cash';
+    if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', method === 'Cash' ? 'Enter the receipt number you gave the owner' : method === 'Cheque' ? 'Enter the cheque number' : 'Enter the bank reference');
+    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method), { send: false });
+    go(ownerPath(pid, oid), `${method} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant confirms it; the balance changes then.`);
   }
   const p = await mutate(pid, staff, s => recordPayment(needOwner(s, oid), amt, S(fdata, 'method'), S(fdata, 'ref'), s.today, 'staff', at(15), staffName(staff)));
   redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
@@ -75,7 +79,7 @@ export async function transferAction(fdata: FormData) {
   const nidOut = await mutate(pid, staff, s => {
     const o = needOwner(s, oid), t = at(15), d = S(fdata, 'd') || s.today;
     if (balance(o) > 0) throw new Error('Dues are outstanding; record the payment first.');
-    o.status = 'closed'; o.closedOn = d; cancelLinks(o, s.today, t, 'account closed on transfer');
+    o.status = 'closed'; o.closedOn = d;
     let c = s.clearances.find(x => x.ownerId === o.id);
     if (!c) { c = { no: 'DC-' + s.today.slice(0, 4) + '-' + String(nid('dc')).padStart(3, '0'), ownerId: o.id, project: pid, d: s.today, by: staffName(staff) }; s.clearances.push(c); }
     const n = blankOwner({ id: 'O' + nid('o'), project: pid, unit: unitOf(o), apt: o.apt, block: o.block, type: o.type, name, phone, possession: d, prevOwnerId: o.id, rate: o.rate, generator: !!o.generator });
@@ -104,7 +108,7 @@ export async function fixNumberAction(fdata: FormData) {
     o.phone = phone; o.invalidPhone = false; o.noPhone = false;
     o.notes.push({ d: s.today, by: staffName(staff), text: `WhatsApp number corrected to ${phone}.` });
     log(s.today, at(15), 'admin', `Number fixed for ${o.apt}; latest balance resent`, o.id);
-    if (balance(o) > 0) sendPaymentLink(o, s.today, at(15));
+    if (balance(o) > 0) sendDues(o, s.today, at(15));
   });
   go(ownerPath(pid, oid), 'Number saved and message resent');
 }
@@ -132,7 +136,7 @@ export async function editOwnerAction(fdata: FormData) {
   go(ownerPath(pid, oid), list.length ? `Saved. Sent to an admin for approval: ${list.join('; ')}. It applies once approved.` : 'Saved');
 }
 export async function pickAction(fdata: FormData) {
-  await requireStaff();
+  await requireRole('manager');
   redirect(ownerPath(S(fdata, 'pid'), S(fdata, 'oid')) + '?m=send');
 }
 
@@ -158,7 +162,7 @@ export async function alertDoneAction(fdata: FormData) {
   go(`/p/${pid}/todo`);
 }
 export async function retryMessageAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back') || `/p/${pid}/messages`;
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back') || `/p/${pid}/messages`;
   await mutate(pid, staff, s => { const m = s.messages.find(x => x.id === id); if (m && (m.status === 'failed' || m.status === 'skipped')) { m.status = 'pending'; m.error = null; log(s.today, at(15), 'message', `Message ${m.id} to ${ownerById(m.ownerId)?.apt} put back in Send on WhatsApp by ${staffName(staff)}`, m.ownerId); } });
   go(back, 'Added to Send on WhatsApp, ready to send by hand');
 }
@@ -203,7 +207,7 @@ export async function fineAction(fdata: FormData) {
   go(back, failed(r) ? r.error : r.text);
 }
 export async function announceAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=announce`;
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=announce`;
   if (!S(fdata, 'text')) go(back, 'Write the message first');
   const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'announce', { aud: S(fdata, 'aud') || 'all', text: S(fdata, 'text') }, S(fdata, 'why'))));
   go(back, failed(r) ? r.error : r.text);
@@ -214,15 +218,6 @@ export async function projectBankAction(fdata: FormData) {
   const p = (await store.listProjects()).find(x => x.id === pid);
   if (p) { p.bank = S(fdata, 'bank'); await store.saveProject(p); await staffLog(staff, `Bank details for ${p.name} changed by ${staffName(staff)}`, { project: pid }); }
   go(`/p/${pid}/settings`, 'Bank details saved');
-}
-
-/* ---------- the owner paying (simulated checkout, when Safepay isn't connected) ---------- */
-export async function simulatePayAction(fdata: FormData) {
-  // Test checkout only: never available unless ALLOW_SIMULATED_PAYMENTS=true (local mode and staging).
-  if (process.env.ALLOW_SIMULATED_PAYMENTS !== 'true') throw new Error('Simulated payments are off.');
-  const pid = S(fdata, 'pid'), id = S(fdata, 'id');
-  await mutate(pid, null, s => { const l = s.links.find(x => x.id === id); if (l && l.status === 'active') payLink(l, 'Card', s.today, at(15), 'simulated'); });
-  redirect(`/pay/${id}?done=1`);
 }
 
 /* ---------- staff (admins) ---------- */

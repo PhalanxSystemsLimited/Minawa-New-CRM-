@@ -82,8 +82,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <div className="bal"><div className="l">{bal < 0 ? 'Credit' : 'Owes'}</div><div className="v num" style={{ color: bal > 0 ? (st === 'flagged' ? 'var(--bad)' : 'var(--fg)') : 'var(--good)' }}>{rs(Math.abs(bal))}</div><div className="cell-sub">{bal < 0 ? 'Used for the next bills' : bal > 0 ? '' : 'All paid'}</div></div>
         </div>
         {closed ? null : <div className="actions">
-          {bal > 0 ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Record cash' : 'Record payment'}</Go> : null}
-          {bal > 0 && !o.exempt ? waBtn(o) : null}
+          {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Enter payment' : 'Record payment'}</Go> : null}
+          {bal > 0 && !o.exempt && S.role === 'manager' ? waBtn(o) : null}
           <details className="more"><summary className="btn">More ▾</summary><div className="menu">
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
             <Go href={m('note')}>Add note</Go>
@@ -91,7 +91,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
             {hasGenerator() ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>
               : <Go href={m('generator')}>{o.generator ? 'Remove generator charges' : 'Add generator charges'}{ask}</Go> : null}
-            {bal > 0 ? null : <Go href={m('recpay')}>Record payment</Go>}
+            {bal > 0 || S.role === 'admin' ? null : <Go href={m('recpay')}>Record payment</Go>}
             <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>
             <Go href={m('discount')}>Discount{ask}</Go>
             {o.openingLeft > 0 ? <Go href={m('instal-3')}>{o.instalments ? 'Change the instalment plan' : 'Instalment plan for old arrears'}{ask}</Go> : null}
@@ -108,8 +108,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       {waiting.length ? <div className="card apv-card"><div className="card-row"><h3>Waiting for approval <small>{waiting.length} change{waiting.length === 1 ? '' : 's'} to what {o.name} is charged</small></h3><Go href="/approvals" className="btn sm">Approvals</Go></div>
         <div className="apv-list">{waiting.map(a => <ApprovalItem key={a.id} v={{ a, apt: o.apt, owner: o.name, pname: S.proj.name }} admin={isAdmin()} meId={S.staffId || ''} back={base} showOwner={false} />)}</div></div> : null}
       {(() => { const cash = S.proofs.filter(p => p.ownerId === o.id && p.kind === 'cash' && (p.status === 'pending' || (p.status === 'rejected' && (p.doneOn || '') >= addDays(S.today, -13))));
-        return cash.length ? <div className="card"><div className="card-row"><h3>Cash recorded <small>the balance changes once the Accountant confirms it</small></h3></div>
-          <div className="list">{cash.map(p => <div className="li" key={p.id}><div className="t"><div className="a"><span className="num">{rs(p.amount)}</span> cash · receipt {p.ref || '—'}</div><div className="b">Recorded by {p.byName} on {fd(p.d)}{p.paidOn ? ` · paid ${fd(p.paidOn)}` : ''}{p.status === 'rejected' ? ` · not confirmed by ${p.checkedBy || 'the accountant'}${p.reply ? `: ${p.reply}` : ''}` : ''}</div></div>
+        return cash.length ? <div className="card"><div className="card-row"><h3>Payments entered <small>the balance changes once the Accountant confirms them</small></h3></div>
+          <div className="list">{cash.map(p => <div className="li" key={p.id}><div className="t"><div className="a"><span className="num">{rs(p.amount)}</span> {(p.method || 'Cash').toLowerCase()} · ref {p.ref || '—'}</div><div className="b">Recorded by {p.byName} on {fd(p.d)}{p.paidOn ? ` · paid ${fd(p.paidOn)}` : ''}{p.status === 'rejected' ? ` · not confirmed by ${p.checkedBy || 'the accountant'}${p.reply ? `: ${p.reply}` : ''}` : ''}</div></div>
             {p.status === 'pending' ? <span className="tag warn">Waiting for the Accountant</span> : <span className="tag bad">Not confirmed</span>}</div>)}</div></div> : null; })()}
       {(() => { const ip = instalmentStatus(o); if (!ip) return null;
         return <div className="card"><div className="card-row"><h3>Instalment plan <small>old arrears of {rs(ip.plan.total)} · approved {fd(ip.plan.approvedD)}</small></h3>{ip.done ? <span className="tag good">Paid off</span> : ip.overdue ? <span className="tag bad">{rs(ip.overdue)} late</span> : <span className="tag info">On track</span>}</div>

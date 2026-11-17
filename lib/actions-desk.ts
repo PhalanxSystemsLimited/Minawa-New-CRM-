@@ -2,7 +2,7 @@
 // The accountant's desk: utility bills entry, maintenance notices, and new possessions.
 import { redirect } from 'next/navigation';
 import type { Owner, Charge, Notice } from './types';
-import { requireStaff, roleName, staffName } from './session';
+import { requireStaff, requireRole, roleName, staffName } from './session';
 import { mutate } from './ops';
 import { ownerById, apartments, log, at, nid, pushMsg, createBill, sendBill, rateTypes, monthsToBill, monthCharge, nextBillFor, waive } from './engine';
 import { fd, fds, fm, rs, waDigits } from './fmt';
@@ -16,7 +16,7 @@ const go = (path: string, toast?: string): never => redirect(path + (path.includ
 /* ---------- utility bills ---------- */
 /** Saves the month's grid: one amount (and optionally units) per flat. Billed rows are locked; 0 or empty clears. */
 export async function saveChargesAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
   const back = `/p/${pid}/utilities?period=${period}&kind=${encodeURIComponent(kind)}`;
   if (!/^\d{4}-\d{2}$/.test(period)) go(back, 'Pick the month');
   const res = await mutate(pid, staff, s => {
@@ -45,7 +45,7 @@ export async function saveChargesAction(fdata: FormData) {
 
 /** CSV with Apartment, Amount (and optional Units) columns, for the selected month and kind. */
 export async function importChargesAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
   const back = `/p/${pid}/utilities?period=${period}&kind=${encodeURIComponent(kind)}`;
   const file = fdata.get('file') as File | null;
   if (!file || !file.size) go(back, 'Pick a CSV file');
@@ -76,7 +76,7 @@ export async function importChargesAction(fdata: FormData) {
 
 /** Bills entered after this month's bills went out: bill them now on their own (utilities only) and send. */
 export async function billUtilitiesNowAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/utilities?period=${S(fdata, 'period')}&kind=${encodeURIComponent(S(fdata, 'kind'))}`;
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), back = `/p/${pid}/utilities?period=${S(fdata, 'period')}&kind=${encodeURIComponent(S(fdata, 'kind'))}`;
   const n = await mutate(pid, staff, s => {
     const owners = [...new Set(s.charges.filter(c => !c.billId && c.amount && c.period <= s.today.slice(0, 7)).map(c => c.ownerId))].map(ownerById).filter(o => o && o.status === 'active');
     owners.forEach(o => { const b = createBill(o, s.today, { utilitiesOnly: true }); if (b.net) sendBill(o, b, s.today); });
@@ -88,7 +88,7 @@ export async function billUtilitiesNowAction(fdata: FormData) {
 
 /* ---------- maintenance notices ---------- */
 export async function sendNoticeAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=notice`;
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=notice`;
   const kind = S(fdata, 'kind') || 'custom', title = S(fdata, 'title') || 'Notice', text = S(fdata, 'text'), aud = S(fdata, 'aud') || 'all';
   if (!text) go(back, 'Write the message first');
   const picked = new Set(fdata.getAll('apt').map(String));

@@ -1,7 +1,7 @@
 // A bill, receipt, statement or clearance certificate as a PDF (the same file WhatsApp sends).
 import { currentStaff } from '@/lib/session';
 import { load } from '@/lib/ops';
-import { use, ownerById, activeLink } from '@/lib/engine';
+import { use, ownerById } from '@/lib/engine';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
 import { renderPdf } from '@/lib/pdf';
 
@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ pid: strin
   const d: DocData | null = use(s, () => {
     if (kind === 'bill') { const b = s.bills.find(x => x.id === id); return b ? billDoc(b) : null; }
     if (kind === 'receipt') { const p = s.payments.find(x => x.id === id); return p ? receiptDoc(p) : null; }
-    if (kind === 'statement') { const o = ownerById(id); return o ? statementDoc(o, activeLink(o)) : null; }
+    if (kind === 'statement') { const o = ownerById(id); return o ? statementDoc(o) : null; }
     if (kind === 'clearance') { const c = s.clearances.find(x => x.no === id); return c ? clearanceDoc(ownerById(c.ownerId), c) : null; }
     return null;
   });

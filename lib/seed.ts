@@ -2,7 +2,7 @@
 // Used to try the CRM without Minawa's data, and to check the screens against the demo.
 import type { State, Owner, Rate, Project } from './types';
 import { PROJECTS, TEMPLATES, SAMPLE_BANK, defaultSettings, RATE_CARDS, RATE_FROM } from './defaults';
-import { use, seeding, runDaily, recordPayment, payLink, activeLink, ownerProof, verifyProof, billsOf, balance, unpaidMaint, log, nid, at } from './engine';
+import { use, seeding, runDaily, recordPayment, ownerProof, verifyProof, billsOf, balance, unpaidMaint, log, nid, at } from './engine';
 import { addDays, diff, fd } from './fmt';
 
 export const SAMPLE_GO_LIVE = '2026-09-01';
@@ -61,7 +61,7 @@ export function blankOwner(p: Partial<Owner> & { id: string; project: string; ap
 export function freshState(proj: Project, today: string, rates: Rate[], seq: Record<string, number>): State {
   return { project: proj.id, proj, today, goLive: proj.goLive || today, by: 'System', role: 'admin', rates,
     templates: JSON.parse(JSON.stringify(TEMPLATES)), settings: defaultSettings(proj.id),
-    owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], log: [], seq };
+    owners: [], bills: [], entries: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], log: [], seq };
 }
 
 const sampleRates = (pid: string): Rate[] => pid === 'cc'
@@ -120,7 +120,7 @@ function behave(d: string, beh: Map<string, string>, pref: Map<string, string>) 
     });
     log(d, '15:10', 'admin', `Electricity bills for ${d.slice(0, 7)} entered by Accountant`);
   }
-  const payActive = (o: Owner, method: string, h: number) => { const l = activeLink(o); if (l) payLink(l, method, d, at(h)); };
+  const payActive = (o: Owner, method: string, h: number) => { const bal = balance(o); if (bal > 0) recordPayment(o, bal, method === 'Card' ? 'Cash' : method, 'RCPT-' + (5000 + nid('cashrc')), d, 'staff', at(h), 'Accountant'); };
   for (const o of S.owners) {
     if (o.status !== 'active' || o.exempt) continue;
     const b0 = beh.get(o.id);

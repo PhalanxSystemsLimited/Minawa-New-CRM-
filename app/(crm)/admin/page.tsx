@@ -1,4 +1,4 @@
-// New: staff and roles, and the state of each connection (Supabase, WhatsApp, Safepay, the scheduler).
+// New: staff and roles, and the state of each connection (Supabase, WhatsApp, the scheduler).
 import { requireAdmin } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { staffAction, inviteAction } from '@/lib/actions';
@@ -7,7 +7,6 @@ import { Submit, Go, ModalShell, CloseBtn, PasswordInput } from '@/components/cl
 import { ActivityList, lastSeen, roleTag } from '@/components/views/activity';
 import { projects as listProjects } from '@/lib/ops';
 import { waTestNumber } from '@/lib/whatsapp';
-import { safepayConfigured, safepayMode } from '@/lib/safepay';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +20,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && !['signin', 'signout'].includes(e.kind)).slice(0, 8);
   const rank = { admin: 0, accountant: 1, manager: 2 } as const, sorted = [...staff].sort((a, b) => (rank[a.role] - rank[b.role]) || a.name.localeCompare(b.name));
   const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add'];
-  const app = process.env.APP_URL || '';
   const row = (name: string, ok: boolean, what: string, tag?: string) => <div className="li"><div className="t"><div className="a">{name}</div><div className="b">{what}</div></div>{ok ? <span className={`tag ${tag === 'warn' ? 'warn' : 'good'}`}>{tag && tag !== 'warn' ? tag : 'On'}</span> : <span className="tag bad">Not set up</span>}</div>;
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
@@ -39,7 +37,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants look after payments and bills; their changes go to an Admin for approval. Building managers only see the buildings ticked for them: they record cash, send reminders on WhatsApp and ask the Admin for changes for an owner.</p>
     </div>
     <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
-      <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, links, fines) shows here." />
+      <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, fines) shows here." />
     </div>
     {sp.add ? <ModalShell title="Add someone" closeKeys={keys}>
       <form action={inviteAction} className="rules-form">
@@ -74,14 +72,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <div className="card"><h3>Connections</h3><div className="list">
         {row('Database', true, store.kind === 'supabase' ? 'Supabase' : 'Local file (data/local-db.json): for trying the CRM only. Connect Supabase before go-live.', store.kind === 'supabase' ? 'Supabase' : 'warn')}
         {row('WhatsApp', true, `Sent by hand: staff open each owner's chat from Send on WhatsApp and confirm it was sent${waTestNumber() ? ` · testing: chats open with +${waTestNumber()}` : ' · chats open with the owners'}`, waTestNumber() ? 'warn' : 'By hand')}
-        {row('Safepay', safepayConfigured(), safepayConfigured() ? (safepayMode() === 'live' ? 'Live: real card payments' : 'Sandbox: test payments only (set SAFEPAY_ENV=production to go live)') : 'Set SAFEPAY_SECRET_KEY. Until then Pay Now opens a simulated checkout.', safepayMode() === 'live' ? 'Live' : 'warn')}
-        {row('Safepay webhook', !!process.env.SAFEPAY_WEBHOOK_SECRET, `${app || 'https://your-crm'}/api/safepay/webhook`)}
         {row('Daily run', true, 'Runs by itself once a day, as soon as anyone has the CRM open: bills on each customer’s billing date, reminders on the 3rd and 7th, the fine and final notice after the due date. What it makes waits in To do, to be sent by hand.', 'Automatic')}
-        {row('Address for Pay Now buttons', !!app, app ? `${app}/pay/…` : 'Set APP_URL to the CRM\'s public address.')}
       </div></div>
       <div className="card"><h3>Before go-live <small>from Minawa&apos;s checklist</small></h3><ul className="rules">
         <li>A WhatsApp number Minawa owns for sending by hand, signed in on WhatsApp Web, shown as &quot;Minawa Group&quot;.</li>
-        <li>Safepay merchant approval: business registration, NTN, directors&apos; CNICs, address, receiving bank account.</li>
         <li>Owners&apos; WhatsApp numbers and possession dates, imported in each project&apos;s Apartments › Import.</li>
         <li>Bank account per building, printed on bills (each project&apos;s Settings).</li>
         <li>Remove WHATSAPP_TEST_NUMBER, so chats open with the owners.</li>

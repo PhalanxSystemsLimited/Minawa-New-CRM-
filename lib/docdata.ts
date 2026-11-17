@@ -1,7 +1,7 @@
 // The content of each document (bill, receipt, statement, clearance), worked out once and drawn twice:
 // on screen (components/Docs.tsx, the demo's .doc look) and as the PDF sent on WhatsApp (lib/pdf.tsx).
 // Call inside use(state, …).
-import type { Bill, Payment, Owner, PayLink, Clearance } from './types';
+import type { Bill, Payment, Owner, Clearance } from './types';
 import { t12 } from '@/lib/fmt';
 import { cur, ownerById, duesBreakdown, balance, feePct, periodLabel } from './engine';
 import { fd, fm, fmShort, rs } from './fmt';
@@ -19,11 +19,13 @@ export interface DocData {
 /** Company line printed at the foot of every document. */
 export function orgLine() { const c = cur().company; if (!c) return ''; return [c.legalName, c.address, c.ntn ? `NTN ${c.ntn}` : '', c.phone, c.email].filter(Boolean).join(' · '); }
 const S = () => cur();
-const appUrl = () => (process.env.APP_URL || '').replace(/\/$/, '');
+/** How an owner pays: the building manager (cash or cheque) or a bank transfer to the project's account. */
+const howToPay = (ref: string) => { const bank = (S().proj.bank || '').trim();
+  return ['Pay your building manager in cash or by cheque, and keep the receipt they give you.',
+    bank ? `Or transfer to ${bank}, reference ${ref}, and send the bank receipt on WhatsApp.` : 'Or ask your building manager for the bank details for a transfer.']; };
 
 export function billDoc(b: Bill): DocData {
   const o = ownerById(b.ownerId), proj = S().proj;
-  const l = [...S().links].reverse().find(x => x.ownerId === o.id && x.created >= b.billDate);
   const tables: DocData['tables'] = [];
   // What this bill charges: maintenance for the plan's months, discounts, and the utility bills entered.
   const lines: DocRow[] = (b.lines || []).map(x => ({ label: x.label, amount: x.amount < 0 ? '−' + rs(-x.amount) : rs(x.amount) }));
@@ -45,22 +47,16 @@ export function billDoc(b: Bill): DocData {
     org: orgLine(), kind: 'bill', filename: `Bill-${b.period}${b.months > 1 ? '-' + b.periodEnd : ''}-${o.apt}.pdf`, project: proj.name, subtitle: `${proj.name} · Maintenance bill`, refNo: b.id, refSub: periodLabel(b),
     kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Billing date', fd(b.billDate)], ['Due date', fd(b.dueDate)]],
     tables,
-    howToPay: [`Tap Pay Now in the WhatsApp message${l ? ` (link ${l.id})` : ''} to pay by debit or credit card.`, `Or transfer to ${proj.bank || 'Minawa Group\'s maintenance account'}, reference ${o.apt}-${fmShort(b.period)}.`],
+    howToPay: howToPay(`${o.apt}-${fmShort(b.period)}`),
     fine: `If anything is still unpaid after ${fd(b.dueDate)}, a fine of ${feePct()}% of ${S().settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} is added. If dues remain unpaid by ${fd(b.finalDate)}, utilities may be disconnected.`
   };
 }
 
-export const spInfo = (p: Payment) => p.source === 'link' && p.gateway ? { mode: p.gwMode, link: p.spLink, tracker: p.spTracker, payLink: p.linkId } : null;
-
 export function receiptDoc(p: Payment): DocData {
-  const o = ownerById(p.ownerId), sp = spInfo(p), proj = S().proj;
-  const stamp = sp
-    ? { sp: true, title: 'Received through Safepay', text: `Card payment confirmed by Safepay${sp.mode === 'sandbox' ? ' (sandbox)' : sp.mode === 'simulated' ? ' (simulated)' : ''}`, amount: rs(p.amount) }
-    : { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: p.source === 'proof' ? `Transfer checked against the bank statement by ${p.by}` : `Paid into Minawa Group's bank account, recorded by ${p.by}`, amount: rs(p.amount) };
+  const o = ownerById(p.ownerId), proj = S().proj;
+  const stamp = { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: p.source === 'proof' ? `Checked and confirmed by ${p.by}` : `Recorded by ${p.by}`, amount: rs(p.amount) };
   const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${t12(p.t)}`],
-    ['Payment method', sp ? 'Debit or credit card, Pay Now link' : p.method]];
-  if (sp) kv.push(['Safepay tracker', sp.tracker || 'None: simulated payment'], ['Safepay payment link', sp.link || sp.payLink || '–']);
-  else kv.push(['Bank reference', p.ref], ['Payment ID', p.id]);
+    ['Payment method', p.method], ['Reference', p.ref], ['Payment ID', p.id]];
   const rank = { dues: 0, fee: 1, credit: 2 }, rows = (p.applied || []).slice().sort((a, b) => rank[a.kind] - rank[b.kind]);
   const bal = p.balAfter < 0 ? `${rs(-p.balAfter)} advance credit` : p.balAfter > 0 ? rs(p.balAfter) : 'Rs 0 · all paid';
   return {
@@ -69,22 +65,21 @@ export function receiptDoc(p: Payment): DocData {
       { head: ['This payment paid', 'Amount'], rows: [...(rows.length ? rows.map(r => ({ label: r.label, amount: rs(r.amount) })) : [{ label: 'Maintenance dues, oldest first', amount: rs(p.amount) }]), { label: 'Amount received', amount: rs(p.amount), tot: true }] },
       { rows: [...(p.before != null ? [{ label: 'Owed before this payment', amount: p.before < 0 ? `${rs(-p.before)} credit` : rs(p.before) }] : []), { label: 'Balance now', amount: bal, bold: true }] }
     ],
-    foot: `${sp ? 'Recorded automatically the moment Safepay confirmed the payment. Nobody had to check a screenshot.' : p.source === 'proof' ? `Recorded by ${p.by} after matching the owner's screenshot to the bank statement.` : `Recorded in the panel by ${p.by}.`} Dues are paid oldest first; the ${feePct()}% late fee is paid in proportion.`
+    foot: `${p.source === 'proof' ? `Recorded once ${p.by.includes('checked by') ? 'the accountant confirmed it' : 'the bank transfer was checked'} (${p.by}).` : `Recorded in the CRM by ${p.by}.`} Dues are paid oldest first; the ${feePct()}% late fee is paid in proportion.`
   };
 }
 
-export function statementDoc(o: Owner, l?: PayLink | null): DocData {
+export function statementDoc(o: Owner): DocData {
   const bd = duesBreakdown(o), bal = balance(o), proj = S().proj, today = S().today;
   const rows: DocRow[] = bd.rows.map(r => ({ label: r.label, sub: r.sub, amount: rs(r.amount) }));
   rows.push({ label: 'Dues', amount: rs(bd.dues), bold: true });
   if (bd.fee) rows.push({ label: `Fine ${feePct()}%`, sub: `of ${rs(bd.dues)} dues`, amount: rs(bd.fee) });
   rows.push({ label: 'Total to pay', amount: rs(bal), tot: true });
-  const url = l ? (appUrl() ? `${appUrl()}/pay/${l.id}` : l.sp?.url) : null;
   return {
     org: orgLine(), kind: 'statement', filename: `Statement-${o.apt}-${today}.pdf`, project: proj.name, subtitle: `${proj.name} · Statement of dues`, refNo: `Apt ${o.apt}`, refSub: fd(today),
-    kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Statement date', fd(today)], ['Payment link', l ? l.id : '–']],
+    kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Statement date', fd(today)]],
     tables: [{ head: ['What is owed', 'Amount'], rows }],
-    howToPay: [url ? `Open the payment link to pay by debit or credit card: ${url}` : 'Tap the payment link in the WhatsApp message to pay by debit or credit card.', `Or transfer to ${proj.bank || 'Minawa Group\'s maintenance account'}, reference ${o.apt}.`],
+    howToPay: howToPay(o.apt),
     fine: `While anything is overdue, a fine of ${feePct()}% of ${S().settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} applies. Dues left unpaid past the final deadline may lead to utilities being disconnected.`
   };
 }

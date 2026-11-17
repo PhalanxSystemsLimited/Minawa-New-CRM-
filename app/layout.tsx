@@ -9,7 +9,7 @@ import '../styles/minawa-themes-auto.css';
 import '../styles/minawa-themes.css';
 import { Toasts, Behaviour } from '@/components/client';
 
-export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and Safepay payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png', apple: '/icons/apple-touch-icon.png' },
+export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png', apple: '/icons/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'Minawa CRM', statusBarStyle: 'default' } };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#F6F5F1' };
 

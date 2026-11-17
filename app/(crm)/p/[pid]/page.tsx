@@ -2,7 +2,7 @@
 import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillOf, apartments, isBillingDay, billsOf, unpaidMaint, firstBillDate, sheetStats, openingDue } from '@/lib/engine';
 import { addDays, hour12, ord, diff } from '@/lib/fmt';
 import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short, nextMonth, dayIn } from '@/lib/fmt';
-import { spInfo } from '@/lib/docdata';
+import { famOf } from '@/lib/queries';
 import { pendingCount } from '@/lib/manual-send';
 import { Ic } from '@/components/icons';
 import { Go, A, GoRow } from '@/components/client';
@@ -32,14 +32,16 @@ export default async function Overview({ params, searchParams }: { params: Promi
     const recent = sortedPayments().slice(0, 5);
     const top = [...owe].sort((a, b) => (+b.flagged - +a.flagged) || balance(b) - balance(a)).slice(0, 5);
     const up = upcoming(14, 5);
+    const mgr = S.role === 'manager', toCheck = S.proofs.filter(p => p.status === 'pending').length;
     const todo = followCount(), ne = nextEvent(), sendN = pendingCount(), np0 = newPayments(), newN = np0.length, newAmt = np0.reduce((a, p) => a + p.amount, 0);
-    const badge = (p: typeof recent[number]) => spInfo(p) ? <span className="sp-ok"><Ic n="check" s={12} /> Safepay</span> : <span className="recv-by"><Ic n="bank" s={12} /> {p.source === 'proof' ? 'Transfer' : 'Bank'}</span>;
+    const badge = (p: typeof recent[number]) => <span className="recv-by"><Ic n="bank" s={12} /> {famOf(p.method)}</span>;
     return <>
       {projHead('dashboard')}
       <Lbl>Needs you in {S.proj.name}</Lbl>
       <div className="lv-needs">
-        <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={`${P}/todo`} pulse sub={todo ? 'Open To do' : 'All clear'} />
-        <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`${P}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+        <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={mgr ? `${P}/todo` : '/tasks'} pulse sub={todo ? (mgr ? 'Open To do' : 'Building manager\'s work') : 'All clear'} />
+        {mgr ? <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`${P}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+          : <NeedTile title="To check" icon="wallet" tone="green" n={toCheck} label={toCheck === 1 ? 'payment to confirm' : 'payments to confirm'} href="/tasks" sub={toCheck ? 'Entered by the building manager' : 'Nothing waiting'} />}
         <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`${P}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
         <NeedTile title="Disconnection" icon="alert" tone="amber" n={flagged} label="flagged for disconnection" href={`${P}/apartments?f=flagged`} sub={flagged ? 'Still unpaid after the due date' : 'Nobody flagged'} />
       </div>
@@ -104,10 +106,10 @@ export default async function Overview({ params, searchParams }: { params: Promi
         return <div className="card lv-cyclecard"><div className="card-row"><h3>Billing cycle <small>{stmt ? `Go-live statements on ${fd(next)}` : `Next bills on ${fd(next)}`} at {hour12(r.sendHour)} · each customer on their own billing date</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
           <Cycle steps={steps} at={0} />
           <div className="desk-acts">
-            {ut ? <Go href={`${P}/utilities?period=${np}`} className="btn sm primary">Enter {ut.toLowerCase()} bills <span className="lv-mini">{utDone} of {flats.length}</span></Go> : null}
-            <Go href={`${P}/send?mode=notice`} className="btn sm">Send a notice</Go>
+            {ut && mgr ? <Go href={`${P}/utilities?period=${np}`} className="btn sm primary">Enter {ut.toLowerCase()} bills <span className="lv-mini">{utDone} of {flats.length}</span></Go> : null}
+            {mgr ? <Go href={`${P}/send?mode=notice`} className="btn sm">Send a notice</Go> : null}
             <Go href={`${P}/apartments?m=possession`} className="btn sm">New possession</Go>
-            <Go href={`${P}/apartments?f=owing`} className="btn sm">Record a payment</Go>
+            {S.role !== 'admin' ? <Go href={`${P}/apartments?f=owing`} className="btn sm">Record a payment</Go> : null}
           </div></div>;
       })()}
       <div className="ov2">
@@ -127,7 +129,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
       </div>
       <aside className="lv-side">
         <div className="card lv-owes"><div className="card-row"><h3>Who owes</h3><Go href={`${P}/apartments?f=owing`} className="btn sm">View all</Go></div>
-          {top.length ? <div className="list">{top.map(o => <GoRow as="div" key={o.id} href={ownerHref(o)} className="li click"><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name}{o.promiseUntil ? ` · promised by ${fds(o.promiseUntil)}` : ''}</div></div><div className="amt"><strong className="num">{rs(balance(o))}</strong>{pill(ownerStatus(o))}{waMini(o)}</div></GoRow>)}</div> : <p className="empty">Nobody owes anything.</p>}</div>
+          {top.length ? <div className="list">{top.map(o => <GoRow as="div" key={o.id} href={ownerHref(o)} className="li click"><div className="t"><div className="a apt-t">{o.apt}</div><div className="b">{o.name}{o.promiseUntil ? ` · promised by ${fds(o.promiseUntil)}` : ''}</div></div><div className="amt"><strong className="num">{rs(balance(o))}</strong>{pill(ownerStatus(o))}{mgr ? waMini(o) : null}</div></GoRow>)}</div> : <p className="empty">Nobody owes anything.</p>}</div>
         <div className="card lv-upc"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic</span></div>
           {up.length ? <div className="lv-tl">{up.map((x, i) => { const k = x.e.kind, tone = k === 'flag' || k === 'fine' ? 'red' : k === 'remind' ? 'amber' : k === 'bill' ? 'blue' : 'green';
             return <div className={`lv-ti t-${tone}`} key={i}><div className="d">{dow(x.d)} {fd(x.d)} · {k === 'bill' ? 'Bill' : k === 'remind' ? 'Reminder' : k === 'fine' ? 'Fine + notice' : k === 'flag' ? 'Flag' : 'Alert'}</div>

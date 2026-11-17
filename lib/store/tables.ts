@@ -7,11 +7,9 @@ export const TABLES = {
   bills: ['id', 'ownerId', 'project', 'period', 'periodEnd', 'months', 'billDate', 'dueDate', 'finalDate', 'amount', 'discount', 'extras', 'net', 'paid', 'fine', 'finePaid', 'fined', 'fromCredit',
     'prev', 'noticeSkipped', 'flagSkipped', 'reminders', 'lines', 'bd'],
   entries: ['id', 'ownerId', 'project', 'd', 'kind', 'amount', 'desc', 'ref', 'pid'],
-  links: ['id', 'ownerId', 'project', 'amount', 'status', 'created', 'cancelledOn', 'paidOn', 'sp', 'spSettled', 'spError'],
-  messages: ['id', 'ownerId', 'project', 'd', 't', 'from', 'kind', 'title', 'text', 'tpl', 'vars', 'linkId', 'pdf', 'status', 'waId', 'error', 'manual', 'shot', 'sentAt'],
-  payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt', 'gateway', 'gwMode',
-    'linkId', 'spLink', 'spTracker'],
-  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply'],
+  messages: ['id', 'ownerId', 'project', 'd', 't', 'from', 'kind', 'title', 'text', 'tpl', 'vars', 'pdf', 'status', 'waId', 'error', 'manual', 'shot', 'sentAt'],
+  payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt'],
+  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'method', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply'],
   alerts: ['id', 'ownerId', 'project', 'd', 'text', 'done'],
   clearances: ['no', 'ownerId', 'project', 'd', 'by'],
   rates: ['id', 'project', 'type', 'from', 'amount'],
@@ -20,8 +18,8 @@ export const TABLES = {
   approvals: ['id', 'project', 'ownerId', 'kind', 'change', 'summary', 'before', 'note', 'byId', 'byName', 'd', 't', 'status', 'decidedById', 'decidedByName', 'decidedD', 'decidedT', 'reply']
 } as const;
 export type TableName = keyof typeof TABLES;
-export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', links: 'id', messages: 'id', payments: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id', approvals: 'id' };
-export const STATE_TABLES: TableName[] = ['owners', 'bills', 'entries', 'links', 'messages', 'payments', 'proofs', 'alerts', 'clearances', 'rates', 'charges', 'notices', 'approvals'];
+export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', messages: 'id', payments: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id', approvals: 'id' };
+export const STATE_TABLES: TableName[] = ['owners', 'bills', 'entries', 'messages', 'payments', 'proofs', 'alerts', 'clearances', 'rates', 'charges', 'notices', 'approvals'];
 
 export const snake = (s: string) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 export const camel = (s: string) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());

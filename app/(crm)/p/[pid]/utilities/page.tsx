@@ -7,10 +7,13 @@ import { UtilityGrid, type GridRow } from '@/components/UtilityGrid';
 import { projectPage, projHead } from '@/components/views/project';
 import { saveChargesAction, importChargesAction, billUtilitiesNowAction } from '@/lib/actions-desk';
 
+import { redirect } from 'next/navigation';
+import { requireStaff } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
 export default async function Utilities({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
+  if ((await requireStaff()).role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('Utility bills are entered by the building manager.')}`);
   return projectPage(pid, sp, () => {
     const S = cur(), r = S.settings.rules, kinds = r.utilities.length ? r.utilities : ['Electricity'];
     const kind = kinds.includes(sp.kind) ? sp.kind : kinds[0];

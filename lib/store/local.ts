@@ -10,7 +10,7 @@ import { buildSample, SAMPLE_START } from '../seed';
 interface DB {
   projects: Project[]; templates: Record<string, Template>; settings: Record<string, ProjectSettings>; counters: Record<string, number>;
   log: LogEntry[]; staff: Staff[]; company?: Company; walog?: WaLog[];
-  owners: object[]; bills: object[]; entries: object[]; links: object[]; messages: object[]; payments: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
+  owners: object[]; bills: object[]; entries: object[]; messages: object[]; payments: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
 }
 const FILE = path.join(process.cwd(), 'data', 'local-db.json');
 const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unknown> };
@@ -18,7 +18,7 @@ const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unk
 function empty(): DB {
   return { projects: PROJECTS.map(p => ({ ...p })), templates: JSON.parse(JSON.stringify(TEMPLATES)), settings: {}, counters: {}, log: [],
     staff: [{ id: 'local-admin', email: 'admin@minawa.local', name: 'Admin', role: 'admin', active: true }, { id: 'local-accountant', email: 'accountant@minawa.local', name: 'Accountant', role: 'accountant', active: true }, { id: 'local-manager', email: 'manager@minawa.local', name: 'Building Manager', role: 'manager', active: true, projects: ['cc'] }],
-    owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], rates: [] };
+    owners: [], bills: [], entries: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], rates: [] };
 }
 function db(): DB {
   if (g.__minawaDb) return g.__minawaDb;
@@ -61,7 +61,7 @@ export class LocalStore implements Store {
       project: pid, proj: clone(proj), today: o.today, goLive: proj.goLive || o.today, by: o.by || 'System', role: o.role || 'admin',
       rates: pick('rates') as unknown as Rate[], templates: clone(d.templates),
       settings: defaultSettings(pid, clone(d.settings[pid] || null)),
-      owners: pick('owners'), bills: pick('bills'), entries: pick('entries'), links: pick('links'), messages: pick('messages'), payments: pick('payments'),
+      owners: pick('owners'), bills: pick('bills'), entries: pick('entries'), messages: pick('messages'), payments: pick('payments'),
       proofs: pick('proofs'), alerts: pick('alerts'), clearances: pick('clearances'), charges: pick('charges'), notices: pick('notices'), approvals: pick('approvals'), log: [], seq: clone(d.counters)
     } as unknown as State;
     s.company = { ...DEFAULT_COMPANY, ...(d.company || {}) };
@@ -114,19 +114,6 @@ export class LocalStore implements Store {
   }
   async listStaff() { return clone(db().staff); }
   async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); db().counters.__rev = Date.now(); flush(); }
-  async locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }) {
-    const d = db();
-    if (q.phoneDigits) {
-      const tail = q.phoneDigits.slice(-10);
-      const o = (d.owners as { id: string; project: string; phone: string; status: string }[]).filter(x => x.status === 'active').find(x => x.phone.replace(/\D/g, '').endsWith(tail));
-      if (o) return { project: o.project, id: o.id };
-    }
-    const links = d.links as { id: string; project: string; sp: { id: string } | null }[];
-    if (q.linkId || q.reference) { const l = links.find(x => x.id === (q.linkId || q.reference)); if (l) return { project: l.project, id: l.id }; }
-    if (q.spLinkId) { const l = links.find(x => x.sp && x.sp.id === q.spLinkId); if (l) return { project: l.project, id: l.id }; }
-    if (q.waId) { const m = (d.messages as { id: string; project: string; waId: string | null }[]).find(x => x.waId === q.waId); if (m) return { project: m.project, id: m.id }; }
-    return null;
-  }
   async replaceProjectData(pid: string, s: State) {
     const d = db();
     for (const t of STATE_TABLES) { const list = tbl(d, t); const keep = list.filter(r => r.project !== pid); keep.push(...(clone(rowsOf(s, t)) as Record<string, unknown>[])); (d as unknown as Record<string, unknown>)[t] = keep; }

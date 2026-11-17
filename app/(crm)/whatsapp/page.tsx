@@ -32,7 +32,7 @@ export default async function WhatsApp({ searchParams }: { searchParams: Promise
     <div className="card"><div className="card-row"><h3>Last 30 days, by project</h3></div>
       <div className="tbl-wrap"><table><thead><tr><th>Project</th><th className="r">Messages</th><th className="r">Sent</th><th className="r">To send</th><th className="r">Not sent</th><th className="r">Owners with no working number</th><th></th></tr></thead><tbody>
         {rows.map(r => <tr key={r.p.id}><td className="cell-main">{r.p.name}<div className="cell-sub">{r.p.place}</div></td><td className="r num">{r.total}</td><td className="r num">{r.ok}</td><td className="r num">{r.pending + r.queued ? <span className="tag warn">{r.pending + r.queued}</span> : 0}</td><td className="r num">{r.bad ? <span className="tag bad">{r.bad}</span> : 0}</td><td className="r num">{r.noNumber ? <span className="tag warn">{r.noNumber}</span> : 0}</td>
-          <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/p/${r.p.id}/send`} className="btn sm wa"><Wa /> Send</Go> <Go href={`/p/${r.p.id}/messages`} className="btn sm">Open</Go></td></tr>)}
+          <td className="r" style={{ whiteSpace: 'nowrap' }}>{staff.role === 'manager' ? <><Go href={`/p/${r.p.id}/send`} className="btn sm wa"><Wa /> Send</Go> </> : null}<Go href={`/p/${r.p.id}/messages`} className="btn sm">Open</Go></td></tr>)}
       </tbody></table></div></div>
   </>;
 }

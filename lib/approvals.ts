@@ -9,7 +9,7 @@ import { PLAN_LABEL } from './types';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
-  sendPaymentLink, pushMsg, nextBillFor, anchorOf } from './engine';
+  sendDues, pushMsg, nextBillFor, anchorOf } from './engine';
 import { fd, fm, rs, ord, addDays } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
@@ -163,7 +163,7 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       log(d, t, 'fine', `Fine changed from ${was}% to ${pct}% by ${who}${wasA !== arrears ? (arrears ? '; old arrears are now fined too' : '; old arrears are no longer fined') : ''}${c.apply ? ', applied to current late owners' : ', for new overdue dues'}`);
       if (!c.apply) return `Fine set to ${pct}% for new overdue dues`;
       const changed = resyncFines(d, t, who);
-      if (c.send) changed.forEach(x => { if (balance(x) > 0) sendPaymentLink(x, d, t); });
+      if (c.send) changed.forEach(x => { if (balance(x) > 0) sendDues(x, d, t); });
       return `Fine set to ${pct}%. ${plural(changed.length, 'late owner')} updated${c.send ? ' and sent their new dues' : ''}.`;
     }
     case 'announce': {

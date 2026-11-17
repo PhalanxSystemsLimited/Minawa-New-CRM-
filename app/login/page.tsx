@@ -16,7 +16,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             <span className="signin-mark"><img src="/assets/minawa-mark.png" alt="Minawa Group" /></span>
             <p className="signin-eyebrow">Minawa Group ERP</p>
             <h1 className="signin-title">Sign in</h1>
-            <p className="signin-sub">Maintenance dues, WhatsApp bills and Safepay payments.</p>
+            <p className="signin-sub">Maintenance dues, WhatsApp bills and payments.</p>
           </header>
           {e ? <div className="callout bad" style={{ marginBottom: 16 }}><div>{e}</div></div> : null}
           <form action={signIn} className="signin-form">

@@ -48,7 +48,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
           <p className="foot-note wrap">Minawa Group ERP · Phase 1 maintenance dues · Built by Phalanx Systems</p>
         </div>
       </div>
-      <Suspense><MobileBar projects={nav} defaultPid={defaultPid} /></Suspense>
+      <Suspense><MobileBar projects={nav} defaultPid={defaultPid} manager={staff.role === 'manager'} /></Suspense>
       <MobileTables />
       <WaReturnPrompt />
       <LivePayments counts={Object.fromEntries(nav.filter(p => p.live).map(p => [p.id, p.pays || 0]))} />

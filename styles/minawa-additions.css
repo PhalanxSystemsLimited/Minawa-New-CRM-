@@ -13,7 +13,7 @@ summary.me { cursor: pointer }
 .me-menu { position: relative }
 .link-btn { border: 0; background: transparent; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-color: var(--brick); text-decoration-thickness: 2px; text-underline-offset: 3px; cursor: pointer }
 
-/* sign-in and the owners' Pay Now page */
+/* sign-in */
 .login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--stone) }
 .login-card { width: min(440px, 100%); padding: 28px }
 .pay-card { width: min(560px, 100%) }

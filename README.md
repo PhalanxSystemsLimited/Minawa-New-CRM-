@@ -11,11 +11,11 @@ Minawa Group ERP, Phase 1: maintenance dues. Built by Phalanx Systems.
   - **Notices:** water or electricity outages, lift work and more, written from presets or from scratch, and sent on WhatsApp to all owners, a block, or chosen flats.
   - **New possession:** record a flat handed over to its first owner.
   - **Fine %:** change it, apply it to late owners, and send them their updated dues.
-- **WhatsApp, sent by hand:** bills, reminders, notices, payment links and receipts wait in **Send on WhatsApp**. Staff open each owner's chat (WhatsApp Web or the app) with the message and its **Pay Now** link typed in, send it, and confirm it was sent. There is no automatic sending.
-- **Safepay:** each message has a payment link for the exact amount. A payment is recorded only after Safepay's API confirms it.
+- **WhatsApp, sent by hand:** bills, reminders, notices, dues messages and receipts wait in **Send on WhatsApp**. The building manager opens each owner's chat (WhatsApp Web or the app) with the message typed in, sends it, and confirms it was sent. There is no automatic sending.
+- **Payments, entered by hand:** there are no online payments. Building managers enter cash, cheques and bank transfers (the Accountant confirms each one before the balance changes); the Accountant can also record bank payments directly.
 - **Web CRM:** looks exactly like the demo (`minawa-crm-main/demo`), with sign-in, roles, billing settings, a message log, import and project setup added.
 
-**Stack:** Next.js 15 (App Router, TypeScript), Supabase (Postgres, Auth, pg_cron), WhatsApp sent by hand (WhatsApp Web), Safepay, hosted on Vercel.
+**Stack:** Next.js 15 (App Router, TypeScript), Supabase (Postgres, Auth, pg_cron), WhatsApp sent by hand (WhatsApp Web), hosted on Vercel.
 
 ---
 
@@ -25,7 +25,7 @@ You need Node.js 20 or newer.
 
 ```bash
 npm install
-cp .env.example .env.local      # local mode: leave the Supabase and Safepay values empty
+cp .env.example .env.local      # local mode: leave the Supabase values empty
 npm run dev
 ```
 
@@ -33,8 +33,6 @@ npm run dev
 2. Sign in as **admin@minawa.local** or **accountant@minawa.local**. The password is **minawa**.
 
 With no Supabase keys, the CRM keeps its data in `data/local-db.json`. That file starts with sample data: three projects, as of 11 Nov 2026, because `.env.example` sets `APP_TODAY=2026-11-11`. To reset the sample, run `npm run seed`.
-
-Without Safepay keys, **Pay Now** opens a test checkout.
 
 ## 2. Design: exactly the demo's
 
@@ -58,22 +56,16 @@ Without Safepay keys, **Pay Now** opens a test checkout.
 ### WhatsApp
 Messages are sent by hand from each project's **Send on WhatsApp** page: it opens each owner's chat with the message typed in, and asks "Did you send the message?" on coming back. Keep `WHATSAPP_TEST_NUMBER` set while testing (every chat opens with that number); remove it to go live.
 
-### Safepay
-1. Get the merchant account approved. Safepay asks for business registration, the NTN, directors' CNICs, the business address and the receiving bank account.
-2. In Developers › API keys, copy the secret key into `SAFEPAY_SECRET_KEY`.
-3. In Developers › Endpoints, add `https://YOUR-CRM/api/safepay/webhook` and copy its shared secret into `SAFEPAY_WEBHOOK_SECRET`.
-4. Test with `SAFEPAY_ENV=sandbox`. When you're ready for real payments, switch to `SAFEPAY_ENV=production` with the live keys.
-
 ### Vercel
 1. Import this folder as a project (from a GitHub repo, or with `npx vercel`).
-2. Set every value from `.env.example`. In production, leave `APP_TODAY` empty and set `ALLOW_SIMULATED_PAYMENTS=false`.
+2. Set every value from `.env.example`. In production, leave `APP_TODAY` empty.
 3. Point the domain at it (for example crm.minawagroup.pk) and set `APP_URL` to that address.
 
 ### The schedule
 1. Edit `supabase/migrations/0002_schedule.sql`: put in your CRM address and `CRON_SECRET`.
 2. Run it in the Supabase SQL Editor.
 
-It calls `/api/cron/daily` every day at 11:00 PKT, and `/api/cron/dispatch` every 10 minutes. Dispatch retries unsent messages and catches any Safepay payment whose webhook was missed.
+It calls `/api/cron/daily` every day at 11:00 PKT (Vercel Cron does the same through `vercel.json`).
 
 ### Rate cards
 `supabase/migrations/0003_rate_cards.sql` loads the 2026 rate cards and billing settings from Minawa's sheets:
@@ -107,18 +99,18 @@ Keep `WHATSAPP_TEST_NUMBER` set while you check everything: every message goes t
 | --- | --- |
 | `lib/engine.ts` | The billing rules, ported line for line from the demo: bills, reminders, late fee, notices, flags, promises, payment allocation, targets |
 | `lib/store/` | Supabase store (production) and local file store. Both load one project, let the engine change it, and save only what changed, inside a lock |
-| `lib/dispatch.ts` | After each change: makes the Safepay links new messages need, and tidies the Send on WhatsApp list |
+| `lib/dispatch.ts` | After each change: tidies the Send on WhatsApp list |
 | `lib/manual-send.ts`, `lib/actions-send.ts` | Sending by hand: the messages' text, opening each chat, and recording what was sent |
-| `lib/safepay.ts` | Safepay API client |
 | `lib/pdf.tsx`, `lib/docdata.ts` | Bills, receipts, statements and clearance certificates, on screen and as PDF |
 | `lib/actions.ts`, `lib/import-action.ts` | Everything staff can do (server actions, with role checks) |
 | `app/(crm)/…` | The screens |
-| `app/pay/[linkId]` | Where the Pay Now button goes: it redirects to Safepay for the exact amount |
-| `app/api/…` | Cron jobs, webhooks, CSV export, PDFs |
+| `app/api/…` | The daily run, live updates, CSV export, PDFs |
 | `supabase/migrations/` | The database schema, row-level security and the schedule |
 
 **Roles.**
 - **Admins** (the CEO and directors) can change everything, approve or reject accountants' changes, do transfers, and manage staff.
-- **Accountants** can record payments, enter utility bills, send notices, record new possessions and send payment links. Their changes to what owners are charged (discounts, generator charges, billing plan, monthly fees, adjustments, the fine, the billing schedule) and mass announcements wait for an admin's approval, with a reason.
+- **Accountants** confirm the payments building managers enter, record bank payments and check bank screenshots. Their changes to what owners are charged (discounts, generator charges, billing plan, monthly fees, adjustments, the fine, the billing schedule) and mass announcements wait for an admin's approval, with a reason.
 
-**Safety.** A payment is only recorded after Safepay's API confirms it, never from the webhook body or a redirect. Every write runs inside one database lock. Safepay's webhook is checked with its HMAC-SHA512 signature.
+- **Building managers** send everything on WhatsApp, enter utility bills, enter payments (confirmed by the Accountant) and record new possessions (approved by the Admin).
+
+**Safety.** A building manager's payment changes a balance only after the Accountant confirms it. Every write runs inside one database lock.

@@ -44,8 +44,8 @@ export function projectTasks(s: State): Task[] {
     }
     for (const pr of s.proofs.filter(x => x.status === 'pending')) {
       const o = ownerById(pr.ownerId), deadline = addDays(pr.d, 1), cash = pr.kind === 'cash';
-      out.push({ id: `proof:${pr.id}`, role: 'accountant', project: s.project, pname: s.proj.name, what: cash ? 'Confirm cash from a building manager' : 'Check a bank transfer',
-        detail: cash ? `${rs(pr.amount)} · recorded by ${pr.byName || 'a building manager'}${pr.ref ? ` · receipt ${pr.ref}` : ''}` : `${rs(pr.amount)} · screenshot sent by the owner`,
+      out.push({ id: `proof:${pr.id}`, role: 'accountant', project: s.project, pname: s.proj.name, what: cash ? `Confirm a ${(pr.method || 'cash').toLowerCase()} payment from a building manager` : 'Check a bank transfer',
+        detail: cash ? `${rs(pr.amount)} · recorded by ${pr.byName || 'a building manager'}${pr.ref ? ` · ref ${pr.ref}` : ''}` : `${rs(pr.amount)} · screenshot sent by the owner`,
         apt: o.apt, owner: o.name, since: pr.d, deadline, overdue: late(deadline), href: `/tasks#proof-${pr.id}` });
     }
     return out;

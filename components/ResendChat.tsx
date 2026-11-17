@@ -61,7 +61,7 @@ export function FixNumberForm({ pid, oid, name, phone, noPhone, owes }: { pid: s
     <div className="form-row"><label htmlFor="fx">{noPhone ? 'WhatsApp number' : 'Correct number'} for {name}</label>
       <input id="fx" name="phone" type="tel" required placeholder="+92 3xx xxx xxxx" value={v} onChange={e => setV(e.target.value)} autoFocus /></div>
     {err ? <div className="callout bad"><div>{err}</div></div> : null}
-    <div className="callout">{owes ? <>Saving gets the latest balance and a fresh payment link ready for {name}. Then open the WhatsApp chat, send it, and come back here: you&apos;ll be asked whether it was sent. It leaves To do once you say yes.</>
+    <div className="callout">{owes ? <>Saving gets the latest balance ready for {name}. Then open the WhatsApp chat, send it, and come back here: you&apos;ll be asked whether it was sent. It leaves To do once you say yes.</>
       : 'Nothing is owed, so there is nothing to resend. Saving just keeps the number.'}</div>
     <div className="m-actions"><button type="button" className="btn" onClick={() => router.replace(back)} disabled={busy}>Cancel</button>
       <button type="submit" className={`btn ${opens ? 'wa' : 'primary'}`} disabled={busy}>{busy ? 'Saving…' : opens ? <><Wa /> Save and get the message ready</> : 'Save number'}</button></div>

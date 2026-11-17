@@ -36,7 +36,7 @@ export default async function Messages({ params, searchParams }: { params: Promi
     if (sp.view === 'log') return <>{projHead('messages')}{views}<WaLogBody sp={sp as Record<string, string>} fixedProject={pid} /></>;
     return <>
       {projHead('messages')}{views}
-      <div className="page-head"><div><h2>WhatsApp messages</h2><p>Bills, reminders, notices, payment links and receipts from the last {days} days. They are all sent by hand from Send on WhatsApp.</p></div><Go href={`/p/${pid}/send`} className="btn wa"><Wa /> Send on WhatsApp</Go></div>
+      <div className="page-head"><div><h2>WhatsApp messages</h2><p>Bills, reminders, notices, dues messages and receipts from the last {days} days. They are all sent by hand from Send on WhatsApp.</p></div><Go href={`/p/${pid}/send`} className="btn wa"><Wa /> Send on WhatsApp</Go></div>
       <div className="callout" style={{ marginBottom: 14 }}><div><b>Sent by hand.</b> Messages the CRM prepares wait under <b>To send</b> until someone sends them from <A href={`/p/${pid}/send`}>Send on WhatsApp</A>.{waTestNumber() ? <> Testing: chats open with +{waTestNumber()}, not the owners. Remove WHATSAPP_TEST_NUMBER to go live.</> : null}</div></div>
       <div className={`callout ${failed ? 'warn' : 'good'}`} style={{ marginBottom: 14 }}><div><b>{delivered} of {all.length}</b> sent{toSend ? `, ${toSend} still to send` : ''}.{failed ? ` ${failed} couldn't go out; fix the number or put them back to send.` : ''}</div></div>
       <div className="card"><div className="toolbar" style={{ marginBottom: 14 }}>
@@ -46,7 +46,7 @@ export default async function Messages({ params, searchParams }: { params: Promi
         {!list.length ? <p className="empty">No messages match.</p> : <div className="tbl-wrap"><table className="msg-tbl"><thead><tr><th>When</th><th>Apartment</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody>
           {list.map(m => { const o = ownerById(m.ownerId);
             return <tr key={m.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{fd(m.d)}, {t12(m.t)}</td><td><A href={ownerHref(o)} className="apt-a">{o?.apt}</A><div className="cell-sub">{o?.name}</div></td>
-              <td><div>{m.title}</div><div className="cell-sub">{m.pdf ? 'With PDF' : 'Message'}{m.linkId ? ` · link ${m.linkId}` : ''}</div>{m.error ? <div className="cell-sub bad-t">{m.error}</div> : null}</td>
+              <td><div>{m.title}</div><div className="cell-sub">{m.pdf ? 'With PDF' : 'Message'}</div>{m.error ? <div className="cell-sub bad-t">{m.error}</div> : null}</td>
               <td>{msgTag(m)}</td>
               <td className="r">{m.status === 'failed' || m.status === 'skipped' ? (o?.invalidPhone ? <Go href={ownerHref(o, '?m=fix')} className="btn sm">Fix number</Go> : <form action={retryMessageAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={m.id} /><Submit className="btn sm">Send again</Submit></form>) : null}</td></tr>; })}
         </tbody></table></div>}

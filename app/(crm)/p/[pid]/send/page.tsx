@@ -10,16 +10,19 @@ import { announceAction } from '@/lib/actions';
 import { Go, Submit } from '@/components/client';
 import { ApprovalItem } from '@/components/views/approvals';
 import { waTestNumber } from '@/lib/whatsapp';
-import { SEND_TYPES, cantSend, ownerFacts, pendingGroups, appUrl, type SendType } from '@/lib/manual-send';
+import { SEND_TYPES, cantSend, ownerFacts, pendingGroups, type SendType } from '@/lib/manual-send';
 import { SendConsole, type SendRow } from '@/components/SendConsole';
 import { projectPage, projHead } from '@/components/views/project';
 
+import { redirect } from 'next/navigation';
+import { requireStaff } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
-const KIND: Record<string, string> = { bill: 'Bill', reminder: 'Reminder', notice: 'Final notice', link: 'Payment link', receipt: 'Receipt', alert: 'Maintenance notice', announcement: 'Message', info: 'Message' };
+const KIND: Record<string, string> = { bill: 'Bill', reminder: 'Reminder', notice: 'Final notice', link: 'Dues', receipt: 'Receipt', alert: 'Maintenance notice', announcement: 'Message', info: 'Message' };
 
 export default async function SendPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
+  if ((await requireStaff()).role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('Sending on WhatsApp is the building manager\'s work.')}`);
   return projectPage(pid, sp, () => {
     const S = cur(), mode = sp.mode === 'notice' || sp.mode === 'announce' ? sp.mode : 'send', base = `/p/${pid}/send`;
     const modes = <div className="ptabs" role="tablist">
@@ -78,13 +81,11 @@ export default async function SendPage({ params, searchParams }: { params: Promi
         why: Object.fromEntries([...types.map(k => [k, cantSend(o, k)]), ['queue', waiting.has(o.id) ? cantSend(o, 'queue') : 'Nothing waiting']]) as Record<SendType, string | null> };
     });
     const blocks = [...new Set(rows.map(r => r.block).filter(Boolean))].sort();
-    const app = appUrl(), localApp = !app || /localhost|127\.0\.0\.1|192\.168\.|10\.\d+\.\d+\.\d+/.test(app);
     const start = SEND_TYPES.some(t => t.key === sp.type) ? sp.type as SendType : groups.length ? 'queue' : 'link';
     return <>
       {projHead('send')}{modes}
       <div className="page-head"><div><h2>Send on WhatsApp</h2><p>Choose what to send and who gets it. Each owner&apos;s chat then opens in WhatsApp Web with the message already typed: check it and press Send in WhatsApp. When you come back to the CRM it asks <b>Did you send the message?</b>, and your answer goes on the owner&apos;s history and in staff activity.</p></div></div>
       {waTestNumber() ? <div className="callout warn" style={{ marginBottom: 14 }}><div><b>Testing:</b> every chat opens with the test number +{waTestNumber()} (WHATSAPP_TEST_NUMBER), not the owner&apos;s. Remove that setting to message owners.</div></div> : null}
-      {localApp ? <div className="callout" style={{ marginBottom: 14 }}><div>Pay Now links point to <b>{app || '(APP_URL not set)'}</b>, which owners can&apos;t open from their phones. They will work once the CRM is online and APP_URL is its public address.</div></div> : null}
       <SendConsole pid={pid} rows={rows} blocks={blocks} types={SEND_TYPES} start={start} ids={sp.ids ? sp.ids.split(',') : []} go={sp.go === '1'} notice={sp.notice || ''} only={sp.kind || ''} waiting={groups.length} />
     </>;
   });

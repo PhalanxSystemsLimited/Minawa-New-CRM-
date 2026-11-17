@@ -49,7 +49,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
               <td className="num" style={{ whiteSpace: 'nowrap' }}>{t12(e.t)}</td>
               <td><div className="act-who"><span className={`act-av${e.staffRole === 'admin' ? ' admin' : ''}`} aria-hidden="true">{initialsOf(e.staffName)}</span><b>{e.staffName}</b></div><div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td>
               <td><Go href={`/p/${e.project}/apartments/${e.ownerId}`} className="apt-a">{e.apt}</Go><div className="cell-sub">{e.ownerName}</div><div className="cell-sub num">+{e.sentTo}{e.test ? ' · test number' : ''}</div><div className="cell-sub">{pname(e.project)}</div></td>
-              <td><div>{e.title}</div><details className="wl-msg"><summary className="cell-sub">Show the message</summary><p>{e.text}</p></details>{e.payUrl ? <div className="cell-sub">Pay Now link {e.linkId}</div> : null}</td>
+              <td><div>{e.title}</div><details className="wl-msg"><summary className="cell-sub">Show the message</summary><p>{e.text}</p></details></td>
               <td className="r num">{e.amount > 0 ? rs(e.amount) : e.amount < 0 ? `${rs(-e.amount)} credit` : 'Paid up'}</td>
               <td><WaAnswerBadges sent={e.answer === 'sent'} test={e.test} /><div className="cell-sub">{e.via === 'prompt' ? 'Answered on return' : 'Marked by hand'}</div></td>
             </tr>]; })}

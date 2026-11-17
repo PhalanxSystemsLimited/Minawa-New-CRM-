@@ -32,7 +32,7 @@ export function projHead(tab: Tab, ownerTitle?: string) {
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
-    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && (k === 'settings' || k === 'utilities' || k === 'generator')) && !((k === 'send' || k === 'follow') && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
+    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && (k === 'settings' || k === 'generator')) && !((k === 'utilities' || k === 'send') && S.role !== 'manager') && !(k === 'follow' && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
       <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}</nav></TabScroller>
   </>;
 }
@@ -51,7 +51,7 @@ export async function projectPage(pid: string, sp: Record<string, string | undef
     let modal: React.ReactNode = null;
     if (sp.doc) modal = DocModal({ doc: sp.doc, flash: sp.flash });
     else if (sp.m === 'target') modal = TargetModal();
-    else if (sp.m === 'sendpick') modal = SendPickModal();
+    else if (sp.m === 'sendpick' && cur().role === 'manager') modal = SendPickModal();
     else if (sp.m === 'possession') modal = PossessionModal();
     else if (sp.m && sp.oid) { const o = ownerById(sp.oid); if (o) modal = OwnerModal({ m: sp.m, o: currentOf(o) }); }
     return <>{body}{modal}</>;
@@ -62,7 +62,7 @@ function notSetUp(pid: string, name: string, place: string, kind: string, admin:
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {place}</div><div className="proj-title">{name}</div></div><div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{name}</div></div>
     <div className="card allclear"><div className="big">Maintenance isn&apos;t set up here yet</div>
-      <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 520 }}>{name} ({kind.toLowerCase()}, {place}) joins once its owners, rates and opening balances are imported, the same way as Country Club. Billing, WhatsApp and Safepay then work here too.</p>
+      <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 520 }}>{name} ({kind.toLowerCase()}, {place}) joins once its owners, rates and opening balances are imported, the same way as Country Club. Billing and WhatsApp then work here too.</p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         {admin ? <Go href={`/p/${pid}/setup`} className="btn primary">Set up this project</Go> : null}
         <Go href="/" className="btn">Back to the dashboard</Go>

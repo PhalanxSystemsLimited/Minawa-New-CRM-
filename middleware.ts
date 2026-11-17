@@ -15,5 +15,5 @@ export async function middleware(req: NextRequest) {
   await sb.auth.getUser();
   return res;
 }
-// Not on webhooks, the scheduler, the owners' Pay Now pages or static files.
-export const config = { matcher: ['/((?!api/|pay/|_next/|assets/|fonts/|icons/|themes/|manifest|favicon|owners-template).*)'] };
+// Not on the scheduler or static files.
+export const config = { matcher: ['/((?!api/|_next/|assets/|fonts/|icons/|themes/|manifest|favicon|owners-template).*)'] };

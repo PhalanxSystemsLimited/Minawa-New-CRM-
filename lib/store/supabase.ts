@@ -124,20 +124,9 @@ export class SupabaseStore implements Store {
   }
   async listStaff() { return (await this.all('staff')).map(r => { const s = fromRow<Staff & { createdAt?: string }>(r); delete s.createdAt; return s; }); }
   async saveStaff(st: Staff) { await this.upsert('staff', [toRow(st as unknown as Record<string, unknown>)], 'id'); await this.bump(); }
-  async locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }) {
-    if (q.phoneDigits) {
-      const tail = q.phoneDigits.slice(-10);
-      const { data } = await this.db.from('owners').select('id,project,phone').eq('status', 'active').ilike('phone', `%${tail.slice(-4)}%`);
-      const o = (data || []).find(x => String(x.phone).replace(/\D/g, '').endsWith(tail));
-      if (o) return { project: o.project as string, id: o.id as string };
-    }
-    if (q.linkId || q.reference) { const { data } = await this.db.from('links').select('id,project').eq('id', q.linkId || q.reference!).limit(1); if (data?.[0]) return { project: data[0].project, id: data[0].id }; }
-    if (q.spLinkId) { const { data } = await this.db.from('links').select('id,project').eq('sp->>id', q.spLinkId).limit(1); if (data?.[0]) return { project: data[0].project, id: data[0].id }; }
-    if (q.waId) { const { data } = await this.db.from('messages').select('id,project').eq('wa_id', q.waId).limit(1); if (data?.[0]) return { project: data[0].project, id: data[0].id }; }
-    return null;
-  }
   async replaceProjectData(pid: string, s: State) {
     for (const t of [...STATE_TABLES].reverse()) { if (t === 'owners' || t === 'rates') continue; const { error } = await this.db.from(t).delete().eq('project', pid); if (error) throw new Error(`${t}: ${error.message}`); }
+    await this.db.from('links').delete().eq('project', pid);   // old payment links (no longer used) still point at owners
     { const { error } = await this.db.from('owners').delete().eq('project', pid); if (error) throw new Error(error.message); }
     { const { error } = await this.db.from('rates').delete().eq('project', pid); if (error) throw new Error(error.message); }
     for (const t of STATE_TABLES) {

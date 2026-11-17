@@ -10,8 +10,8 @@ import type { NavProject } from './Shell';
 const PHONE = '(max-width: 767px)';
 const isPhone = () => typeof window !== 'undefined' && window.matchMedia?.(PHONE).matches;
 
-/** Bottom bar on phones: Home, Apartments, To do, Send, More (More opens the full menu with every page). */
-export function MobileBar({ projects, defaultPid }: { projects: NavProject[]; defaultPid: string }) {
+/** Bottom bar on phones: Home, Apartments, To do, Send (Payments for the Admin and Accountant), More (More opens the full menu with every page). */
+export function MobileBar({ projects, defaultPid, manager = false }: { projects: NavProject[]; defaultPid: string; manager?: boolean }) {
   const path = usePathname();
   const pid = path.startsWith('/p/') ? path.split('/')[2] : defaultPid;
   const p = projects.find(x => x.id === pid), base = `/p/${pid}`;
@@ -20,7 +20,7 @@ export function MobileBar({ projects, defaultPid }: { projects: NavProject[]; de
     ['home', 'Home', '/', path === '/', 0],
     ['users', 'Apartments', `${base}/apartments`, on(`${base}/apartments`), 0],
     ['check', 'To do', '/tasks', on('/tasks') || on(`${base}/todo`), projects.reduce((a, x) => a + (x.todo || 0), 0)],
-    ['phone', 'Send', `${base}/send`, on(`${base}/send`), 0]
+    manager ? ['phone', 'Send', `${base}/send`, on(`${base}/send`), 0] : ['wallet', 'Payments', `${base}/payments`, on(`${base}/payments`), 0]
   ];
   // More is lit on the pages only it leads to (WhatsApp, Approvals, Activity, Staff); project pages have their tab row.
   const elsewhere = !path.startsWith('/p/') && !items.some(i => i[3]);

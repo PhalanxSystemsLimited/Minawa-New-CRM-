@@ -1,7 +1,8 @@
 // Modals, opened from the address (?m=… or ?doc=kind:id) so every one can be linked to and closed with Back.
 // Plain functions, called inside use(state, …).
 import type { Owner } from '@/lib/types';
-import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
+import { MANAGER_METHODS } from '@/lib/engine';
+import { cur, ownerById, balance, duesBreakdown, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
 import { PLAN_LABEL } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
 import { toggleGeneratorAction } from '@/lib/actions-generator';
@@ -39,17 +40,16 @@ export function DocModal({ doc, flash }: { doc: string; flash?: string }) {
   const S = cur(), [kind, id] = doc.split(':');
   let d: DocData | null = null, extra: React.ReactNode = null, title = '';
   if (kind === 'bill') { const b = S.bills.find(x => x.id === id); if (b) { d = billDoc(b); title = d.filename; } }
-  if (kind === 'statement') { const o = ownerById(id); if (o) { d = statementDoc(o, activeLink(o)); title = d.filename; } }
+  if (kind === 'statement') { const o = ownerById(id); if (o) { d = statementDoc(o); title = d.filename; } }
   if (kind === 'clearance') { const c = S.clearances.find(x => x.no === id); if (c) { d = clearanceDoc(ownerById(c.ownerId), c); title = 'Dues Clearance certificate'; } }
   if (kind === 'receipt') {
     const p = S.payments.find(x => x.id === id);
     if (p) {
       d = receiptDoc(p); title = `Receipt ${p.receipt}`;
       const o = ownerById(p.ownerId), sent = !o.invalidPhone, rest = p.balAfter > 0;
-      const tail = sent ? ` The receipt goes to ${first(o.name)} on WhatsApp${rest ? `, with a new Pay Now link for the ${rs(p.balAfter)} still owed` : ''}.` : ` The receipt could not go on WhatsApp because ${o.noPhone ? 'there is no WhatsApp number on file; add it' : 'the number is not on WhatsApp; fix it'} in To do.`;
-      const msg = flash === 'safepay' ? <><b>Safepay confirmed the payment.</b> {rs(p.amount)} from {o.name} was recorded and their dues updated, with nobody touching anything.{tail}</>
-        : flash === 'proof' ? <><b>Transfer verified.</b> {rs(p.amount)} from {o.name} is recorded.{tail}</>
-        : flash === 'staff' ? <><b>Payment recorded.</b> {rs(p.amount)} from {o.name}. Their old Pay Now link was cancelled.{tail}</> : null;
+      const tail = sent ? ` The receipt goes to ${first(o.name)} on WhatsApp${rest ? `, showing the ${rs(p.balAfter)} still owed` : ''}.` : ` The receipt could not go on WhatsApp because ${o.noPhone ? 'there is no WhatsApp number on file; add it' : 'the number is not on WhatsApp; fix it'} in To do.`;
+      const msg = flash === 'proof' ? <><b>Payment confirmed.</b> {rs(p.amount)} from {o.name} is recorded.{tail}</>
+        : flash === 'staff' ? <><b>Payment recorded.</b> {rs(p.amount)} from {o.name}.{tail}</> : null;
       extra = msg ? <div className={`callout ${sent ? 'good' : 'warn'} rc-flash`}><div>{msg}</div></div> : null;
     }
   }
@@ -80,17 +80,19 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="du-r">Reason{isAdmin() ? ' (optional)' : ''}</label><input id="du-r" name="reason" type="text" required={!isAdmin()} placeholder="e.g. Salary comes on the 20th" /></div>
       {isAdmin() ? null : <div className="callout warn"><div>The Admin approves this first and sees your reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save due date' : 'Send for approval'}</Submit></div></form></ModalShell>;
-    case 'recpay': if (cur().role === 'manager') return <ModalShell title="Record cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">Cash {o.name} paid you by hand. It goes to the Accountant to confirm; {o.name}&apos;s balance changes once it is confirmed. {o.name} owes {rs(Math.max(0, bal))}.</div>
+    case 'recpay': if (cur().role === 'admin') return <ModalShell title="Record a payment"><div className="callout">Payments are entered by the building manager or the Accountant.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+      if (cur().role === 'manager') return <ModalShell title="Enter a payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
+      <div className="callout">A payment {o.name} made: cash or a cheque handed to you, or a bank transfer. It goes to the Accountant to confirm; {o.name}&apos;s balance changes once it is confirmed. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <div className="form-row"><label htmlFor="rc-m">Paid by</label><select id="rc-m" name="method" defaultValue="Cash">{MANAGER_METHODS.map(x => <option key={x} value={x}>{x}</option>)}</select></div>
       <div className="grid2" style={{ gap: 10 }}>
         <div className="form-row"><label htmlFor="rc-amt">Amount (Rs)</label><input id="rc-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
         <div className="form-row"><label htmlFor="rc-d">Paid on</label><input id="rc-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
       </div>
-      <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" required /></div>
+      <div className="form-row"><label htmlFor="rc-ref">Receipt, cheque or bank reference number</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147 · cheque 004512 · FT2611044417" required /></div>
       <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
       <div className="m-actions"><CloseBtn /><Submit>Send to the Accountant</Submit></div></form></ModalShell>;
       return <ModalShell title="Record bank payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">For money paid straight into Minawa&apos;s bank account, outside Safepay. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <div className="callout">For money paid into Minawa&apos;s bank account, by cheque or in cash at the office. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
       <div className="form-row"><label htmlFor="rp-m">Method</label><select id="rp-m" name="method"><option>Bank deposit</option><option>Bank transfer outside the provider</option><option>Cheque</option><option>Cash at the office</option></select></div>
       <div className="form-row"><label htmlFor="rp-ref">Bank reference</label><input id="rp-ref" name="ref" type="text" placeholder="e.g. FT2611044417" required /></div>
@@ -156,34 +158,34 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         {isAdmin() ? null : <><div className="form-row"><label htmlFor="gn-w">Reason for the admin <span className="req">(required)</span></label><input id="gn-w" name="why" type="text" required placeholder="e.g. Generator connection installed on 10 Nov" /></div>
           <div className="callout warn"><div>An admin has to approve this first.</div></div></>}
         <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? (on ? 'Add generator charges' : 'Remove generator charges') : 'Send for approval'}</Submit></div></form></ModalShell>; }
-    case 'send': return SendModal({ o });
+    case 'send': return cur().role === 'manager' ? SendModal({ o }) : <ModalShell title="Send on WhatsApp"><div className="callout">Sending on WhatsApp is the building manager&apos;s work.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
     default: return null;
   }
 }
 
-/** Send a payment link on WhatsApp, by hand: Send on WhatsApp opens the owner's chat with the message typed in. */
+/** Send an owner their dues on WhatsApp, by hand: Send on WhatsApp opens the owner's chat with the message typed in. */
 function SendModal({ o }: { o: Owner }) {
-  const bal = balance(o), l = activeLink(o);
-  if (bal <= 0) return <ModalShell title="Send payment link on WhatsApp"><div className="callout">Nothing owed, so there is no payment link to send.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
-  return <ModalShell title="Send payment link on WhatsApp" wide>
+  const bal = balance(o);
+  if (bal <= 0) return <ModalShell title="Send dues on WhatsApp"><div className="callout">Nothing owed, so there is nothing to send.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+  return <ModalShell title="Send dues on WhatsApp" wide>
     <div className="wa-to"><span className="wa-logo"><Wa /></span><div style={{ minWidth: 0 }}><div className="cell-sub">To</div><b className="num">{o.phone || 'No WhatsApp number'}</b>
       <div className="cell-sub">Apartment {o.apt}, owner {o.name}.{waTestNumber() ? ` Testing mode: the chat opens with the test number +${waTestNumber()} instead.` : ''}</div></div></div>
     <div className="wa-att"><span className="pdf-ic" aria-hidden="true">PDF</span><div className="t"><b>Statement-{o.apt}-{cur().today}.pdf</b><span className="cell-sub">Optional: attach it in the chat</span></div>
       <a className="btn sm" href={`/api/pdf/${o.project}/statement/${o.id}`} download><Ic n="download" s={14} /> Download</a></div>
-    <details className="wa-prev"><summary>Preview the PDF</summary><div><DocView d={statementDoc(o, l)} /></div></details>
+    <details className="wa-prev"><summary>Preview the PDF</summary><div><DocView d={statementDoc(o)} /></div></details>
     <h4 className="tg-h4">Send it</h4>
     <div className="wa-ways">
-      <div className="wa-way"><div className="t"><b>Send by hand on WhatsApp Web</b><span className="cell-sub">Makes a Pay Now link for exactly {rs(bal)}, opens {o.name}&apos;s chat with the message typed in, and records it on the history once you&apos;ve sent it.</span></div>
+      <div className="wa-way"><div className="t"><b>Send by hand on WhatsApp Web</b><span className="cell-sub">Writes {o.name}&apos;s dues of {rs(bal)} and how to pay, opens their chat with the message typed in, and records it on the history once you&apos;ve sent it.</span></div>
         <Go href={`/p/${o.project}/send?type=link&ids=${o.id}&go=1`} className="btn wa"><Wa /> Open in WhatsApp</Go></div>
     </div>
     <div className="m-actions" style={{ marginTop: 14 }}><CloseBtn /></div>
   </ModalShell>;
 }
 
-/** Quick action: pick an apartment to send a link to. */
+/** Quick action: pick an apartment to send their dues to. */
 export function SendPickModal() {
   const list = apartments().filter(x => x.status === 'active' && !x.exempt && balance(x) > 0).sort(aptOrder);
-  return <ModalShell title="Send a payment link"><form action={act.pickAction} style={col}><input type="hidden" name="pid" value={cur().project} />
+  return <ModalShell title="Send dues on WhatsApp"><form action={act.pickAction} style={col}><input type="hidden" name="pid" value={cur().project} />
     {list.length ? <div className="form-row"><label htmlFor="sl-o">Apartment</label><select id="sl-o" name="oid">{list.map(x => <option key={x.id} value={x.id}>{x.apt} · {x.name} · {rs(balance(x))}</option>)}</select></div> : <div className="callout">Nobody owes anything right now.</div>}
     <div className="m-actions"><CloseBtn />{list.length ? <Submit className="btn wa"><Wa /> Next</Submit> : null}</div></form></ModalShell>;
 }

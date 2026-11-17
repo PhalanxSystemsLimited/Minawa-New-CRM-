@@ -18,7 +18,7 @@ export default async function Setup({ params }: { params: Promise<{ pid: string 
   if (staff.role !== 'admin') return <>{head.h}<div className="card allclear"><div className="big">Admins only</div><p className="muted">Only admins (the CEO and directors) can import owners.</p><Go href={`/p/${pid}`} className="btn">Back</Go></div></>;
   return <>
     {head.h}
-    <div className="page-head"><div><h2>{proj.live ? 'Import or update owners' : `Set up ${proj.name}`}</h2><p>{proj.live ? 'Add new apartments, or update owners\' names, WhatsApp numbers and possession dates in one go.' : 'Import the owners, set the rate card and the go-live date. Billing, WhatsApp and Safepay then run here too.'}</p></div></div>
+    <div className="page-head"><div><h2>{proj.live ? 'Import or update owners' : `Set up ${proj.name}`}</h2><p>{proj.live ? 'Add new apartments, or update owners\' names, WhatsApp numbers and possession dates in one go.' : 'Import the owners, set the rate card and the go-live date. Billing and WhatsApp then run here too.'}</p></div></div>
     <ImportForm pid={pid} first={!proj.live} today={todayPKT()} bank={proj.bank} existingTypes={head.types} />
   </>;
 }

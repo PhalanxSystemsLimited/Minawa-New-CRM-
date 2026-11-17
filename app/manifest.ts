@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Minawa Group CRM',
     short_name: 'Minawa CRM',
-    description: 'Maintenance dues, WhatsApp bills and Safepay payments for Minawa Group',
+    description: 'Maintenance dues, WhatsApp bills and payments for Minawa Group',
     start_url: '/',
     scope: '/',
     display: 'standalone',
