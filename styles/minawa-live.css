@@ -773,3 +773,19 @@ button.lv-kpi{cursor:pointer}
 @keyframes ntfIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
 @media (max-width:767px){.ntf-stack{top:auto;bottom:calc(86px + env(safe-area-inset-bottom,0px));right:16px;left:16px;width:auto}}
 @media (prefers-reduced-motion:reduce){.ntf,.ntf-more{animation:none}.bell-btn.ringing svg{animation:none}}
+
+/* ===== Update 87: nothing leaves its box at any zoom or screen scaling =====
+   Big figures stay on one line and are scaled down to fit (components/Live.tsx, fitText); the dashboard's two columns
+   only sit side by side when there is room for them; small rows wrap instead of being cut off. */
+.lv-kpi .v,.kpi .v,.lv-target .v,.lv-money-rt b,.lv-next-r b{white-space:nowrap;overflow:hidden;min-width:0;max-width:100%}
+.lv-pre b{text-overflow:clip}
+.lv-kpi,.kpi,.lv-pre > div,.lv-target,.lv-next,.lv-money-rt,.lv-next-r > div{min-width:0}
+.lv-mini-cycle{flex-wrap:wrap}
+.lv-mini-cycle span{min-width:48px}
+.lv-tabs{flex-wrap:wrap}
+@media (min-width:768px) and (max-width:1399px){
+  .lv-layout,.lv-layout.lv-dash{grid-template-columns:minmax(0,1fr)}
+}
+@media (min-width:768px) and (max-width:1599px){
+  .lv-layout.lv-dash{grid-template-columns:minmax(0,1fr)}
+}

@@ -83,6 +83,23 @@ function tagHeads(root: ParentNode) {
 const LIT = '.card,.pcard,.lv-need,.lv-kpi,.lv-lane,.kpi,.apv,.hs';
 const TILT = '.lv-tilt'; // nothing tilts now: a 3D tilt made the browser blur the icons inside
 
+/** Big figures (Rs 38,498,356) stay inside their boxes at any zoom or screen scaling: a figure wider than its box is
+ *  scaled down (with its small print) just enough to fit, and scaled back up when there is room again. */
+const FIT = '.lv-kpi .v, .kpi .v, .lv-target .v, .lv-pre b, .lv-money-rt b, .lv-next-r b';
+function fitText(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>(FIT).forEach(el => {
+    const parts = [el, ...Array.from(el.querySelectorAll<HTMLElement>('*'))];
+    parts.forEach(x => { x.style.fontSize = ''; });
+    if (!el.clientWidth || el.scrollWidth - el.clientWidth <= 1) return;
+    const base = parts.map(x => parseFloat(getComputedStyle(x).fontSize));
+    let r = 1;
+    for (let i = 0; i < 6 && el.scrollWidth - el.clientWidth > 1 && r > .5; i++) {
+      r = Math.max(.5, r * (el.clientWidth / el.scrollWidth) * .985);
+      parts.forEach((x, k) => { x.style.fontSize = `${(base[k] * r).toFixed(2)}px`; });
+    }
+  });
+}
+
 export function LiveEffects() {
   const path = usePathname();
   // Per page: count-ups and the tab highlight.
@@ -96,7 +113,15 @@ export function LiveEffects() {
     mo.observe(main, { childList: true, subtree: true });
     const stopInk = reduced() ? () => {} : tabInk();
     try { if (!document.querySelector('.proj-tabs')) sessionStorage.removeItem('minawa.tabInk'); } catch { /* ignore */ }
-    return () => { mo.disconnect(); stopCount(); stopInk(); };
+    // Figures that would leave their boxes are scaled to fit: now, once the count-ups have finished, and whenever the
+    // page is resized or zoomed.
+    let ft: ReturnType<typeof setTimeout> | undefined;
+    const fit = () => { clearTimeout(ft); ft = setTimeout(() => requestAnimationFrame(() => fitText(main)), 80); };
+    fit(); const late = setTimeout(fit, 1700);
+    const ro = new ResizeObserver(fit); ro.observe(main);
+    const mo2 = new MutationObserver(fit); mo2.observe(main, { childList: true, subtree: true, characterData: true });
+    window.addEventListener('resize', fit);
+    return () => { mo.disconnect(); stopCount(); stopInk(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
   }, [path]);
   // Once: pointer light, tilt and button ripple (delegated, so it works for every page).
   useEffect(() => {
