@@ -560,9 +560,6 @@ html[data-theme=dark] .req{color:var(--bad)}
 html[data-theme=dark] .bld-pick{border:1px solid var(--line)}
 html[data-theme=dark] .bld-pick legend{color:var(--label, #aaacaf)}
 html[data-theme=dark] .inst-n .chipbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-html[data-theme=dark] .mgr-desk-r{border-top:1px solid var(--line, rgba(255,255,255,0.121))}
-html[data-theme=dark] .card-row + .mgr-desk-r{border-top:0}
-html[data-theme=dark] .mgr-desk-n small{color:var(--muted, #8A8378)}
 html[data-theme=dark],html[data-theme=dark] body{background:var(--bg)}
 html[data-theme=dark] body{color:#cfd2d5}
 html[data-theme=dark] body::before{background:var(--bg)}
@@ -1727,9 +1724,6 @@ html[data-theme=frost] .req{color:var(--bad)}
 html[data-theme=frost] .bld-pick{border:1px solid var(--line)}
 html[data-theme=frost] .bld-pick legend{color:var(--label, #aaacaf)}
 html[data-theme=frost] .inst-n .chipbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-html[data-theme=frost] .mgr-desk-r{border-top:1px solid var(--line, rgba(255,255,255,0.241))}
-html[data-theme=frost] .card-row + .mgr-desk-r{border-top:0}
-html[data-theme=frost] .mgr-desk-n small{color:var(--muted, #8A8378)}
 html[data-theme=frost],html[data-theme=frost] body{background:var(--bg)}
 html[data-theme=frost] body{color:#cfd2d5}
 html[data-theme=frost] body::before{background:var(--bg)}
