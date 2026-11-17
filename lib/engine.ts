@@ -1,8 +1,15 @@
-// The billing engine, ported from the demo (demo/minawa-maintenance-demo.html) and moved to Minawa's calendar:
-// every flat is billed on the 25th (billDay) for the month it is in, after use (the 25 Nov bill is for November;
-// quarterly plans on the 25th of the quarter's last month, annual plans on 25 December for that year) plus the utility bills the accountant entered; due `dueDays` later (the 10th), with reminders on the `remindOn` days of the month (the 3rd and 7th) while it is unpaid. The day after
-// the due date the fine (`feePct`% of the unpaid bills, and of old arrears only if `fineArrears`; set by the accountant) is added and a final notice goes out;
-// `flagDays` after the due date unpaid flats are flagged. Billing starts at possession (first month prorated).
+// The billing engine, ported from the demo (demo/minawa-maintenance-demo.html) and moved to Minawa's calendar.
+// Each customer has a billing day (anchorOf): new customers (possessions recorded in the CRM) 25 days (graceDays)
+// after possession, existing customers the day of their possession date, or the 25th (billDay) with no date on file.
+// Bills repeat on that day every 1, 3 or 12 months (plan); in a shorter month on its last day. A bill covers the
+// months of its cycle: monthly flats the month (new customers: the month before, as their first bill comes after
+// possession), quarterly and annual flats the next 3 or 12 months, plus the utility bills the accountant entered.
+// Every bill is due on the 15th (dueDays) of the month after it, with reminders on the `remindOn` days of that month
+// (the 3rd and 7th) while unpaid. The day after the due date the fine (`feePct`% of the unpaid bills, and of old
+// arrears only if `fineArrears`) is added and a final notice goes out; `flagDays` after it unpaid flats are flagged.
+// Go-live (rules.startOn, 25 Nov 2026): every customer with a balance gets a statement for it, due on the 15th of
+// the next month; monthly charges start in the go-live month (Project.goLive, January 2027). New customers are
+// charged from possession (first month prorated).
 // Promises to pay pause notices; payments pay the fine in proportion and dues oldest first.
 //
 // Engine functions are synchronous and work on one project's State, set with use(). The store loads the
@@ -10,7 +17,7 @@
 // recorded here; lib/dispatch.ts creates the Safepay links and sends the WhatsApp messages afterwards.
 import type { State, Owner, Bill, PayLink, Message, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
 import { PLAN_MONTHS } from './types';
-import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT } from './fmt';
+import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT, addMonths, monthsBetween, dayIn } from './fmt';
 
 let S: State = null as unknown as State;
 let SEEDING = false, QUIET = false;
@@ -51,9 +58,11 @@ export const isAdmin = () => S.role === 'admin';
 export const goLive = () => S.goLive;
 /** Opening balances (arrears from the accountant's sheet) fall due with the first bill, not on go-live day. */
 /** The first bill day: the bill day of the go-live month (billing is for the month just used). */
-export const firstBillDate = () => billDateOf(S.goLive.slice(0, 7));
+export const firstBillDate = () => R().startOn || billDateOf(S.goLive.slice(0, 7));
 /** Old arrears fall due with the first bill, so nothing is fined or flagged before billing starts. */
-export const openingDue = () => addDays(firstBillDate(), R().dueDays);
+export const openingDue = () => dueAfter(firstBillDate(), R().dueDays);
+/** Day `day` of the month after date d. */
+const dueAfter = (d: string, day: number) => dayIn(nextMonth(d.slice(0, 7)), day);
 
 export const rateTypes = () => [...new Set(S.rates.map(r => r.type))];
 export function rateFor(type: string, d: string) {
@@ -100,14 +109,34 @@ export function planEnd(o: Owner, p: string) {
   const end = Math.ceil(m / n) * n;
   return `${y}-${String(end).padStart(2, '0')}`;
 }
-/** Months to bill on bill day d. Maintenance is billed after use: the bill on 25 Nov is for November.
- *  Every month not billed yet, from possession (or go-live) up to this month, whose plan period ends by this month.
- *  Monthly on 25 Nov: November. Quarterly on 25 Mar: Jan–Mar (nothing on 25 Jan or 25 Feb). Annual on 25 Dec: that year.
- *  Possessed 5 Nov: on 25 Nov, November (prorated). Possessed 28 Nov: on 25 Dec, Nov (3 days) and Dec. */
+/** A customer's billing calendar. day: their billing day of the month. start: the first month charged. off: how many
+ *  months a bill comes after the start of the period it is for (new customers 0 or 1, as the first bill is 25 days
+ *  after possession). first: the first bill date.
+ *  New customer, possession 10 Nov: day 5, start Nov, off 1, first 5 Dec (Nov from the 10th; then 5 Jan for Dec…).
+ *  Existing customer, possession 5 Mar 2019: day 5, start Jan 2027 (go-live), off 0, first 5 Jan 2027 (for January).
+ *  Existing, no possession date on file: day 25 (billDay), first 25 Jan 2027. */
+export function anchorOf(o: Owner) {
+  if (o.firstBill) {
+    const start = o.possession.slice(0, 7);
+    return { day: +o.firstBill.slice(8), start, off: Math.max(0, monthsBetween(start, o.firstBill.slice(0, 7))), first: o.firstBill, isNew: true };
+  }
+  const start = [o.possession.slice(0, 7), S.goLive.slice(0, 7)].sort()[1], day = o.possessionKnown ? +o.possession.slice(8) : R().billDay;
+  return { day, start, off: 0, first: dayIn(start, day), isNew: false };
+}
+/** The customer's billing date in month p (their day, or the month's last day). */
+export const anchorIn = (o: Owner, p: string) => dayIn(p, anchorOf(o).day);
+/** Months to bill on day d (a billing date of this customer): from the first month not billed yet, whole plan
+ *  periods up to the period this bill is for. Monthly on 5 Jan: January. Quarterly on 5 Jan: Jan–Mar (then nothing
+ *  until 5 Apr). Annual on 5 Jan: the year. New customer possessed 10 Nov: on 5 Dec, November from the 10th. */
 export function monthsToBill(o: Owner, d: string) {
-  if (o.possession > d) return [];
-  const cur = d.slice(0, 7), startP = [o.possession.slice(0, 7), S.goLive.slice(0, 7)].sort()[1], out: string[] = [];
-  for (let m = startP; m <= cur; m = nextMonth(m)) if (!covered(o, m) && planEnd(o, m) <= cur) out.push(m);
+  const a = anchorOf(o);
+  if (o.possession > d || d < a.first) return [];
+  const p = addMonths(d.slice(0, 7), -a.off), n = PLAN_MONTHS[o.plan || 'monthly'] || 1;
+  let u = a.start;
+  for (let i = 0; i < 120 && covered(o, u); i++) u = nextMonth(u);
+  if (u > p) return [];
+  const count = Math.ceil((monthsBetween(u, p) + 1) / n) * n, out: string[] = [];
+  for (let i = 0, m = u; i < count; i++, m = nextMonth(m)) if (!covered(o, m)) out.push(m);
   return out;
 }
 /** One month's maintenance: the rate card (or the flat's own rate), prorated in the month of possession. */
@@ -120,20 +149,27 @@ export function monthCharge(o: Owner, p: string) {
   return { amount: full, full, from: null as string | null };
 }
 const unbilled = (o: Owner, p: string) => S.charges.filter(c => c.ownerId === o.id && !c.billId && c.amount !== 0 && c.period <= p);
-/** The first bill day on or after `from`. */
+/** The project's first bill day (the default billing day) on or after `from`. */
 export function nextBillDate(from: string) { const d = billDateOf(from.slice(0, 7)); return d >= from ? d : billDateOf(nextMonth(from.slice(0, 7))); }
-/** The next bill day on which this owner actually gets a maintenance bill (plans and go-live taken into account). */
+/** The first of this customer's billing dates on or after `from`. */
+export function nextAnchor(o: Owner, from: string) { const d = anchorIn(o, from.slice(0, 7)); return d >= from ? d : anchorIn(o, nextMonth(from.slice(0, 7))); }
+/** The next date this customer actually gets a maintenance bill (their billing day, plan and go-live taken into account). */
 export function nextBillFor(o: Owner) {
   let from = S.settings.lastRun === S.today ? addDays(S.today, 1) : S.today;
-  for (let i = 0; i < 14; i++) { const d = nextBillDate(from); if (o.exempt || monthsToBill(o, d).length) return d; from = addDays(d, 1); }
-  return nextBillDate(from);
+  for (let i = 0; i < 40; i++) { const d = nextAnchor(o, from); if (o.exempt || monthsToBill(o, d).length) return d; from = addDays(d, 1); }
+  return nextAnchor(o, from);
+}
+/** The soonest bill date across the given customers (or the project's default billing day). */
+export function nextBillOf(owners: Owner[], from = S.today) {
+  let best: string | null = null;
+  for (const o of owners) { if (o.status !== 'active' || o.exempt) continue; const d = nextBillFor(o); if (d >= from && (!best || d < best)) best = d; }
+  return best || nextBillDate(from);
 }
 export function isBillingDay(o: Owner, d: string) {
   if (o.status !== 'active') return false;   // months before go-live are never billed (see monthsToBill)
-  const y = +d.slice(0, 4), m = +d.slice(5, 7);
-  if (+d.slice(8, 10) !== billingDay(o, y, m)) return false;
+  if (anchorIn(o, d.slice(0, 7)) !== d) return false;
   if (S.bills.some(b => b.ownerId === o.id && b.billDate === d)) return false;
-  return (!o.exempt && monthsToBill(o, d).length > 0) || unbilled(o, d.slice(0, 7)).length > 0;
+  return (!o.exempt && monthsToBill(o, d).length > 0) || (d >= firstBillDate() && unbilled(o, d.slice(0, 7)).length > 0);
 }
 /** "November 2026", "Jan – Mar 2027", "2027"; utility-only bills say so. */
 export function periodLabel(b: Pick<Bill, 'period' | 'periodEnd' | 'months'>) {
@@ -256,11 +292,7 @@ export function instalmentStatus(o: Owner, d = S.today) {
 }
 const instOverdue = (o: Owner, d: string) => instalmentStatus(o, d)?.overdue || 0;
 /** A bill's due date: the owner's own due day in the month after the bill (approved by an Admin), or the project's rule. */
-export function dueFor(o: Owner, billDate: string) {
-  if (!o.dueDay) return addDays(billDate, R().dueDays);
-  const nm = nextMonth(billDate.slice(0, 7)), day = Math.min(o.dueDay, dim(+nm.slice(0, 4), +nm.slice(5, 7)));
-  return `${nm}-${String(day).padStart(2, '0')}`;
-}
+export function dueFor(o: Owner, billDate: string) { return dueAfter(billDate, o.dueDay || R().dueDays); }
 export const duesOf = (o: Owner) => (o.openingLeft || 0) + billsOf(o).reduce((s, b) => s + Math.max(0, b.net - b.paid), 0);
 const isLate = (o: Owner, d: string) => (o.openingLeft > 0 && (o.instalments ? instOverdue(o, d) > 0 : d > openingDue())) || billsOf(o).some(b => unpaidMaint(b) > 0 && d > b.dueDate);
 /** What the fine is a % of: unpaid bills, plus old arrears only when the project fines them (rules.fineArrears). */
@@ -384,24 +416,77 @@ function sendReminder(o: Owner, b: Bill, d: string) {
   pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
   if (!o.invalidPhone) log(d, t, 'message', `Reminder ready to send to ${o.apt}: ${rs(bal)} due ${fd(b.dueDate)}`, o.id);
 }
+// Go-live: the statement of what a customer owes, and the final notice for old arrears left unpaid after it.
+function sendStatement(o: Owner, d: string) {
+  const bal = balance(o), t = '11:00';
+  if (bal <= 0) return;
+  const l = createLink(o, d, t, bal, 'replaced by the statement');
+  const bd = duesBreakdown(o), due = openingDue();
+  const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), due: fd(due) };
+  pushMsg(o, d, t, { kind: 'bill', title: 'Statement · dues to date', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  log(d, t, 'bill', `Statement for ${o.apt}: ${rs(bal)} owed at go-live, due ${fd(due)}`, o.id);
+  if (!o.invalidPhone) log(d, t, 'message', `Statement ready to send to ${o.apt} (Send on WhatsApp)`, o.id);
+}
+function sendOpeningNotice(o: Owner, d: string) {
+  const bal = balance(o), t = '11:00', final = addDays(openingDue(), R().flagDays);
+  if (bal <= 0) return;
+  const l = createLink(o, d, t, bal, 'replaced by the disconnection notice');
+  const bd = duesBreakdown(o);
+  const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), month: 'earlier dues', final: fd(final) };
+  pushMsg(o, d, t, { kind: 'notice', title: 'Final notice', text: fill(S.templates.notice.text, vars), tpl: 'notice', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  if (!o.invalidPhone) log(d, t, 'message', `Disconnection notice ready to send to ${o.apt}: ${rs(bal)} of earlier dues unpaid, final deadline ${fd(final)}`, o.id);
+}
+function sendOpeningReminder(o: Owner, d: string) {
+  const bal = balance(o), t = '11:00';
+  if (bal <= 0) return;
+  const l = createLink(o, d, t, bal, 'replaced by the reminder');
+  const bd = duesBreakdown(o), due = openingDue();
+  const vars = { name: first(o.name), apt: o.apt, ...bdVars(bd), total: rs(bal), due: fd(due) };
+  pushMsg(o, d, t, { kind: 'reminder', title: 'Reminder', text: fill(S.templates.reminder.text, vars), tpl: 'reminder', vars, linkId: l.id, pdf: { kind: 'statement', id: o.id } });
+  if (!o.invalidPhone) log(d, t, 'message', `Reminder ready to send to ${o.apt}: ${rs(bal)} due ${fd(due)}`, o.id);
+}
 function flag(o: Owner, d: string) {
   o.flagged = true; o.flaggedOn = d;
   log(d, '11:00', 'flag', `${o.apt} flagged for disconnection: ${rs(balance(o))} unpaid after the final deadline`, o.id);
 }
-/** A reminder for this bill today: today is one of the reminder days of the month (3rd, 7th), after the bill and
- *  before its due date, and it hasn't had that reminder yet. */
+/** A reminder for this bill today: today is one of the reminder days (3rd, 7th) of the due date's month, after the
+ *  bill and before its due date, and it hasn't had that reminder yet. */
 export function remindToday(b: Bill, d: string) {
   const dom = +d.slice(8);
-  return R().remindOn.includes(dom) && d > b.billDate && d < b.dueDate && !b.reminders.includes(dom);
+  return R().remindOn.includes(dom) && d.slice(0, 7) === b.dueDate.slice(0, 7) && d > b.billDate && d < b.dueDate && !b.reminders.includes(dom);
+}
+/** Old arrears (the balance at go-live): the go-live statement, reminders in the due month, then a final notice the
+ *  day after the due date and a flag `flagDays` later. Customers on an approved instalment plan follow the plan. */
+const openingOwed = (o: Owner) => !o.instalments && (o.openingLeft || 0) > 0;
+export function openingEvent(o: Owner, d: string): 'statement' | 'remind' | 'notice' | 'flag' | null {
+  const st = R().startOn;
+  if (!st || o.status !== 'active' || o.exempt) return null;
+  if (d === st) return balance(o) > 0 ? 'statement' : null;
+  if (!openingOwed(o) || d < st) return null;
+  const due = openingDue();
+  if (R().remindOn.includes(+d.slice(8)) && d.slice(0, 7) === due.slice(0, 7) && d < due && !promiseOn(o, d)) return 'remind';
+  if (d === addDays(due, 1)) return 'notice';
+  if (d === addDays(due, R().flagDays) && !o.flagged) return 'flag';
+  return null;
 }
 export function runDaily(d: string) {
-  const c = { bills: 0, fines: 0, notices: 0, flags: 0, alerts: 0, paused: 0, reminders: 0 };
+  const c = { bills: 0, fines: 0, notices: 0, flags: 0, alerts: 0, paused: 0, reminders: 0, statements: 0 };
   if (d.slice(8) === '01') setTarget(d.slice(0, 7), d);
-  const out = new Map<string, { bill?: Bill; notice?: Bill; remind?: Bill }>();
+  const out = new Map<string, { bill?: Bill; notice?: Bill; remind?: Bill; statement?: boolean; oNotice?: boolean; oRemind?: boolean }>();
   const box = (id: string) => { if (!out.has(id)) out.set(id, {}); return out.get(id)!; };
   for (const o of S.owners) {
     if (o.status !== 'active' || o.exempt) continue;
     if (isBillingDay(o, d)) { box(o.id).bill = createBill(o, d); c.bills++; }
+    const oe = openingEvent(o, d);
+    if (oe === 'statement') { box(o.id).statement = true; c.statements++; }
+    else if (oe === 'remind') box(o.id).oRemind = true;
+    else if (oe === 'notice') {
+      if (promiseOn(o, d)) { c.paused++; log(d, '11:00', 'job', `Disconnection notice for ${o.apt} (earlier dues) paused: promise to pay until ${fd(o.promiseUntil!)}`, o.id); }
+      else box(o.id).oNotice = true;
+    } else if (oe === 'flag') {
+      if (promiseOn(o, d)) log(d, '11:00', 'job', `Flag for ${o.apt} (earlier dues) paused: promise to pay until ${fd(o.promiseUntil!)}`, o.id);
+      else { flag(o, d); c.flags++; }
+    }
     for (const b of billsOf(o)) {
       if (remindToday(b, d) && unpaidMaint(b) > 0 && !promiseOn(o, d)) { b.reminders.push(+d.slice(8)); box(o.id).remind = b; }
       if (addDays(b.dueDate, 1) === d && !b.fined && unpaidMaint(b) > 0) {
@@ -430,10 +515,13 @@ export function runDaily(d: string) {
   for (const [id, x] of out) {
     const o = ownerById(id);
     if (x.notice) { sendNotice(o, x.notice, d, x.bill); c.notices++; }
+    else if (x.oNotice) { sendOpeningNotice(o, d); c.notices++; }
     else if (x.bill) sendBill(o, x.bill, d);
+    else if (x.statement) sendStatement(o, d);
     else if (x.remind) { sendReminder(o, x.remind, d); c.reminders++; }
+    else if (x.oRemind) { sendOpeningReminder(o, d); c.reminders++; }
   }
-  log(d, '11:00', 'job', `Daily run: ${c.bills} bill(s), ${c.fines} fine(s), ${c.notices} notice(s), ${c.reminders} reminder(s), ${c.flags} flag(s)${c.paused ? `, ${c.paused} paused by promise` : ''}`);
+  log(d, '11:00', 'job', `Daily run: ${c.statements ? `${c.statements} go-live statement(s), ` : ''}${c.bills} bill(s), ${c.fines} fine(s), ${c.notices} notice(s), ${c.reminders} reminder(s), ${c.flags} flag(s)${c.paused ? `, ${c.paused} paused by promise` : ''}`);
   return c;
 }
 export function recordPayment(o: Owner, amt: number, method: string, ref: string | null, d: string, source: Payment['source'], t: string, by: string, extra?: Partial<Payment>) {
@@ -558,6 +646,11 @@ export function eventsOn(d: string): Ev[] {
       if (addDays(b.dueDate, 1) === d && !b.fined && unpaidMaint(b) > 0) ev.push({ kind: 'fine', text: promiseOn(o, d) ? `Fine for ${o.apt} (notice paused)` : `Fine and final notice for ${o.apt}`, o });
       if (b.finalDate === d && unpaid(b) > 0 && !o.flagged) ev.push({ kind: 'flag', text: promiseOn(o, d) ? `Final deadline for ${o.apt} (paused)` : `${o.apt} flagged for disconnection`, o });
     }
+    const oe = openingEvent(o, d);
+    if (oe === 'statement') ev.push({ kind: 'bill', text: `Go-live statement for ${o.apt}`, o });
+    else if (oe === 'remind') ev.push({ kind: 'remind', text: `Reminder for ${o.apt} (earlier dues, due ${fds(openingDue())})`, o });
+    else if (oe === 'notice') ev.push({ kind: 'fine', text: promiseOn(o, d) ? `Earlier dues of ${o.apt} overdue (notice paused)` : `Final notice for ${o.apt} (earlier dues)`, o });
+    else if (oe === 'flag') ev.push({ kind: 'flag', text: promiseOn(o, d) ? `Final deadline for ${o.apt} (paused)` : `${o.apt} flagged for disconnection`, o });
     if (o.promiseUntil && addDays(o.promiseUntil, 1) === d) ev.push({ kind: 'alert', text: `Promise to pay ends for ${o.apt}`, o });
   }
   return ev;

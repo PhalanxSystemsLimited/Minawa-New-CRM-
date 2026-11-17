@@ -10,7 +10,7 @@ import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
   sendPaymentLink, pushMsg, nextBillFor } from './engine';
-import { fd, fm, rs, ord } from './fmt';
+import { fd, fm, rs, ord, addDays } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
   rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date' };
@@ -19,7 +19,7 @@ export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announc
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
 
 type Disc = { kind: 'pct' | 'fixed' | 'none'; value: number; until: string | null };
-type RulesChange = Pick<Rules, 'billDay' | 'dueDays' | 'remindOn' | 'flagDays' | 'utilities'>;
+type RulesChange = Pick<Rules, 'billDay' | 'dueDays' | 'remindOn' | 'flagDays' | 'utilities'> & { graceDays?: number };
 const num = (x: unknown) => Math.round(Number(x) || 0);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -34,8 +34,9 @@ function feeNow(o: Owner, patch: Partial<Owner> = {}) { const p = nextPeriodFor(
 function ratesOf(c: Record<string, unknown>) { return Object.entries((c.rates || {}) as Record<string, number>).map(([ty, v]) => [ty, num(v)] as [string, number]).filter(([, v]) => v > 0); }
 function rulesDiff(c: RulesChange) {
   const r = cur().settings.rules, out: [string, string][] = [];
-  if (c.billDay !== r.billDay) out.push([`bills on the ${ord(r.billDay)}`, `bills on the ${ord(c.billDay)}`]);
-  if (c.dueDays !== r.dueDays) out.push([`due ${r.dueDays} days after the bill`, `due ${c.dueDays} days after the bill`]);
+  if (c.graceDays != null && c.graceDays !== r.graceDays) out.push([`new customers' first bill ${r.graceDays} days after possession`, `${c.graceDays} days after possession`]);
+  if (c.billDay !== r.billDay) out.push([`customers with no possession date billed on the ${ord(r.billDay)}`, `on the ${ord(c.billDay)}`]);
+  if (c.dueDays !== r.dueDays) out.push([`due on the ${ord(r.dueDays)} of the next month`, `due on the ${ord(c.dueDays)} of the next month`]);
   if (c.remindOn.join(',') !== r.remindOn.join(',')) out.push([`reminders on the ${r.remindOn.map(ord).join(' and ') || 'none'}`, `reminders on the ${c.remindOn.map(ord).join(' and ') || 'none'}`]);
   if (c.flagDays !== r.flagDays) out.push([`flag ${r.flagDays} days after the due date`, `flag ${c.flagDays} days after the due date`]);
   if (c.utilities.join(',') !== r.utilities.join(',')) out.push([`utilities: ${r.utilities.join(', ') || 'none'}`, `utilities: ${c.utilities.join(', ') || 'none'}`]);
@@ -149,7 +150,7 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
     case 'rules': {
       const next = { ...S.settings.rules, ...(c as unknown as RulesChange) };
       S.settings.rules = next;
-      log(d, t, 'admin', `Billing schedule changed by ${who}: bills on the ${ord(next.billDay)}, due ${next.dueDays} days later, reminders on the ${next.remindOn.map(ord).join(' and ') || 'none'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}. New bills use them.`);
+      log(d, t, 'admin', `Billing schedule changed by ${who}: new customers' first bill ${next.graceDays} days after possession, no possession date on file: the ${ord(next.billDay)}, due on the ${ord(next.dueDays)} of the month after the bill, reminders on the ${next.remindOn.map(ord).join(' and ') || 'none'}, flag ${next.flagDays} days after the due date, utilities: ${next.utilities.join(', ') || 'none'}. New bills use them.`);
       return 'Billing schedule saved. It applies to new bills.';
     }
     case 'fine': {
@@ -293,7 +294,7 @@ export function addPossession(c: Record<string, unknown>, who: string) {
   const S = cur(), apt = String(c.apt).toUpperCase(), phone = String(c.phone || ''), possession = String(c.possession);
   const plan = (['monthly', 'quarterly', 'annual'].includes(String(c.plan)) ? String(c.plan) : 'monthly') as Plan;
   const o = blankOwner({ id: 'O' + nid('o'), project: S.project, apt, block: String(c.block || '') || apt.split(/[-\s]/)[0], type: String(c.type), name: String(c.name), phone: phone ? normPhone(phone) : '', email: String(c.email || ''),
-    possession, possessionKnown: true, plan, invalidPhone: !phone, noPhone: !phone,
+    possession, possessionKnown: true, firstBill: addDays(possession, S.settings.rules.graceDays ?? 25), plan, invalidPhone: !phone, noPhone: !phone,
     notes: [{ d: S.today, by: who, text: `Possession handed over on ${fd(possession)}.${c.note ? ' ' + String(c.note) : ''}` }] });
   S.owners.push(o);
   const next = nextBillFor(o);

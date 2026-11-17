@@ -17,9 +17,14 @@ export interface Rate { id: string; project: string; type: string; from: ISODate
 // with two more reminders before the due date. The day after the due date the fine is added and a final notice
 // goes out; flats still unpaid `flagDays` after the due date are flagged for disconnection.
 export interface Rules {
-  billDay: number;          // day of the month bills go out (25)
-  dueDays: number;          // due date = bill day + dueDays (15)
-  remindOn: number[];       // more reminders on these days of the month, while the bill is unpaid and not yet due ([3, 7])
+  billDay: number;          // billing day of customers with no possession date on file (25)
+  dueDays: number;          // every bill is due on this day of the month after the bill (15)
+  remindOn: number[];       // more reminders on these days of the due date's month, while the bill is unpaid ([3, 7])
+  /** New customers (possessions recorded in the CRM) get their first bill this many days after possession (25). */
+  graceDays: number;
+  /** The day the CRM starts: every customer with a balance gets a statement, due on the dueDays of the next month.
+   *  Monthly charges start in the project's go-live month (Project.goLive). Empty: the go-live month's billing day. */
+  startOn: ISODate | null;
   feePct: number;           // fine, % of the unpaid bills (and old arrears if fineArrears) while a bill is overdue; set by accountants (10)
   flagDays: number;         // flag for disconnection this many days after the due date (15)
   sendHour: number;         // hour (PKT) the daily run goes out (11)
@@ -27,7 +32,7 @@ export interface Rules {
   /** Fine old arrears (opening balances from before go-live) too. Off: the fine is only on the system's own bills. */
   fineArrears: boolean;
 }
-export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false };
+export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
   const x = { ...DEFAULT_RULES, ...r } as Rules & { autoSend?: unknown };
   delete x.autoSend;   // from before: WhatsApp is only sent by hand now
@@ -37,6 +42,9 @@ export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
   x.remindOn = [...new Set(x.remindOn.map(Number).filter(n => n >= 1 && n <= 28))].sort((a, b) => a - b);
   if (!Array.isArray(x.utilities)) x.utilities = [];
   x.fineArrears = x.fineArrears === true;
+  x.graceDays = Math.max(0, Math.min(60, Math.round(+x.graceDays))); if (!Number.isFinite(x.graceDays)) x.graceDays = DEFAULT_RULES.graceDays;
+  x.dueDays = Math.max(1, Math.min(28, Math.round(+x.dueDays) || DEFAULT_RULES.dueDays));
+  x.startOn = typeof x.startOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.startOn) ? x.startOn : null;
   return x;
 }
 export type Plan = 'monthly' | 'quarterly' | 'annual';
@@ -51,6 +59,8 @@ export interface Owner {
   id: string; project: string; unit: string; apt: string; block: string; type: string;
   name: string; phone: string; email: string;
   possession: ISODate; possessionKnown: boolean;
+  /** New customers only (possessions recorded in the CRM): the first bill date, possession + graceDays. It sets the billing day. */
+  firstBill?: ISODate | null;
   opening: number; openingLeft: number; credit: number; feeDue: number;
   exempt: boolean; exemptWhy: string | null; director: boolean;
   discount: Discount | null; abroad: boolean; invalidPhone: boolean; noPhone: boolean;

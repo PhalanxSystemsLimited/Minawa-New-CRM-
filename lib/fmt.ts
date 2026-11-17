@@ -46,3 +46,9 @@ export function t12(t: string | null | undefined) {
 }
 /** The hour the daily run goes out, e.g. 11 → "11:00 AM". */
 export const hour12 = (h: number) => t12(`${h}:00`);
+/** Month p moved by n months ("2026-11", 2 → "2027-01"). */
+export function addMonths(p: string, n: number) { const t = +p.slice(0, 4) * 12 + (+p.slice(5, 7) - 1) + n; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`; }
+/** Whole months from month a to month b ("2026-11" → "2027-01" is 2). */
+export const monthsBetween = (a: string, b: string) => (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5, 7) - +a.slice(5, 7));
+/** Day `day` of month p, or the month's last day when it is shorter ("2027-02", 31 → "2027-02-28"). */
+export const dayIn = (p: string, day: number) => `${p}-${String(Math.min(day, dim(+p.slice(0, 4), +p.slice(5, 7)))).padStart(2, '0')}`;

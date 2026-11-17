@@ -10,7 +10,7 @@ import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, cancelLinks, unitOf, log, at, nid, rateTypes,
   verifyProof, rejectProof, sendPaymentLink, setTargetOption, pushMsg, payLink, resyncFines, apartments, monthsToBill, billDateOf, recordCash } from './engine';
-import { fd, rs, ord, waDigits, todayPKT } from './fmt';
+import { fd, rs, ord, waDigits, todayPKT, addDays } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
 import { changeOrRequest, type ChangeResult } from './approvals';
@@ -116,7 +116,7 @@ export async function editOwnerAction(fdata: FormData) {
     if (name && name !== o.name) { ch.push(`name ${o.name} → ${name}`); o.name = name; }
     if (phone !== o.phone) { ch.push(`WhatsApp ${o.phone || 'none'} → ${phone || 'none'}`); o.phone = phone; o.noPhone = !phone; o.invalidPhone = !phone; }
     if (email !== o.email) o.email = email;
-    if (pos && (pos !== o.possession || !o.possessionKnown)) { ch.push(`possession ${o.possessionKnown ? fd(o.possession) : 'not on file'} → ${fd(pos)}`); o.possession = pos; o.possessionKnown = true; }
+    if (pos && (pos !== o.possession || !o.possessionKnown)) { ch.push(`possession ${o.possessionKnown ? fd(o.possession) : 'not on file'} → ${fd(pos)}`); o.possession = pos; o.possessionKnown = true; if (o.firstBill) o.firstBill = addDays(pos, s.settings.rules.graceDays ?? 25); }
     o.abroad = fdata.get('abroad') === 'on';
     if (staff.role === 'admin') { const ex = fdata.get('exempt') === 'on'; if (ex !== o.exempt) { ch.push(ex ? 'now exempt' : 'no longer exempt'); o.exempt = ex; if (!ex) o.exemptWhy = null; } }
     if (ch.length) log(s.today, at(15), 'admin', `${o.apt} edited by ${staffName(staff)}: ${ch.join('; ')}`, o.id);
@@ -187,7 +187,8 @@ export async function rulesAction(fdata: FormData) {
     const r0 = s.settings.rules;
     const remindOn = [...new Set(S(fdata, 'remindOn').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x >= 1 && x <= 28))].sort((x, y) => x - y);
     const utilities = [...new Set(S(fdata, 'utilities').split(',').map(x => x.trim()).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1)))];
-    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 60, r0.dueDays), remindOn, flagDays: n('flagDays', 1, 120, r0.flagDays), utilities };
+    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 28, r0.dueDays), remindOn, flagDays: n('flagDays', 1, 120, r0.flagDays), utilities, graceDays: n('graceDays', 0, 60, r0.graceDays ?? 25) };
+    if (remindOn.some(x => x >= c.dueDays)) throw new Error(`Reminders go out in the due month before the due date: pick days before the ${ord(c.dueDays)}.`);
     return changeOrRequest(null, 'rules', c, S(fdata, 'why'));
   }, { send: false }));
   go(back, failed(r) ? r.error : r.text);

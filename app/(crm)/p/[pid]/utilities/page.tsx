@@ -30,7 +30,7 @@ export default async function Utilities({ params, searchParams }: { params: Prom
     const hid = <><input type="hidden" name="pid" value={pid} /><input type="hidden" name="period" value={period} /><input type="hidden" name="kind" value={kind} /></>;
     return <>
       {projHead('utilities')}
-      <div className="page-head"><div><h2>Utility bills</h2><p>Enter each flat&apos;s {kind.toLowerCase()} bill for the month. Everything entered by the {ord(r.billDay)} goes on that month&apos;s bill to the owner; anything later goes on the next one.</p></div>
+      <div className="page-head"><div><h2>Utility bills</h2><p>Enter each flat&apos;s {kind.toLowerCase()} bill for the month. Each entry goes on the flat&apos;s next bill (every customer has their own billing date).</p></div>
         <a className="btn" href={`/api/export/utilities?project=${pid}&period=${period}&kind=${encodeURIComponent(kind)}`}>Download sheet (CSV)</a></div>
       <div className={`callout ${entered === rows.length ? 'good' : 'warn'}`} style={{ marginBottom: 14 }}><div><b>{fm(period)}: {entered} of {rows.length} flats entered.</b> {pBill >= S.today ? `They go out with the bills on ${fd(pBill)} at ${r.sendHour}:00.` : `This month's bills went out on ${fd(pBill)}; what you enter now goes on the next bill.`}</div></div>
       {waiting ? <form action={billUtilitiesNowAction} className="callout" style={{ marginBottom: 14, alignItems: 'center' }}>{hid}<div style={{ flex: 1 }}><b>{waiting} utility bill{waiting === 1 ? ' was' : 's were'} entered after the bills went out.</b> They go on the next bill automatically, or you can send them now on their own bill.</div><Submit className="btn sm" pendingText="Sending…">Send them now</Submit></form> : null}

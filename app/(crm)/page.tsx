@@ -1,7 +1,7 @@
 // The company dashboard: every project at once (the demo's viewHome).
 import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
-import { use, projStats, sortedPayments, ownerById, upcoming, collections, nextBillDate } from '@/lib/engine';
+import { use, projStats, sortedPayments, ownerById, upcoming, collections, nextBillOf } from '@/lib/engine';
 import { pendingCount } from '@/lib/manual-send';
 import { KIND_LABEL } from '@/lib/approvals';
 import { cookies } from 'next/headers';
@@ -69,13 +69,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const per = st.map(x => use(x.s, () => {
     const since = jar.get(paySeenCookie(staff.id, x.p.id))?.value || addDays(today, -NEW_DAYS) + 'T00:00';
     const np = x.s.payments.filter(p => payKey(p) > since);
-    return { id: x.p.id, send: pendingCount(), newN: np.length, newAmt: np.reduce((a, p) => a + p.amount, 0), co: collections(), next: nextBillDate(addDays(today, x.s.settings.lastRun === today ? 1 : 0)) };
+    return { id: x.p.id, send: pendingCount(), newN: np.length, newAmt: np.reduce((a, p) => a + p.amount, 0), co: collections(), next: nextBillOf(x.s.owners, addDays(today, x.s.settings.lastRun === today ? 1 : 0)) };
   }));
   const sendN = per.reduce((a, x) => a + x.send, 0), newN = per.reduce((a, x) => a + x.newN, 0), newAmt = per.reduce((a, x) => a + x.newAmt, 0);
   const byMonth = new Map<string, number>(); per.forEach(x => x.co.forEach(([m, v]) => byMonth.set(m, (byMonth.get(m) || 0) + v)));
   const months = [...byMonth.keys()].sort().slice(-6), spark = months.map(m => byMonth.get(m) || 0);
   const nextBill = starts || per.map(x => x.next).sort()[0] || today, daysTo = Math.max(0, diff(nextBill, today));
-  const r0 = st[0]?.s.settings.rules, dueDay = r0 ? +addDays(`${today.slice(0, 7)}-${String(r0.billDay).padStart(2, '0')}`, r0.dueDays).slice(8) : 10;
+  const r0 = st[0]?.s.settings.rules, dueDay = r0 ? r0.dueDays : 15;
   const firstTodo = st.find(x => x.todo)?.p.id || live[0]?.id || '', firstSend = per.find(x => x.send)?.id || live[0]?.id || '', firstNew = per.find(x => x.newN)?.id || live[0]?.id || '';
   // The three To do lists (lib/tasks.ts): managers' work, accountants' work, and this person's own.
   const allT = states.flatMap(s => projectTasks(s)), mgrT = allT.filter(t => t.role === 'manager'), accT = allT.filter(t => t.role === 'accountant'), myT = myTasks(allT, staff);
@@ -135,8 +135,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           <div className="lv-bar r"><span style={{ width: `${tot('flats') ? Math.round(100 * owing / tot('flats')) : 0}%` }}></span></div></Kpi>
       </div>
       <div className="lv-next"><div className="l">{starts ? 'BILLING STARTS' : 'NEXT BILLS'}</div>
-        <div className="lv-next-r"><CalBadge date={nextBill} /><div><b className="H">{daysTo === 0 ? 'Today' : daysTo === 1 ? 'Tomorrow' : <><Num v={daysTo}>{daysTo}</Num> days to go</>}</b><small>{starts ? `First bill: ${fm(st.find(x => x.firstBill === starts)?.s.goLive.slice(0, 7) || starts.slice(0, 7))}` : `${fd(nextBill)}`}{r0 ? ` · ${hour12(r0.sendHour)}` : ''}</small></div></div>
-        {r0 ? <div className="lv-mini-cycle"><span><b>{ord(r0.billDay)}</b>Bill</span>{r0.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(dueDay)}</b>Due</span></div> : null}</div>
+        <div className="lv-next-r"><CalBadge date={nextBill} /><div><b className="H">{daysTo === 0 ? 'Today' : daysTo === 1 ? 'Tomorrow' : <><Num v={daysTo}>{daysTo}</Num> days to go</>}</b><small>{starts ? `Statements of dues · monthly charges from ${fm(st.find(x => x.firstBill === starts)?.s.goLive.slice(0, 7) || starts.slice(0, 7))}` : `${fd(nextBill)}`}{r0 ? ` · ${hour12(r0.sendHour)}` : ''}</small></div></div>
+        {r0 ? <div className="lv-mini-cycle" title="Each customer is billed on their own billing date; due on the 15th of the next month"><span><b>Own</b>Bill date</span>{r0.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(dueDay)}</b>Due</span></div> : null}</div>
     </section>
 
     {!admin && apvRejected.length ? <div className="card apv-card"><div className="card-row"><h3>Rejected by an admin <small>{apvRejected.length} in the last 30 days, with the admin&apos;s note</small></h3><Go href="/approvals?s=done" className="btn sm">See all</Go></div>

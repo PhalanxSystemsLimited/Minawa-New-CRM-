@@ -235,9 +235,9 @@ export { sortedPayments };
 /** New possession: a flat handed over to its first owner. Billing starts from the possession date. */
 export function PossessionModal() {
   const S = cur(), types = baseTypes(), blocks = [...new Set(S.owners.map(o => o.block).filter(Boolean))].sort();
-  const first = nextBillDate(S.today);
+  const g = S.settings.rules.graceDays ?? 25, ex = addDays(S.today, g);
   return <ModalShell title="New possession"><form action={possessionAction} style={col}><input type="hidden" name="pid" value={S.project} />
-    <div className="callout">For a flat handed over to its first owner. Billing starts on the possession date: the first month is charged from that day. The first bill goes out on the {ord(S.settings.rules.billDay)} after possession (next one: {fd(first)}).</div>
+    <div className="callout">For a flat handed over to its first owner. Billing starts on the possession date: the first month is charged from that day. The first bill goes out {g} days after possession and then on that date every month, quarter or year (possession today: first bill {fd(ex)}, due on the {ord(S.settings.rules.dueDays)} of the month after).</div>
     {isAdmin() ? null : <div className="callout warn"><div>The Admin approves the possession first. Until then the flat isn&apos;t billed and gets no reminders.</div></div>}
     <div className="grid2" style={{ gap: 10 }}>
       <div className="form-row"><label htmlFor="np-a">Apartment</label><input id="np-a" name="apt" type="text" required placeholder="e.g. C-302" /></div>

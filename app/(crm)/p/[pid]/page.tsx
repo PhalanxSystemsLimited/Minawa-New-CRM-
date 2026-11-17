@@ -1,7 +1,7 @@
 // A project's Overview (the demo's viewDash).
-import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillDate, apartments, isBillingDay, billsOf, unpaidMaint, firstBillDate, sheetStats } from '@/lib/engine';
+import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillOf, apartments, isBillingDay, billsOf, unpaidMaint, firstBillDate, sheetStats, openingDue } from '@/lib/engine';
 import { addDays, hour12, ord, diff } from '@/lib/fmt';
-import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short } from '@/lib/fmt';
+import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short, nextMonth, dayIn } from '@/lib/fmt';
 import { spInfo } from '@/lib/docdata';
 import { pendingCount } from '@/lib/manual-send';
 import { Ic } from '@/components/icons';
@@ -46,14 +46,14 @@ export default async function Overview({ params, searchParams }: { params: Promi
       <div className="lv-layout"><div className="lv-main">
       <section className="lv-money lv-ov">
         {firstBill ? <div className="lv-target"><div className="l">BILLING STARTS</div>
-          <div className="lv-next-r big"><CalBadge date={firstBill} /><div><b className="H">{Math.max(0, diff(firstBill, S.today))} days to go</b><small>The first bill goes out on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}</small></div></div>
-          {(() => { const r = S.settings.rules, open = act.reduce((a, o) => a + (o.opening || 0), 0), rec = Math.max(0, open - arrears), rp = open ? Math.round(100 * rec / open) : 0, onBill = act.filter(o => o.possession <= firstBill).length;
+          <div className="lv-next-r big"><CalBadge date={firstBill} /><div><b className="H">{Math.max(0, diff(firstBill, S.today))} days to go</b><small>{S.settings.rules.startOn ? <>On {fd(firstBill)} at {hour12(S.settings.rules.sendHour)} every customer with a balance gets a statement, due {fd(openingDue())}. Monthly charges start in {fm(S.goLive.slice(0, 7))}.</> : <>The first bill goes out on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}</>}</small></div></div>
+          {(() => { const r = S.settings.rules, open = act.reduce((a, o) => a + (o.opening || 0), 0), rec = Math.max(0, open - arrears), rp = open ? Math.round(100 * rec / open) : 0, onBill = S.settings.rules.startOn ? act.filter(o => balance(o) > 0).length : act.filter(o => o.possession <= firstBill).length;
             return <>
-              <div className="lv-mini-cycle lv-pre-cyc"><span><b>{ord(r.billDay)}</b>Bill</span>{r.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(+addDays(firstBill, r.dueDays).slice(8))}</b>Due</span><span><b>{r.feePct}%</b>Fine after</span></div>
+              <div className="lv-mini-cycle lv-pre-cyc"><span><b>{fds(firstBill)}</b>{r.startOn ? 'Statement' : 'Bill'}</span>{r.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{fds(openingDue())}</b>Due</span><span><b>{r.feePct}%</b>Fine after</span></div>
               <div className="lv-pre">
                 {open ? <div><span className="lv-pre-h"><KIcon icon="bank" tone="teal" /><span className="k">Old arrears recovered</span></span><b className="H"><Num v={rec}>{rs(rec)}</Num> <small>of {rs(open)}</small></b><div className="lv-bar g"><span style={{ width: `${Math.min(100, rp)}%` }}></span></div><small>{rp}% recovered so far</small></div>
                   : <div><span className="lv-pre-h"><KIcon icon="bank" tone="teal" /><span className="k">Old arrears</span></span><b className="H">None</b><small>No earlier dues were brought in</small></div>}
-                <div><span className="lv-pre-h"><KIcon icon="users" tone="violet" /><span className="k">On the first bill</span></span><b className="H"><Num v={onBill}>{onBill}</Num> <small>flat{onBill === 1 ? '' : 's'} of {act.length}</small></b><div className="lv-bar a"><span style={{ width: `${act.length ? Math.round(100 * onBill / act.length) : 0}%` }}></span></div><small>{act.length - onBill ? `${act.length - onBill} get possession later` : 'Every apartment is included'}</small></div>
+                <div><span className="lv-pre-h"><KIcon icon="users" tone="violet" /><span className="k">{r.startOn ? 'Get a statement' : 'On the first bill'}</span></span><b className="H"><Num v={onBill}>{onBill}</Num> <small>flat{onBill === 1 ? '' : 's'} of {act.length}</small></b><div className="lv-bar a"><span style={{ width: `${act.length ? Math.round(100 * onBill / act.length) : 0}%` }}></span></div><small>{act.length - onBill ? (r.startOn ? `${act.length - onBill} owe nothing` : `${act.length - onBill} get possession later`) : 'Every apartment is included'}</small></div>
               </div></>; })()}
           <div className="lv-sub"><span>Until then, payments go to old arrears: <b>{rs(arrears)}</b></span></div></div>
           : <div className="lv-target"><div className="l">{monName.toUpperCase()} TARGET <Go href={`${P}?m=target`} className="htg-link">Breakdown</Go></div>
@@ -88,19 +88,20 @@ export default async function Overview({ params, searchParams }: { params: Promi
       </section>
       {(() => {
         // The billing cycle: what the next run will do, and the jobs that are the accountant's.
-        const r = S.settings.rules, soonest = nextBillDate(addDays(S.today, S.settings.lastRun === S.today ? 1 : 0)), next = firstBill && firstBill > soonest ? firstBill : soonest, np = next.slice(0, 7);
+        const r = S.settings.rules, soonest = nextBillOf(S.owners, addDays(S.today, S.settings.lastRun === S.today ? 1 : 0)), next = firstBill && firstBill < soonest ? firstBill : soonest, np = next.slice(0, 7);
         const flats = apartments().filter(o => o.status === 'active' && o.possession <= next);
-        const toBill = flats.filter(o => isBillingDay(o, next)).length;
+        const stmt = !!firstBill && next === firstBill && !!r.startOn;
+        const toBill = stmt ? flats.filter(o => !o.exempt && balance(o) > 0).length : flats.filter(o => isBillingDay(o, next)).length;
         const ut = r.utilities[0], utDone = ut ? flats.filter(o => S.charges.some(c => c.ownerId === o.id && c.period === np && c.kind === ut && c.amount)).length : 0;
         const rem = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => unpaidMaint(b) > 0 && b.dueDate > S.today && b.reminders.length < r.remindOn.length).length;
-        const due = addDays(next, r.dueDays), flag = addDays(due, r.flagDays);
-        const remDate = (d: number) => { const nm = d > r.billDay ? np : addDays(next, 28).slice(0, 7); return `${nm}-${String(d).padStart(2, '0')}`; };
+        const due = stmt ? openingDue() : dayIn(nextMonth(np), r.dueDays), flag = addDays(due, r.flagDays);
+        const remDate = (d: number) => dayIn(due.slice(0, 7), d);
         const steps = [
-          { k: String(+next.slice(8)), title: 'Bills go out', sub: `${fds(next)} · ${hour12(r.sendHour)}`, tag: `${toBill} flat${toBill === 1 ? '' : 's'}`, tone: 'blue' as const },
+          { k: String(+next.slice(8)), title: stmt ? 'Statements go out' : 'Bills go out', sub: `${fds(next)} · ${hour12(r.sendHour)}`, tag: `${toBill} flat${toBill === 1 ? '' : 's'}`, tone: 'blue' as const },
           ...r.remindOn.map((d, i) => ({ k: String(d), title: `${ord(i + 2)} reminder`, sub: fds(remDate(d)), tag: i === 0 && rem ? `${rem} to come` : 'if unpaid', tone: 'amber' as const })),
           { k: String(+due.slice(8)), title: 'Due date', sub: fds(due), tag: `fine ${r.feePct}% next day`, tone: 'red' as const },
           { k: '⚑', title: 'Flag', sub: fds(flag), tag: 'if still unpaid', tone: 'grey' as const }];
-        return <div className="card lv-cyclecard"><div className="card-row"><h3>Billing cycle <small>{fm(np)} bills go out on {fd(next)} at {hour12(r.sendHour)}</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
+        return <div className="card lv-cyclecard"><div className="card-row"><h3>Billing cycle <small>{stmt ? `Go-live statements on ${fd(next)}` : `Next bills on ${fd(next)}`} at {hour12(r.sendHour)} · each customer on their own billing date</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
           <Cycle steps={steps} at={0} />
           <div className="desk-acts">
             {ut ? <Go href={`${P}/utilities?period=${np}`} className="btn sm primary">Enter {ut.toLowerCase()} bills <span className="lv-mini">{utDone} of {flats.length}</span></Go> : null}

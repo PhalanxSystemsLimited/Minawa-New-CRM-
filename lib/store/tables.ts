@@ -3,7 +3,7 @@
 export const TABLES = {
   owners: ['id', 'project', 'unit', 'apt', 'block', 'type', 'name', 'phone', 'email', 'possession', 'possessionKnown', 'opening', 'openingLeft', 'credit', 'feeDue',
     'exempt', 'exemptWhy', 'director', 'discount', 'abroad', 'invalidPhone', 'noPhone', 'rate', 'status', 'closedOn', 'flagged', 'flaggedOn', 'promiseUntil',
-    'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator', 'instalments', 'dueDay'],
+    'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator', 'instalments', 'dueDay', 'firstBill'],
   bills: ['id', 'ownerId', 'project', 'period', 'periodEnd', 'months', 'billDate', 'dueDate', 'finalDate', 'amount', 'discount', 'extras', 'net', 'paid', 'fine', 'finePaid', 'fined', 'fromCredit',
     'prev', 'noticeSkipped', 'flagSkipped', 'reminders', 'lines', 'bd'],
   entries: ['id', 'ownerId', 'project', 'd', 'kind', 'amount', 'desc', 'ref', 'pid'],
