@@ -51,7 +51,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   // WhatsApp sent by hand: everyone's for admins, your own for accountants.
   let wa: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getWaLog']>> = [];
   try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : staff.role === 'accountant' ? [staff.id, ...staffList.filter(x => x.role === 'manager').map(x => x.id)] : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
-  const waToday = wa.filter(e => e.d === today), waSent = waToday.filter(e => e.answer === 'sent').length;
+  // The WhatsApp tab's counter: messages sent today since this person last opened the tab (kept in a cookie).
+  const waSeenName = `mwa_${staff.id.replace(/[^a-z0-9-]/gi, '')}`, waSeen = decodeURIComponent((await cookies()).get(waSeenName)?.value || '');
+  const waToday = wa.filter(e => e.d === today), waSent = waToday.filter(e => e.answer === 'sent' && (e.at || '') > waSeen).length;
+  const waLatest = wa.reduce((m, e) => (e.at || '') > m ? e.at || '' : m, waSeen);
   // Approvals: accountants' changes to owners' charges. Admins see what waits for them; accountants their own requests.
   const admin = staff.role === 'admin';
   const apv: ApprovalView[] = states.flatMap(s => use(s, () => s.approvals.filter(a => admin || a.byId === staff.id)
@@ -178,7 +181,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <aside className="lv-side">
     <Lbl>What happened</Lbl>
     <div className="card lv-act"><div className="card-row"><h3>Activity</h3><Go href="/log" className="btn sm">See all</Go></div>
-        <LiveTabs tabs={[{ key: 'pay', label: 'Payments', badge: newN, body: payFeed }, { key: 'wa', label: 'WhatsApp', badge: waSent, body: waFeed },
+        <LiveTabs tabs={[{ key: 'pay', label: 'Payments', badge: newN, body: payFeed }, { key: 'wa', label: 'WhatsApp', badge: waSent, seen: { name: waSeenName, value: waLatest }, body: waFeed },
           ...(staff.role !== 'manager' ? [{ key: 'staff', label: admin ? 'Staff' : 'Building managers', body: <ActivityList list={accActs} staff={staffList} projects={projs} empty={admin ? 'Nothing yet. What accountants and building managers do shows here.' : 'Nothing yet. What building managers do (cash, possessions, messages) shows here.'} /> }] : [])]} /></div>
     </aside>
     </div>

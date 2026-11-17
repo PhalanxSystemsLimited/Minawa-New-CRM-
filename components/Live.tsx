@@ -135,10 +135,19 @@ export function LiveEffects() {
 }
 
 /** Tabs whose panels are already on the page; switching just shows another panel. */
-export function LiveTabs({ tabs }: { tabs: { key: string; label: string; badge?: number; body: React.ReactNode }[] }) {
-  const [on, setOn] = useState(tabs[0]?.key);
+/** Tabs with counters. A tab with `seen` clears its counter once it is opened, and remembers that in a cookie
+ *  (name=value), so the counter only comes back for new items. */
+export function LiveTabs({ tabs }: { tabs: { key: string; label: string; badge?: number; seen?: { name: string; value: string }; body: React.ReactNode }[] }) {
+  const [on, setOn] = useState(tabs[0]?.key), [cleared, setCleared] = useState<Record<string, string>>({});
+  const open = (t: typeof tabs[number]) => {
+    setOn(t.key);
+    if (t.seen && t.badge) {
+      setCleared(c => ({ ...c, [t.key]: t.seen!.value }));   // until something newer arrives
+      document.cookie = `${t.seen.name}=${encodeURIComponent(t.seen.value)}; path=/; max-age=31536000; samesite=lax`;
+    }
+  };
   return <>
-    <div className="lv-tabs" role="tablist">{tabs.map(t => <button key={t.key} type="button" role="tab" aria-selected={on === t.key} className={on === t.key ? 'on' : ''} onClick={() => setOn(t.key)}>{t.label}{t.badge ? <i>{t.badge}</i> : null}</button>)}</div>
+    <div className="lv-tabs" role="tablist">{tabs.map(t => <button key={t.key} type="button" role="tab" aria-selected={on === t.key} className={on === t.key ? 'on' : ''} onClick={() => open(t)}>{t.label}{t.badge && !(t.seen && cleared[t.key] === t.seen.value) ? <i>{t.badge}</i> : null}</button>)}</div>
     {tabs.map(t => <div key={t.key} role="tabpanel" hidden={on !== t.key} className="lv-tabpanel">{t.body}</div>)}
   </>;
 }
