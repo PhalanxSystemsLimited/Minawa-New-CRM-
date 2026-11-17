@@ -51,7 +51,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
       <Suspense><MobileBar projects={nav} defaultPid={defaultPid} manager={staff.role === 'manager'} /></Suspense>
       <MobileTables />
       <WaReturnPrompt />
-      <LivePayments counts={Object.fromEntries(nav.filter(p => p.live).map(p => [p.id, p.pays || 0]))} />
+      <LivePayments me={staff.id} counts={Object.fromEntries(nav.filter(p => p.live).map(p => [p.id, p.pays || 0]))} />
     </>
   );
 }
