@@ -19,7 +19,7 @@ export function MobileBar({ projects, defaultPid }: { projects: NavProject[]; de
   const items: [string, string, string, boolean, number][] = [
     ['home', 'Home', '/', path === '/', 0],
     ['users', 'Apartments', `${base}/apartments`, on(`${base}/apartments`), 0],
-    ['check', 'To do', `${base}/todo`, on(`${base}/todo`), p?.todo || 0],
+    ['check', 'To do', '/tasks', on('/tasks') || on(`${base}/todo`), projects.reduce((a, x) => a + (x.todo || 0), 0)],
     ['phone', 'Send', `${base}/send`, on(`${base}/send`), 0]
   ];
   // More is lit on the pages only it leads to (WhatsApp, Approvals, Activity, Staff); project pages have their tab row.

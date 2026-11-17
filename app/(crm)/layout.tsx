@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
-import { use, followCount } from '@/lib/engine';
+import { projectTasks, myTasks } from '@/lib/tasks';
 import { Sidebar, Topbar, type NavProject } from '@/components/Shell';
 import { signOut } from '../login/actions';
 import { MobileBar, MobileTables } from '@/components/Mobile';
@@ -27,19 +27,20 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     // Payments this person hasn't seen on the project's Payments page yet.
     const since = jar.get(paySeenCookie(staff.id, p.id))?.value || addDays(todayPKT(), -NEW_DAYS) + 'T00:00';
     const pays = s.payments.filter(x => payKey(x) > since).length;
-    return { id: p.id, name: p.name, place: p.place, live: true, todo: use(s, followCount), pays };
+    return { id: p.id, name: p.name, place: p.place, live: true, todo: myTasks(projectTasks(s), staff).length, pays };
   }));
-  const todo = nav.reduce((s, p) => s + p.todo, 0), firstTodo = nav.find(p => p.todo)?.id || null;
+  // The bell: an Admin's approvals; everyone else's own To do (see lib/tasks.ts).
+  const admin = staff.role === 'admin', todo = admin ? approvals : nav.reduce((s, p) => s + p.todo, 0), firstTodo = nav.find(p => p.todo)?.id || null;
   const defaultPid = nav.find(p => p.live)?.id || 'cc';
   return (
     <>
       <LiveEffects />
       <div className="app">
-        <Suspense><Sidebar projects={nav} admin={staff.role === 'admin'} approvals={approvals} me={{ name: staff.name, role: roleName(staff), signOut }} /></Suspense>
+        <Suspense><Sidebar projects={nav} admin={admin} role={staff.role} approvals={approvals} me={{ name: staff.name, role: roleName(staff), signOut }} /></Suspense>
         <div className="side-scrim" data-a="side-close"></div>
         <div className="shell">
           <header className="top">
-            <Suspense><Topbar todo={todo} firstTodo={firstTodo} roleLabel={roleName(staff)} initials={staff.role === 'admin' ? 'AD' : 'AC'} name={staff.name} defaultPid={defaultPid} signOut={signOut} projects={nav.filter(p => p.live).map(p => ({ id: p.id, name: p.name }))} /></Suspense>
+            <Suspense><Topbar todo={todo} firstTodo={firstTodo} bell={admin ? { href: '/approvals', label: 'Approvals' } : { href: '/tasks', label: 'To do' }} roleLabel={roleName(staff)} initials={admin ? 'AD' : staff.role === 'manager' ? 'BM' : 'AC'} name={staff.name} defaultPid={defaultPid} signOut={signOut} projects={nav.filter(p => p.live).map(p => ({ id: p.id, name: p.name }))} /></Suspense>
           </header>
           <div className="layout wrap">
             <main id="main">{children}</main>

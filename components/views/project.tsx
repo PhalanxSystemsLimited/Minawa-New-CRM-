@@ -7,6 +7,8 @@ import { pendingCount } from '@/lib/manual-send';
 import { requireStaff } from '@/lib/session';
 import { load, projects as listProjects } from '@/lib/ops';
 import { cookies } from 'next/headers';
+import { getStore } from '@/lib/store';
+import { managersOf, projectTasks } from '@/lib/tasks';
 import { addDays } from '@/lib/fmt';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { Go, A } from '../client';
@@ -25,12 +27,12 @@ export function newPayments() {
 }
 
 export function projHead(tab: Tab, ownerTitle?: string) {
-  const S = cur(), p = S.proj, n = followCount(), w = pendingCount(), np = newPayments().length;
+  const S = cur(), p = S.proj, n = projectTasks(S).filter(t => t.role === 'manager').length, w = pendingCount(), np = newPayments().length;
   const t = ownerTitle || TITLES[tab] || 'Overview';
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
-    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && (k === 'settings' || k === 'utilities' || k === 'generator')) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
+    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && (k === 'settings' || k === 'utilities' || k === 'generator')) && !((k === 'send' || k === 'follow') && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
       <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}</nav></TabScroller>
   </>;
 }
@@ -42,6 +44,7 @@ export async function projectPage(pid: string, sp: Record<string, string | undef
   if (!proj) return <div className="card allclear"><div className="big">This building isn&apos;t open to you</div><Go href="/" className="btn">Back to the dashboard</Go></div>;
   if (!proj.live) return notSetUp(proj.id, proj.name, proj.place, proj.kind, staff.role === 'admin');
   const s = await load(pid, staff);
+  try { s.managers = managersOf(pid, await (await getStore()).listStaff()); } catch { s.managers = []; }
   try { s.paySeen = (await cookies()).get(paySeenCookie(staff.id, pid))?.value || null; } catch { s.paySeen = null; }
   return use(s, () => {
     const body = render(s);

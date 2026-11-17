@@ -749,3 +749,7 @@ button.lv-kpi{cursor:pointer}
 .signin-page .signin-btn[disabled]{background:linear-gradient(90deg,#964724 0%,#B4552B 50%,#964724 100%);background-size:200% 100%;animation:lvSignWait 1.2s linear infinite;cursor:progress}
 @keyframes lvSignWait{from{background-position:100% 0}to{background-position:-100% 0}}
 @media (prefers-reduced-motion:reduce){.signin-page .signin-btn,.signin-arr,.signin-page .signin-btn[disabled]{animation:none!important;transition:none!important}}
+
+/* ===== Update 78: To do item in the sidebar's System section (a teal clipboard, the list "ticks" on hover) ===== */
+.si-todo{--si-a:#5EEAD4;--si-b:#0F766E;--si-g:rgba(13,148,136,.7)}
+.si-todo:hover .si-ic svg{animation:lvWrite 1.1s var(--lv-ease) infinite;transform-origin:15% 50%}

@@ -132,15 +132,18 @@ export async function pickAction(fdata: FormData) {
 
 /* ---------- to do ---------- */
 export async function verifyAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), amt = Math.round(+S(fdata, 'amt') || 0);
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), amt = Math.round(+S(fdata, 'amt') || 0), back = S(fdata, 'back');
+  if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Bank transfers are checked by the Accountant');
   const p = await mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (!pr || pr.status !== 'pending') return null; return verifyProof(pr, s.today, at(15), staffName(staff), amt); });
-  if (!p) go(`/p/${pid}/todo`, 'Already handled');
+  if (!p) go(back || `/p/${pid}/todo`, 'Already handled');
+  if (back) go(back, `Payment recorded: receipt ${p!.receipt}`);
   redirect(`/p/${pid}/todo?doc=receipt:${p!.id}&flash=proof`);
 }
 export async function rejectAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id');
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back');
+  if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Bank transfers are checked by the Accountant');
   await mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (pr && pr.status === 'pending') rejectProof(pr, s.today, at(15)); });
-  go(`/p/${pid}/todo`, 'Owner told on WhatsApp');
+  go(back || `/p/${pid}/todo`, 'Owner told on WhatsApp');
 }
 export async function alertDoneAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id');

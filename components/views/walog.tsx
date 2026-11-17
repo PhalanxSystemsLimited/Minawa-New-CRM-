@@ -16,7 +16,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
   const today = todayPKT(), per = PERIODS.some(p => p[0] === sp.per) ? sp.per : '30', pid = fixedProject || sp.p || '', ans = sp.a === 'sent' || sp.a === 'not_sent' ? sp.a : '';
   const who = admin ? sp.who || 'all' : me.id, q = (sp.q || '').toLowerCase();
   const since = per === 'all' ? null : per === 'today' ? today : addDays(today, -(+per - 1));
-  const ids = who === 'all' ? null : who === 'accountants' ? staff.filter(s => s.role === 'accountant').map(s => s.id) : [who];
+  const ids = who === 'all' ? null : who === 'accountants' ? staff.filter(s => s.role === 'accountant').map(s => s.id) : who === 'managers' ? staff.filter(s => s.role === 'manager').map(s => s.id) : [who];
   let list: Awaited<ReturnType<typeof store.getWaLog>> = [], err = '';
   try { list = await store.getWaLog({ project: pid || null, staffIds: ids, answer: (ans || null) as 'sent' | 'not_sent' | null, since, limit: 1000 }); }
   catch (e) { err = (e as Error).message; }
@@ -37,7 +37,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
     </div>
     <div className="card"><div className="toolbar" style={{ marginBottom: 14 }}>
       <LiveSearch name="q" placeholder="Apartment, owner, number or message" defaultValue={sp.q || ''} />
-      {admin ? <GoSelect name="who" value={who} ariaLabel="Sent by" style={{ width: 'auto' }} options={[['all', 'Everyone'], ['accountants', 'All accountants'], ...staff.map(s => [s.id, `${s.name} (${s.role === 'admin' ? 'Admin' : 'Accountant'})`] as [string, string])]} /> : null}
+      {admin ? <GoSelect name="who" value={who} ariaLabel="Sent by" style={{ width: 'auto' }} options={[['all', 'Everyone'], ['accountants', 'All accountants'], ['managers', 'All building managers'], ...staff.map(s => [s.id, `${s.name} (${s.role === 'admin' ? 'Admin' : 'Accountant'})`] as [string, string])]} /> : null}
       {fixedProject ? null : <GoSelect name="p" value={pid} ariaLabel="Project" style={{ width: 'auto' }} options={[['', 'All projects'], ...projs.map(p => [p.id, p.name] as [string, string])]} />}
       <GoSelect name="a" value={ans} ariaLabel="Answer" style={{ width: 'auto' }} options={[['', 'Sent and not sent'], ['sent', 'Sent'], ['not_sent', 'Opened, not sent']]} />
       <GoSelect name="per" value={per} ariaLabel="When" style={{ width: 'auto' }} options={PERIODS} />

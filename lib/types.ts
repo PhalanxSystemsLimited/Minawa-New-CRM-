@@ -154,6 +154,8 @@ export interface State {
   company?: Company;
   /** Screens only (not saved): when the signed-in person last opened Payments here, for the "new payments" badge. */
   paySeen?: string | null;
+  /** Names of the building managers assigned to this project (for screens only, not saved). */
+  managers?: string[];
   log: LogEntry[];          // new entries only (written on save)
   seq: Record<string, number>;
 }

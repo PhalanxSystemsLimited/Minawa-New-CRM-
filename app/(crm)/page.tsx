@@ -6,6 +6,7 @@ import { pendingCount } from '@/lib/manual-send';
 import { KIND_LABEL } from '@/lib/approvals';
 import { cookies } from 'next/headers';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
+import { projectTasks, myTasks } from '@/lib/tasks';
 import { NeedTile, Ring, Spark, Kpi, CalBadge, Lbl, Num, initials, Stack } from '@/components/views/live';
 import { LiveTabs } from '@/components/Live';
 import { MONL, fm, fd, fds, dow, dowl, rs, todayPKT, addDays, diff, nowPKT, ord, hour12, short } from '@/lib/fmt';
@@ -41,14 +42,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const up = states.flatMap(s => use(s, () => upcoming(14, 6).map(x => ({ ...x, pname: s.proj.name })))).sort((a, b) => a.d.localeCompare(b.d) || oNum(a.e.o.id) - oNum(b.e.o.id)).slice(0, 6);
   // Admins see what the accountants have been doing.
   let accActs: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getLog']>> = [], staffList: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['listStaff']>> = [];
-  if (staff.role === 'admin') {
+  if (staff.role !== 'manager') {
+    // Admins: accountants and building managers. Accountants: the building managers (their own is under Activity).
     const store = await getStore(); staffList = await store.listStaff();
-    const ids = staffList.filter(x => x.role === 'accountant').map(x => x.id);
+    const ids = staffList.filter(x => x.role === 'manager' || (staff.role === 'admin' && x.role === 'accountant')).map(x => x.id);
     accActs = (await store.getLog({ staffIds: ids, limit: 40 })).filter(e => !['signin', 'signout'].includes(e.kind)).slice(0, 6);
   }
   // WhatsApp sent by hand: everyone's for admins, your own for accountants.
   let wa: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getWaLog']>> = [];
-  try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
+  try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : staff.role === 'accountant' ? [staff.id, ...staffList.filter(x => x.role === 'manager').map(x => x.id)] : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
   const waToday = wa.filter(e => e.d === today), waSent = waToday.filter(e => e.answer === 'sent').length;
   // Approvals: accountants' changes to owners' charges. Admins see what waits for them; accountants their own requests.
   const admin = staff.role === 'admin';
@@ -75,6 +77,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const nextBill = starts || per.map(x => x.next).sort()[0] || today, daysTo = Math.max(0, diff(nextBill, today));
   const r0 = st[0]?.s.settings.rules, dueDay = r0 ? +addDays(`${today.slice(0, 7)}-${String(r0.billDay).padStart(2, '0')}`, r0.dueDays).slice(8) : 10;
   const firstTodo = st.find(x => x.todo)?.p.id || live[0]?.id || '', firstSend = per.find(x => x.send)?.id || live[0]?.id || '', firstNew = per.find(x => x.newN)?.id || live[0]?.id || '';
+  // The three To do lists (lib/tasks.ts): managers' work, accountants' work, and this person's own.
+  const allT = states.flatMap(s => projectTasks(s)), mgrT = allT.filter(t => t.role === 'manager'), accT = allT.filter(t => t.role === 'accountant'), myT = myTasks(allT, staff);
+  const lateN = (l: typeof allT) => l.filter(t => t.overdue).length;
   const hr = +nowPKT().slice(0, 2), hello = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
   const apvKinds = Object.entries(apvWait.reduce((a, v) => { a[KIND_LABEL[v.a.kind]] = (a[KIND_LABEL[v.a.kind]] || 0) + 1; return a; }, {} as Record<string, number>)).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(' · ');
   const sort = sp.sort === 'paid' || sp.sort === 'todo' ? sp.sort : 'out';
@@ -99,9 +104,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
     <Lbl>Needs you today</Lbl>
     <div className="lv-needs">
-      <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={`/p/${firstTodo}/todo`} pulse sub={todo ? st.filter(x => x.todo).map(x => `${x.p.name.replace(/ Apartments.*$/, '')} ${x.todo}`).join(' · ') : 'All clear'} />
-      <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label={admin ? 'changes to approve' : 'of your changes waiting'} href="/approvals" sub={apvWait.length ? apvKinds : admin ? 'Nothing waiting for you' : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
-      <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+      {staff.role === 'admin' ? <>
+        <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label="changes to approve" href="/approvals" pulse sub={apvWait.length ? apvKinds : 'Nothing waiting for you'} />
+        <NeedTile title="Building managers" icon="alert" tone="red" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · ${sendN} owner${sendN === 1 ? '' : 's'} to message` : 'All clear'} />
+        <NeedTile title="Accountants" icon="phone" tone="green" n={accT.length} label={accT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={accT.length ? `${lateN(accT)} late · bank transfers to check` : 'All clear'} />
+      </> : staff.role === 'accountant' ? <>
+        <NeedTile title="To do" icon="alert" tone="red" n={accT.length} label={accT.length === 1 ? 'payment to check' : 'payments to check'} href="/tasks" pulse sub={accT.length ? `${lateN(accT)} late` : 'All clear'} />
+        <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
+        <NeedTile title="Building managers" icon="phone" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
+      </> : <>
+        <NeedTile title="To do" icon="alert" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? `${lateN(myT)} late` : 'All clear'} />
+        <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+        <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label="of your requests waiting" href="/approvals" sub={apvWait.length ? apvKinds : 'Nothing waiting'} />
+      </>}
       <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
 
@@ -154,7 +169,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <Lbl>What happened</Lbl>
     <div className="card lv-act"><div className="card-row"><h3>Activity</h3><Go href="/log" className="btn sm">See all</Go></div>
         <LiveTabs tabs={[{ key: 'pay', label: 'Payments', badge: newN, body: payFeed }, { key: 'wa', label: 'WhatsApp', badge: waSent, body: waFeed },
-          ...(admin ? [{ key: 'staff', label: 'Staff', body: <ActivityList list={accActs} staff={staffList} projects={projs} empty="Nothing yet. Payments, notes, utility bills, notices and links that accountants record show here." /> }] : [])]} /></div>
+          ...(staff.role !== 'manager' ? [{ key: 'staff', label: admin ? 'Staff' : 'Building managers', body: <ActivityList list={accActs} staff={staffList} projects={projs} empty={admin ? 'Nothing yet. What accountants and building managers do shows here.' : 'Nothing yet. What building managers do (cash, possessions, messages) shows here.'} /> }] : [])]} /></div>
     </aside>
     </div>
     {modal}

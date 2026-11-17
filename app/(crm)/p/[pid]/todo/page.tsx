@@ -16,15 +16,18 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
   const { pid } = await params, sp = await searchParams;
   return projectPage(pid, sp, () => {
     const S = cur();
-    const pr = S.proofs.filter(p => p.status === 'pending'), fl = failedList(), al = S.alerts.filter(a => !a.done), ts = toDoGroups(), tsN = ts.reduce((a, g) => a + g.n, 0);
+    // Who does this list: the building's manager(s); everyone when the building has none. Bank transfers are the
+    // Accountant's (and an Admin's), so a manager doesn't see them here.
+    const mgrs = S.managers || [], acts = S.role === 'manager' || !mgrs.length, money = S.role !== 'manager';
+    const pr = money ? S.proofs.filter(p => p.status === 'pending') : [], fl = failedList(), al = S.alerts.filter(a => !a.done), ts = toDoGroups(), tsN = ts.reduce((a, g) => a + g.n, 0);
     const hid = (id: string) => <><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={id} /></>;
-    const head = <div className="page-head"><div><h2>To do</h2><p>What needs a person. Bills go out on the 25th and reminders on the 3rd and 7th of every month: the CRM makes them, and they wait here for you to send one by one on WhatsApp.</p></div></div>;
+    const head = <div className="page-head"><div><h2>To do</h2><p>{acts ? 'What needs a person. The CRM makes bills, reminders and notices at 11:00 AM; they wait here for you to send one by one on WhatsApp.' : `Sent by ${mgrs.join(', ')} (building manager). You can follow it here; the sending is theirs.`}</p></div></div>;
     if (!tsN && !pr.length && !fl.length && !al.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
     return <>
       {projHead('follow')}{head}
-      {tsN ? <div className="card"><div className="card-row"><h3>Send on WhatsApp <small>{tsN} owner{tsN === 1 ? '' : 's'} waiting · one by one</small></h3><Go href={`/p/${pid}/send?type=queue&kind=all&go=1`} className="btn sm wa"><Wa /> Send all, one by one</Go></div>
+      {tsN ? <div className="card"><div className="card-row"><h3>Send on WhatsApp <small>{tsN} owner{tsN === 1 ? '' : 's'} waiting · one by one</small></h3>{acts ? <Go href={`/p/${pid}/send?type=queue&kind=all&go=1`} className="btn sm wa"><Wa /> Send all, one by one</Go> : null}</div>
         <div className="list">{ts.map(g => <div className="li" key={g.key}><div className="t"><div className="a">{g.label} · <span className="num">{g.n}</span> owner{g.n === 1 ? '' : 's'}</div><div className="b">{g.hint} · waiting since {fds(g.since)}</div></div>
-          <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa"><Wa /> Send {g.n === 1 ? 'it' : 'one by one'}</Go></div>)}</div>
+          {acts ? <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa"><Wa /> Send {g.n === 1 ? 'it' : 'one by one'}</Go> : <span className="tag warn">Waiting for {mgrs[0]}</span>}</div>)}</div>
         <p className="cell-sub" style={{ margin: '10px 0 0' }}>Each owner&apos;s chat opens with the message and Pay Now link typed in. When you come back you confirm it was sent, and they leave this list.</p>
       </div> : null}
       {pr.length ? <div className="card"><h3>Check these bank transfers <small>owners sent a screenshot</small></h3>
