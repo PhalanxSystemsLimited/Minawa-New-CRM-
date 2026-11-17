@@ -83,7 +83,11 @@ export class SupabaseStore implements Store {
     if (ch.seq.length) await this.upsert('counters', ch.seq.map(([k, n]) => ({ k, n })), 'k');
     if (s.log.length) { await this.appendLog(s.log); s.log = []; }
     snapshot(s);
+    await this.bump();
   }
+  /** Marks that something changed, so every open screen refreshes on its next check. */
+  private async bump() { try { await this.db.from('counters').upsert([{ k: '__rev', n: Date.now() }], { onConflict: 'k' }); } catch { /* only a hint for open screens */ } }
+  async revision() { const { data } = await this.db.from('counters').select('n').eq('k', '__rev').limit(1); return Number(data?.[0]?.n || 0); }
   async withLock<T>(fn: () => Promise<T>): Promise<T> {
     const holder = randomUUID();
     for (let i = 0; ; i++) {
@@ -119,7 +123,7 @@ export class SupabaseStore implements Store {
     return (data || []).map(r => { const e = fromRow<WaLog & { n?: number }>(r); delete e.n; return e as WaLog; });
   }
   async listStaff() { return (await this.all('staff')).map(r => { const s = fromRow<Staff & { createdAt?: string }>(r); delete s.createdAt; return s; }); }
-  async saveStaff(st: Staff) { await this.upsert('staff', [toRow(st as unknown as Record<string, unknown>)], 'id'); }
+  async saveStaff(st: Staff) { await this.upsert('staff', [toRow(st as unknown as Record<string, unknown>)], 'id'); await this.bump(); }
   async locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }) {
     if (q.phoneDigits) {
       const tail = q.phoneDigits.slice(-10);
@@ -148,8 +152,8 @@ export class SupabaseStore implements Store {
     }
     if (s.log.length) { await this.appendLog(s.log); s.log = []; }
   }
-  async saveTemplates(t: Record<string, Template>) { await this.upsert('templates', Object.values(t).map(x => toRow(x as unknown as Record<string, unknown>)), 'key'); }
-  async saveSettings(st: ProjectSettings) { await this.upsert('project_settings', [toRow(st as unknown as Record<string, unknown>)], 'project'); }
+  async saveTemplates(t: Record<string, Template>) { await this.upsert('templates', Object.values(t).map(x => toRow(x as unknown as Record<string, unknown>)), 'key'); await this.bump(); }
+  async saveSettings(st: ProjectSettings) { await this.upsert('project_settings', [toRow(st as unknown as Record<string, unknown>)], 'project'); await this.bump(); }
   async throttle(name: string, seconds: number) {
     const { data, error } = await this.db.rpc('acquire_lock', { p_name: name, p_holder: randomUUID(), p_ttl: seconds });
     if (error) throw new Error(error.message);
@@ -161,7 +165,7 @@ export class SupabaseStore implements Store {
     return (data || []).map(r => ({ id: String(r.id), d: String(r.d), t: String(r.t) }));
   }
   async getCompany() { const { data } = await this.db.from('company').select('*').eq('id', 1).limit(1); const r = data?.[0]; if (!r) return { ...DEFAULT_COMPANY }; const c = fromRow<Company & { id?: number }>(r); delete c.id; return { ...DEFAULT_COMPANY, ...c }; }
-  async saveCompany(c: Company) { await this.upsert('company', [{ id: 1, ...toRow(c as unknown as Record<string, unknown>) }], 'id'); }
+  async saveCompany(c: Company) { await this.upsert('company', [{ id: 1, ...toRow(c as unknown as Record<string, unknown>) }], 'id'); await this.bump(); }
 }
 // Keep TableName referenced for editors.
 export type { TableName };

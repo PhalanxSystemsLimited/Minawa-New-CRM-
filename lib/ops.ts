@@ -4,7 +4,7 @@ import { getStore } from './store';
 import { use, runDaily, setTarget, log, at, payLink, payStaleLink } from './engine';
 import { safepayConfigured, safepayMode, getQuickLink } from './safepay';
 import { dispatch, checkSafepay } from './dispatch';
-import { todayPKT, addDays, nowPKT, rs } from './fmt';
+import { todayPKT, addDays, nowPKT, rs, hour12 } from './fmt';
 import { staffName } from './session';
 
 export async function projects(): Promise<Project[]> { return (await getStore()).listProjects(); }
@@ -42,6 +42,14 @@ export async function mutate<T>(pid: string, staff: Staff | null, fn: (s: State)
   });
 }
 
+/** The last day the daily run may cover now: today once it is the project's send hour (11:00 AM Pakistan time),
+ *  otherwise yesterday. Bills on the 25th, reminders on the 3rd and 7th, fines and flags are made at that hour,
+ *  not at midnight or whenever someone happens to open the CRM. Missed days are always caught up. */
+export function runUpTo(s: State, today = todayPKT()) {
+  const hour = +nowPKT().slice(0, 2);
+  return hour >= (s.settings.rules.sendHour ?? 11) || process.env.APP_TODAY ? today : addDays(today, -1);
+}
+
 /** The daily run for every live project, catching up any days that were missed. */
 export async function runDailyAll(staff?: Staff | null) {
   const store = await getStore(), today = todayPKT(), out: Record<string, unknown> = {};
@@ -49,13 +57,14 @@ export async function runDailyAll(staff?: Staff | null) {
     out[p.id] = await store.withLock(async () => {
       const s = await load(p.id, staff);
       s.staffId = null;   // reminders, fines and flags are the system's, even when an admin starts the run
-      const last = s.settings.lastRun || addDays(today, -1);
+      const last = s.settings.lastRun || addDays(today, -1), upto = runUpTo(s, today);
       const days: string[] = [];
-      for (let d = addDays(last, 1); d <= today; d = addDays(d, 1)) days.push(d);
+      for (let d = addDays(last, 1); d <= upto; d = addDays(d, 1)) days.push(d);
+      if (!days.length) return { days, counts: [], sent: 0, waiting: `today's run is at ${hour12(s.settings.rules.sendHour)}` };
       const counts = days.map(d => use(s, () => { s.today = d; return runDaily(d); }));
       s.today = today;
       if (!s.settings.targets[today.slice(0, 7)]) use(s, () => setTarget(today.slice(0, 7)));
-      s.settings.lastRun = today;
+      s.settings.lastRun = upto;
       await store.saveState(s);
       await checkSafepay(s);
       const sent = await dispatch(s);
@@ -128,15 +137,23 @@ export async function autoSweep() {
 
 /** The daily run without a scheduler: while anyone has the CRM open (checked from /api/live), each live project is run
  *  once a day (bills on the 25th, reminders on the 3rd and 7th, fines, notices and flags), catching up any days that
- *  were missed. What it makes waits in To do and Send on WhatsApp, to be sent by hand. Checked at most every 15 minutes. */
+ *  were missed. What it makes waits in To do and Send on WhatsApp, to be sent by hand. Checked at most once a minute;
+ *  today's run waits until the project's send hour (11:00 AM). */
 export async function autoDaily() {
   try {
     const store = await getStore(), today = todayPKT();
-    if (!(await store.throttle(`daily-check-${today}`, 900))) return 0;
+    // Once today's run is done everywhere, a marker held until midnight makes every later check stop here cheaply.
+    if (!(await store.throttle(`daily-done-${today}`, 1))) return 0;
+    if (!(await store.throttle(`daily-check-${today}`, 60))) return 0;
     const due = [];
-    for (const p of await liveProjects()) { const s = await load(p.id, null); if ((s.settings.lastRun || '') < today) due.push(p.id); }
-    if (!due.length) return 0;
-    await runDailyAll(null);
+    let allDone = true;
+    for (const p of await liveProjects()) {
+      const s = await load(p.id, null), upto = runUpTo(s, today);
+      if ((s.settings.lastRun || '') < upto) due.push(p.id);
+      if (upto < today) allDone = false;   // before 11:00 AM: today's run is still to come
+    }
+    if (due.length) await runDailyAll(null);
+    if (allDone) { const [h, m] = nowPKT().split(':').map(Number); await store.throttle(`daily-done-${today}`, Math.max(60, (24 * 60 - h * 60 - m) * 60)); }
     return due.length;
   } catch (e) { console.error('daily run', (e as Error).message); return 0; }
 }

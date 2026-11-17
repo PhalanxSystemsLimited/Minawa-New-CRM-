@@ -34,6 +34,8 @@ export interface Store {
   throttle(name: string, seconds: number): Promise<boolean>;
   /** Payments on or after a date (id, day and time only): for the "new payments" badges. */
   paymentsSince(project: string, since: string): Promise<{ id: string; d: string; t: string }[]>;
+  /** A number that changes whenever anything is saved: open screens compare it to know when to refresh. */
+  revision(): Promise<number>;
   getCompany(): Promise<Company>;
   saveCompany(c: Company): Promise<void>;
 }

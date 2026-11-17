@@ -80,9 +80,11 @@ export class LocalStore implements Store {
     if (ch.set) d.settings[s.project] = clone(s.settings);
     for (const [k, v] of Object.entries(s.seq)) d.counters[k] = Math.max(d.counters[k] || 0, v);
     if (s.log.length) { d.log.push(...clone(s.log)); if (d.log.length > 20000) d.log.splice(0, d.log.length - 20000); s.log = []; }
+    d.counters.__rev = Date.now();
     flush();
     snapshot(s);
   }
+  async revision() { return Number(db().counters.__rev || 0); }
   async throttle(name: string, seconds: number) {
     const t = (g as unknown as { __minawaThrottle?: Record<string, number> }), now = Date.now();
     t.__minawaThrottle = t.__minawaThrottle || {};
@@ -111,7 +113,7 @@ export class LocalStore implements Store {
       && (!o.since || e.d >= o.since) && (!o.staffIds || (!!e.staffId && o.staffIds.includes(e.staffId)))).slice(-(o.limit || 300)).reverse());
   }
   async listStaff() { return clone(db().staff); }
-  async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); flush(); }
+  async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); db().counters.__rev = Date.now(); flush(); }
   async locate(q: { phoneDigits?: string; linkId?: string; spLinkId?: string; waId?: string; reference?: string }) {
     const d = db();
     if (q.phoneDigits) {
@@ -134,9 +136,9 @@ export class LocalStore implements Store {
     d.log.push(...clone(s.log)); s.log = [];
     flush();
   }
-  async saveTemplates(t: Record<string, Template>) { db().templates = clone(t); flush(); }
-  async saveSettings(st: ProjectSettings) { db().settings[st.project] = clone(st); flush(); }
+  async saveTemplates(t: Record<string, Template>) { db().templates = clone(t); db().counters.__rev = Date.now(); flush(); }
+  async saveSettings(st: ProjectSettings) { db().settings[st.project] = clone(st); db().counters.__rev = Date.now(); flush(); }
   async getCompany() { return { ...DEFAULT_COMPANY, ...(db().company || {}) }; }
-  async saveCompany(c: Company) { db().company = clone(c); flush(); }
+  async saveCompany(c: Company) { db().company = clone(c); db().counters.__rev = Date.now(); flush(); }
 }
 export function resetLocal(data?: Partial<DB>) { g.__minawaDb = { ...empty(), ...(data || {}) }; flush(); }
