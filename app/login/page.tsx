@@ -1,6 +1,7 @@
 import { signIn } from './actions';
 import { supabaseOn } from '@/lib/session';
 import { Submit, PasswordInput } from '@/components/client';
+import { ThemeSwitch } from '@/components/Shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   return (
     <div className="signin-page">
       <div className="signin-bg" aria-hidden="true"></div>
+      <div className="signin-thm"><ThemeSwitch /></div>
       <main className="signin-main">
         <div className="signin-card">
           <header className="signin-head">

@@ -112,8 +112,6 @@ export function ThemeSwitch() {
     const m = document.cookie.match(/(?:^|; )minawa-theme=(dark|frost)/), cur = (m ? m[1] : 'light') as Theme;
     if (cur === 'light') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = cur;
     setT(cur);
-    // the CRM's theme does not follow you to the sign-in page or to owners' payment pages
-    return () => { delete document.documentElement.dataset.theme; };
   }, []);
   const pick = (k: Theme) => {
     const next = k === t ? THEMES[(THEMES.findIndex(x => x[0] === t) + 1) % THEMES.length][0] : k;

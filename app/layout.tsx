@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* The CRM theme (Light, Dark or Frost) is set before the page paints. Not on sign-in or owners' payment pages. */}
-        <script dangerouslySetInnerHTML={{ __html: "try{var m=document.cookie.match(/(?:^|; )minawa-theme=(dark|frost)/);if(m&&!/^\\/(login|pay)(\\/|$)/.test(location.pathname))document.documentElement.dataset.theme=m[1]}catch(e){}" }} />
+        <script dangerouslySetInnerHTML={{ __html: "try{var m=document.cookie.match(/(?:^|; )minawa-theme=(dark|frost)/);if(m)document.documentElement.dataset.theme=m[1]}catch(e){}" }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
