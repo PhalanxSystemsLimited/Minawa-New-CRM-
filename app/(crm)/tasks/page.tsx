@@ -50,12 +50,13 @@ export default async function Tasks() {
   if (me.role === 'accountant') {
     const proofs = states.flatMap(s => use(s, () => s.proofs.filter(p => p.status === 'pending').map(p => ({ p, o: ownerById(p.ownerId), s }))));
     return <>
-      {head('To do', 'Money to check. Bank transfers owners send as a screenshot wait here until you find them in the bank statement.')}
-      <div className="card"><div className="card-row"><h3>Check these bank transfers <small>{proofs.length} waiting</small></h3></div>
-        {proofs.length ? <div className="list">{proofs.map(({ p, o, s }) => <div className="li" key={p.id} id={`proof-${p.id}`}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span></div><div className="b">{o.name} · {s.proj.name} · sent {fd(p.d)}</div></div>
+      {head('To do', 'Money to check: bank transfers owners sent as a screenshot, and cash building managers recorded. An owner\'s balance changes only once you confirm.')}
+      <div className="card"><div className="card-row"><h3>Payments to check <small>{proofs.length} waiting</small></h3></div>
+        {proofs.length ? <div className="list">{proofs.map(({ p, o, s }) => <div className="li" key={p.id} id={`proof-${p.id}`}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {p.kind === 'cash' ? <span className="tag warn">Cash</span> : <span className="tag info">Bank transfer</span>}</div>
+            <div className="b">{o.name} · {s.proj.name} · {p.kind === 'cash' ? <>recorded by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · receipt ${p.ref}` : ''}{p.note ? ` · ${p.note}` : ''}</> : `screenshot sent ${fd(p.d)}`}</div></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <form action={verifyAction}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="amt" value={p.amount} /><input type="hidden" name="back" value="/tasks" /><Submit className="btn sm primary">It&apos;s in the bank</Submit></form>
-            <form action={rejectAction}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="back" value="/tasks" /><Submit className="btn sm">Can&apos;t find it</Submit></form>
+            <form action={verifyAction}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="amt" value={p.amount} /><input type="hidden" name="back" value="/tasks" /><Submit className="btn sm primary">{p.kind === 'cash' ? 'Confirm cash' : 'It\'s in the bank'}</Submit></form>
+            <form action={rejectAction} style={{ display: 'flex', gap: 6 }}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="back" value="/tasks" />{p.kind === 'cash' ? <input name="reply" type="text" placeholder="Why (for the manager)" aria-label="Why it isn't confirmed" style={{ width: 170 }} /> : null}<Submit className="btn sm">{p.kind === 'cash' ? 'Not received' : 'Can\'t find it'}</Submit></form>
           </div></div>)}</div> : <p className="empty">Nothing to check.</p>}
       </div>
       <div className="card"><div className="card-row"><h3>Building managers&apos; To do <small>to follow up · {mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>

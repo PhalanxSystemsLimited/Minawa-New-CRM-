@@ -5,7 +5,7 @@ import { cur, ownerById, balance, duesBreakdown, activeLink, billsOf, unpaid, ge
 import { PLAN_LABEL } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
 import { toggleGeneratorAction } from '@/lib/actions-generator';
-import { possessionAction, adjustAction } from '@/lib/actions-desk';
+import { possessionAction, adjustAction, instalmentAction, dueAction } from '@/lib/actions-desk';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
 import { addDays, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
 import { SERVICES } from '@/lib/defaults';
@@ -72,8 +72,24 @@ const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap
 
 export function OwnerModal({ m, o }: { m: string; o: Owner }) {
   const S = cur(), bal = balance(o);
+  if (m.startsWith('instal')) return InstalModal({ o, n: Math.min(24, Math.max(2, +m.split('-')[1] || 3)) });
   switch (m) {
-    case 'recpay': return <ModalShell title="Record bank payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
+    case 'due': return <ModalShell title="Due date for this owner"><form action={dueAction} style={col}>{hidden(o)}
+      <div className="callout">For {o.name} only, from the next bill: each bill is due on this day of the month after the bill. {o.dueDay ? `Now: the ${ord(o.dueDay)}.` : 'Now: the project\'s due date.'}</div>
+      <div className="form-row"><label htmlFor="du-d">Due on the</label><select id="du-d" name="dueDay" defaultValue={o.dueDay || 15}>{Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{ord(d)} of the month after the bill</option>)}</select></div>
+      <div className="form-row"><label htmlFor="du-r">Reason{isAdmin() ? ' (optional)' : ''}</label><input id="du-r" name="reason" type="text" required={!isAdmin()} placeholder="e.g. Salary comes on the 20th" /></div>
+      {isAdmin() ? null : <div className="callout warn"><div>The Admin approves this first and sees your reason.</div></div>}
+      <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save due date' : 'Send for approval'}</Submit></div></form></ModalShell>;
+    case 'recpay': if (cur().role === 'manager') return <ModalShell title="Record cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
+      <div className="callout">Cash {o.name} paid you by hand. It goes to the Accountant to confirm; {o.name}&apos;s balance changes once it is confirmed. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <div className="grid2" style={{ gap: 10 }}>
+        <div className="form-row"><label htmlFor="rc-amt">Amount (Rs)</label><input id="rc-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
+        <div className="form-row"><label htmlFor="rc-d">Paid on</label><input id="rc-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
+      </div>
+      <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" required /></div>
+      <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
+      <div className="m-actions"><CloseBtn /><Submit>Send to the Accountant</Submit></div></form></ModalShell>;
+      return <ModalShell title="Record bank payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
       <div className="callout">For money paid straight into Minawa&apos;s bank account, outside Safepay. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
       <div className="form-row"><label htmlFor="rp-m">Method</label><select id="rp-m" name="method"><option>Bank deposit</option><option>Bank transfer outside the provider</option><option>Cheque</option><option>Cash at the office</option></select></div>
@@ -222,6 +238,7 @@ export function PossessionModal() {
   const first = nextBillDate(S.today);
   return <ModalShell title="New possession"><form action={possessionAction} style={col}><input type="hidden" name="pid" value={S.project} />
     <div className="callout">For a flat handed over to its first owner. Billing starts on the possession date: the first month is charged from that day. The first bill goes out on the {ord(S.settings.rules.billDay)} after possession (next one: {fd(first)}).</div>
+    {isAdmin() ? null : <div className="callout warn"><div>The Admin approves the possession first. Until then the flat isn&apos;t billed and gets no reminders.</div></div>}
     <div className="grid2" style={{ gap: 10 }}>
       <div className="form-row"><label htmlFor="np-a">Apartment</label><input id="np-a" name="apt" type="text" required placeholder="e.g. C-302" /></div>
       <div className="form-row"><label htmlFor="np-b">Block</label><input id="np-b" name="block" type="text" list="np-blocks" placeholder="e.g. C" /><datalist id="np-blocks">{blocks.map(b => <option key={b} value={b} />)}</datalist></div>
@@ -237,5 +254,23 @@ export function PossessionModal() {
       <div className="form-row"><label htmlFor="np-pl">Billing plan</label><select id="np-pl" name="plan" defaultValue="monthly">{Object.entries(PLAN_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
     </div>
     <div className="form-row"><label htmlFor="np-x">Note (optional)</label><input id="np-x" name="note" type="text" placeholder="e.g. Keys and meter reading handed over" /></div>
-    <div className="m-actions"><CloseBtn keys={['m']} /><Submit>Record possession</Submit></div></form></ModalShell>;
+    <div className="m-actions"><CloseBtn keys={['m']} /><Submit>{isAdmin() ? 'Record possession' : 'Send for approval'}</Submit></div></form></ModalShell>;
+}
+
+/** An instalment plan for an owner's old arrears: equal parts a month apart to start with, every amount and date
+ *  editable (custom plans). The parts must add up to the old arrears exactly; the Admin approves it. */
+function InstalModal({ o, n }: { o: Owner; n: number }) {
+  const S = cur(), total = Math.round(o.openingLeft || 0), each = Math.floor(total / n), last = total - each * (n - 1);
+  const start = addDays(S.today, 30), dateAt = (i: number) => { const d0 = new Date(Date.parse(start) + 0); d0.setUTCMonth(d0.getUTCMonth() + i); return d0.toISOString().slice(0, 10); };
+  const cur0 = o.instalments, base = `/p/${S.project}/apartments/${o.id}`;
+  return <ModalShell title="Instalment plan for old arrears"><form action={instalmentAction} style={col}>{hidden(o)}
+    <div className="callout">{o.name} owes <b>{rs(total)}</b> in old arrears. Agree the parts with them; they must add up to {rs(total)}. Monthly bills carry on as usual and are not part of the plan.{cur0 ? ` A plan of ${cur0.items.length} parts is in place now; this replaces it once approved.` : ''}</div>
+    <div className="inst-n"><span className="cell-sub">Parts:</span>{[2, 3, 4, 6, 9, 12].map(k => <Go key={k} href={`${base}?m=instal-${k}`} replace className={`chipbtn${k === n ? ' on' : ''}`}>{k}</Go>)}</div>
+    <div className="inst-rows">{Array.from({ length: n }, (_, i) => <div className="grid2 inst-row" key={i} style={{ gap: 10 }}>
+      <div className="form-row"><label htmlFor={`in-a${i}`}>Part {i + 1} (Rs)</label><input id={`in-a${i}`} name="amount" type="number" min="1" step="1" required defaultValue={i === n - 1 ? last : each} /></div>
+      <div className="form-row"><label htmlFor={`in-d${i}`}>Due by</label><input id={`in-d${i}`} name="due" type="date" required defaultValue={dateAt(i)} /></div>
+    </div>)}</div>
+    <div className="form-row"><label htmlFor="in-r">What was agreed{isAdmin() ? ' (optional)' : ''}</label><input id="in-r" name="reason" type="text" required={!isAdmin()} placeholder="e.g. Agreed on a call on 17 Nov; can pay Rs 50,000 a month" /></div>
+    {isAdmin() ? null : <div className="callout warn"><div>The Admin approves, rejects or asks for changes. Until approved, the old arrears stay due in full.</div></div>}
+    <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save plan' : 'Send for approval'}</Submit></div></form></ModalShell>;
 }

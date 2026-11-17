@@ -9,9 +9,8 @@ import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, cancelLinks, unitOf, log, at, nid, rateTypes,
-  verifyProof, rejectProof, sendPaymentLink, setTargetOption, pushMsg, payLink, resyncFines, apartments, monthsToBill, billDateOf
-} from './engine';
-import { fd, rs, ord, waDigits } from './fmt';
+  verifyProof, rejectProof, sendPaymentLink, setTargetOption, pushMsg, payLink, resyncFines, apartments, monthsToBill, billDateOf, recordCash } from './engine';
+import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
 import { changeOrRequest, type ChangeResult } from './approvals';
@@ -30,6 +29,13 @@ export async function recordPaymentAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
   const amt = Math.round(+S(fdata, 'amt'));
   if (!(amt > 0)) go(ownerPath(pid, oid), 'Enter an amount');
+  // A building manager records cash; it waits for the accountant, and the balance changes only once confirmed.
+  if (staff.role === 'manager') {
+    const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
+    if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
+    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff)), { send: false });
+    go(ownerPath(pid, oid), `Cash of Rs ${amt.toLocaleString('en-US')} recorded. The accountant confirms it; the balance changes then.`);
+  }
   const p = await mutate(pid, staff, s => recordPayment(needOwner(s, oid), amt, S(fdata, 'method'), S(fdata, 'ref'), s.today, 'staff', at(15), staffName(staff)));
   redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
 }
@@ -142,8 +148,9 @@ export async function verifyAction(fdata: FormData) {
 export async function rejectAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back');
   if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Bank transfers are checked by the Accountant');
-  await mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (pr && pr.status === 'pending') rejectProof(pr, s.today, at(15)); });
-  go(back || `/p/${pid}/todo`, 'Owner told on WhatsApp');
+  const kind = await mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (!pr || pr.status !== 'pending') return null; rejectProof(pr, s.today, at(15), staffName(staff), S(fdata, 'reply')); return pr.kind || 'transfer'; });
+  if (!kind) go(back || `/p/${pid}/todo`, 'Already handled');
+  go(back || `/p/${pid}/todo`, kind === 'cash' ? 'Marked as not received. The building manager sees your note.' : 'Owner told on WhatsApp');
 }
 export async function alertDoneAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id');

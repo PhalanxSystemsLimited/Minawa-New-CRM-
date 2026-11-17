@@ -63,8 +63,16 @@ export interface Owner {
   /** On the project's Generator Charges List: billed on the "<type> + generator" rate card (e.g. Royal Enclave 15,000 instead of 12,000). */
   generator?: boolean;
   plan: Plan;               // billing plan the owner chose: monthly, quarterly or annual
+  /** An approved instalment plan for this owner's old arrears (openingLeft). */
+  instalments?: InstalmentPlan | null;
+  /** Their own due day (day of the month after the bill), approved by an Admin; null = the project's rule. */
+  dueDay?: number | null;
   floor: string;            // e.g. LGF, GF (Oakwood); empty where the sheet has none
 }
+
+/** Old arrears split into parts, each with its own due date. Payments still go to old arrears first (one balance,
+ *  never counted twice); a part is paid once the arrears have come down by the parts before it plus itself. */
+export interface InstalmentPlan { id: string; approvedD: ISODate; startLeft: number; total: number; items: { amount: number; due: ISODate }[]; by: string }
 
 export interface BreakdownRow { label: string; short: string; sub?: string; amount: number }
 export interface Breakdown { rows: BreakdownRow[]; dues: number; fee: number; feeBase: number; total: number }
@@ -112,7 +120,10 @@ export interface Payment {
   gateway: string | null; gwMode: 'live' | 'sandbox' | 'simulated' | null; linkId: string | null; spLink: string | null; spTracker: string | null;
 }
 
-export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected'; msgId: string | null; doneOn: ISODate | null; media: string | null }
+/** Money waiting for an accountant to check: a bank-transfer screenshot an owner sent (`transfer`), or cash a building
+ *  manager recorded (`cash`: the balance changes only once the accountant confirms it). */
+export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected'; msgId: string | null; doneOn: ISODate | null; media: string | null;
+  kind?: 'transfer' | 'cash'; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null }
 export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean }
 export interface Clearance { no: string; ownerId: string; project: string; d: ISODate; by: string }
 /** One flat's line on the office's yearly sheet: what it owed (arrears + the year's charges) and what was paid. */
@@ -165,8 +176,8 @@ export interface State {
  *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
  *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
  *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce';
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'changes';
 export interface Approval {
   id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;
   /** What will change ("10% discount until 31 Dec 2026") and what it is now ("No discount"). */

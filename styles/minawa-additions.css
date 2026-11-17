@@ -250,7 +250,7 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .apv-act { display: grid; gap: 8px; width: 250px; flex: none }
 .apv-act input[type="text"] { width: 100%; font-size: 13px }
 .apv-btns { display: flex; gap: 8px; justify-content: flex-end }
-.apv-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+.apv-kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) }
 .hchip.apv-chip { text-decoration: none }
 @media (max-width: 760px) {
   .apv { flex-direction: column }
@@ -287,3 +287,8 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .bld-pick { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px 12px; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 14px }
 .bld-pick legend { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--label, #526070); padding: 0 6px }
 .bld-pick p { grid-column: 1 / -1 }
+
+/* instalment plan form */
+.inst-n { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+.inst-n .chipbtn.on { background: var(--ink); color: #fff; border-color: var(--ink) }
+.inst-rows { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow: auto; padding-right: 4px }

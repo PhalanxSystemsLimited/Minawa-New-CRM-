@@ -3,7 +3,7 @@
 export const TABLES = {
   owners: ['id', 'project', 'unit', 'apt', 'block', 'type', 'name', 'phone', 'email', 'possession', 'possessionKnown', 'opening', 'openingLeft', 'credit', 'feeDue',
     'exempt', 'exemptWhy', 'director', 'discount', 'abroad', 'invalidPhone', 'noPhone', 'rate', 'status', 'closedOn', 'flagged', 'flaggedOn', 'promiseUntil',
-    'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator'],
+    'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator', 'instalments', 'dueDay'],
   bills: ['id', 'ownerId', 'project', 'period', 'periodEnd', 'months', 'billDate', 'dueDate', 'finalDate', 'amount', 'discount', 'extras', 'net', 'paid', 'fine', 'finePaid', 'fined', 'fromCredit',
     'prev', 'noticeSkipped', 'flagSkipped', 'reminders', 'lines', 'bd'],
   entries: ['id', 'ownerId', 'project', 'd', 'kind', 'amount', 'desc', 'ref', 'pid'],
@@ -11,7 +11,7 @@ export const TABLES = {
   messages: ['id', 'ownerId', 'project', 'd', 't', 'from', 'kind', 'title', 'text', 'tpl', 'vars', 'linkId', 'pdf', 'status', 'waId', 'error', 'manual', 'shot', 'sentAt'],
   payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt', 'gateway', 'gwMode',
     'linkId', 'spLink', 'spTracker'],
-  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media'],
+  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply'],
   alerts: ['id', 'ownerId', 'project', 'd', 'text', 'done'],
   clearances: ['no', 'ownerId', 'project', 'd', 'by'],
   rates: ['id', 'project', 'type', 'from', 'amount'],

@@ -9,8 +9,9 @@ const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 const back = (fd: FormData) => { const b = S(fd, 'back'); return b.startsWith('/') && !b.startsWith('//') ? b : '/approvals'; };
 const go = (path: string, toast: string): never => redirect(path + (path.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(toast));
 
-async function decideAction(fdata: FormData, approve: boolean) {
+async function decideAction(fdata: FormData, approve: boolean | 'changes') {
   const staff = await requireAdmin(), pid = S(fdata, 'pid'), id = S(fdata, 'id');
+  if (approve === 'changes' && !S(fdata, 'reply')) go(back(fdata), 'Write what should change in the note first');
   let r: { ok: boolean; text: string };
   try { r = await mutate(pid, staff, () => decide(id, approve, S(fdata, 'reply'))); }   // sends what an approved fine or announcement queued
   catch (e) { r = { ok: false, text: `Not approved: ${(e as Error).message}` }; }
@@ -18,6 +19,8 @@ async function decideAction(fdata: FormData, approve: boolean) {
 }
 export async function approveAction(fdata: FormData) { return decideAction(fdata, true); }
 export async function rejectAction(fdata: FormData) { return decideAction(fdata, false); }
+/** The Admin sends a request back with what should change; the person who asked sends a corrected one. */
+export async function changesAction(fdata: FormData) { return decideAction(fdata, 'changes'); }
 
 export async function withdrawApprovalAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id');

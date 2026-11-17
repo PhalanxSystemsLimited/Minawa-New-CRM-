@@ -5,7 +5,7 @@
 //  · Admin: does none of these; sees both lists to monitor who is responsible and what is late.
 // Tasks are worked out from the project's data every time (nothing extra is stored), so every screen agrees.
 import type { State, Staff } from './types';
-import { use, ownerById, failedList } from './engine';
+import { use, ownerById, failedList, instalmentStatus } from './engine';
 import { toDoGroups } from './manual-send';
 import { addDays, rs } from './fmt';
 
@@ -35,10 +35,18 @@ export function projectTasks(s: State): Task[] {
       out.push({ id: `alert:${a.id}`, role: 'manager', project: s.project, pname: s.proj.name, what: 'Follow up a broken promise to pay',
         detail: a.text, apt: o.apt, owner: o.name, since: a.d, deadline, overdue: late(deadline), href: `${P}/apartments/${o.id}` });
     }
+    for (const o of s.owners) {
+      if (o.status !== 'active' || !o.instalments) continue;
+      const st = instalmentStatus(o), late1 = st?.items.find(x => x.state === 'overdue');
+      if (!st || !late1) continue;
+      out.push({ id: `inst:${o.id}:${late1.n}`, role: 'manager', project: s.project, pname: s.proj.name, what: 'Follow up a late instalment',
+        detail: `Instalment ${late1.n} of ${st.items.length}: ${rs(late1.left)} was due ${late1.due}`, apt: o.apt, owner: o.name, since: late1.due, deadline: addDays(late1.due, 3), overdue: late(addDays(late1.due, 3)), href: `${P}/apartments/${o.id}` });
+    }
     for (const pr of s.proofs.filter(x => x.status === 'pending')) {
-      const o = ownerById(pr.ownerId), deadline = addDays(pr.d, 1);
-      out.push({ id: `proof:${pr.id}`, role: 'accountant', project: s.project, pname: s.proj.name, what: 'Check a bank transfer',
-        detail: `${rs(pr.amount)} · screenshot sent by the owner`, apt: o.apt, owner: o.name, since: pr.d, deadline, overdue: late(deadline), href: `/tasks#proof-${pr.id}` });
+      const o = ownerById(pr.ownerId), deadline = addDays(pr.d, 1), cash = pr.kind === 'cash';
+      out.push({ id: `proof:${pr.id}`, role: 'accountant', project: s.project, pname: s.proj.name, what: cash ? 'Confirm cash from a building manager' : 'Check a bank transfer',
+        detail: cash ? `${rs(pr.amount)} · recorded by ${pr.byName || 'a building manager'}${pr.ref ? ` · receipt ${pr.ref}` : ''}` : `${rs(pr.amount)} · screenshot sent by the owner`,
+        apt: o.apt, owner: o.name, since: pr.d, deadline, overdue: late(deadline), href: `/tasks#proof-${pr.id}` });
     }
     return out;
   });

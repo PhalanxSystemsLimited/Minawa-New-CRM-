@@ -226,7 +226,7 @@ export function createBill(o: Owner, d: string, opts: { utilitiesOnly?: boolean 
   const ch = unbilled(o, p);
   for (const c of ch) { c.billId = id; extras += c.amount; lines.push({ kind: 'utility', label: `${c.kind}, ${fm(c.period)}${c.units ? ` (${c.units} units)` : ''}${c.note ? ` · ${c.note}` : ''}`, amount: c.amount }); }
   const b: Bill = { id, ownerId: o.id, project: S.project, period: months[0] || p, periodEnd: months[months.length - 1] || p, months: months.length, billDate: d,
-    dueDate: addDays(d, R().dueDays), finalDate: addDays(addDays(d, R().dueDays), R().flagDays), amount, discount: disc, extras, net: amount - disc + extras, paid: 0, fine: 0, finePaid: 0,
+    dueDate: dueFor(o, d), finalDate: addDays(dueFor(o, d), R().flagDays), amount, discount: disc, extras, net: amount - disc + extras, paid: 0, fine: 0, finePaid: 0,
     fined: false, fromCredit: 0, prev: Math.max(0, before), noticeSkipped: false, flagSkipped: false, reminders: [], lines, bd: null };
   S.bills.push(b);
   if (amount) addEntry(o.id, d, 'bill', amount, `Maintenance · ${o.rate ? o.type : cardType(o, d)} · ${periodLabel(b)}`, { ref: b.id });
@@ -240,11 +240,33 @@ export function createBill(o: Owner, d: string, opts: { utilitiesOnly?: boolean 
   log(d, '11:00', 'bill', `Bill ${b.id} created for ${o.apt}: ${rs(b.net)} (${periodLabel(b)}${extras ? `, incl. ${rs(extras)} utilities` : ''}), due ${fd(b.dueDate)}`, o.id);
   return b;
 }
+/** An owner's instalment plan for old arrears, part by part: what each part still needs, and whether it is late.
+ *  Payments reach old arrears as always; the parts are filled in order from how far the arrears have come down. */
+export function instalmentStatus(o: Owner, d = S.today) {
+  const p = o.instalments;
+  if (!p) return null;
+  let paid = Math.max(0, p.startLeft - (o.openingLeft || 0));
+  const items = p.items.map((x, i) => {
+    const got = Math.min(x.amount, paid); paid -= got;
+    const left = x.amount - got, state = left <= 0 ? 'paid' : d > x.due ? 'overdue' : 'due';
+    return { n: i + 1, amount: x.amount, due: x.due, paid: got, left, state: state as 'paid' | 'overdue' | 'due' };
+  });
+  const overdue = items.filter(x => x.state === 'overdue').reduce((a, x) => a + x.left, 0), next = items.find(x => x.state !== 'paid') || null;
+  return { plan: p, items, overdue, next, done: !next };
+}
+const instOverdue = (o: Owner, d: string) => instalmentStatus(o, d)?.overdue || 0;
+/** A bill's due date: the owner's own due day in the month after the bill (approved by an Admin), or the project's rule. */
+export function dueFor(o: Owner, billDate: string) {
+  if (!o.dueDay) return addDays(billDate, R().dueDays);
+  const nm = nextMonth(billDate.slice(0, 7)), day = Math.min(o.dueDay, dim(+nm.slice(0, 4), +nm.slice(5, 7)));
+  return `${nm}-${String(day).padStart(2, '0')}`;
+}
 export const duesOf = (o: Owner) => (o.openingLeft || 0) + billsOf(o).reduce((s, b) => s + Math.max(0, b.net - b.paid), 0);
-const isLate = (o: Owner, d: string) => (o.openingLeft > 0 && d > openingDue()) || billsOf(o).some(b => unpaidMaint(b) > 0 && d > b.dueDate);
+const isLate = (o: Owner, d: string) => (o.openingLeft > 0 && (o.instalments ? instOverdue(o, d) > 0 : d > openingDue())) || billsOf(o).some(b => unpaidMaint(b) > 0 && d > b.dueDate);
 /** What the fine is a % of: unpaid bills, plus old arrears only when the project fines them (rules.fineArrears). */
-export const fineBase = (o: Owner) => (R().fineArrears ? o.openingLeft || 0 : 0) + billsOf(o).reduce((s, b) => s + Math.max(0, b.net - b.paid), 0);
-const fineLate = (o: Owner, d: string) => R().fineArrears ? isLate(o, d) : billsOf(o).some(b => unpaidMaint(b) > 0 && d > b.dueDate);
+// With an instalment plan, only the parts that are late are fined (the rest of the arrears isn't due yet).
+export const fineBase = (o: Owner) => (o.instalments ? instOverdue(o, S.today) : R().fineArrears ? o.openingLeft || 0 : 0) + billsOf(o).reduce((s, b) => s + Math.max(0, b.net - b.paid), 0);
+const fineLate = (o: Owner, d: string) => (o.instalments ? instOverdue(o, d) > 0 : false) || (R().fineArrears ? isLate(o, d) : billsOf(o).some(b => unpaidMaint(b) > 0 && d > b.dueDate));
 /** After the fine % changes: bring every late owner's fine to the new % (up or down). Returns owners changed. */
 export function resyncFines(d: string, t: string, by: string) {
   const changed: Owner[] = [];
@@ -275,8 +297,15 @@ function allocate(o: Owner, amt: number): Applied[] {
   const dues = duesOf(o), fee = o.feeDue || 0, feeL = `Fine (${feePct()}%)`;
   const toFee = dues > 0 ? Math.min(fee, Math.round(amt * fee / (dues + fee))) : Math.min(fee, amt);
   o.feeDue = fee - toFee; left -= toFee; put('fee', feeL, toFee);
-  if (o.openingLeft > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', `Earlier dues (before ${fm(goLive().slice(0, 7))})`, x); }
+  const arrL = `Earlier dues (before ${fm(goLive().slice(0, 7))})`;
+  if (o.instalments && o.openingLeft > 0) {
+    // On an instalment plan: late instalments first, then the monthly bills (so they stay paid as usual), and the
+    // instalments not yet due only after that. One arrears balance, never counted twice.
+    const late = Math.min(left, instOverdue(o, S.today), o.openingLeft);
+    if (late > 0) { o.openingLeft -= late; left -= late; put('dues', `${arrL}, late instalments`, late); }
+  } else if (o.openingLeft > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x); }
   for (const b of billsOf(o)) { if (left <= 0) break; const x = Math.min(left, b.net - b.paid); if (x > 0) { b.paid += x; left -= x; put('dues', `${b.months ? 'Maintenance' : 'Utilities'}, ${periodLabel(b)}`, x); } }
+  if (o.instalments && o.openingLeft > 0 && left > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', `${arrL}, instalments ahead of time`, x); }
   if (left > 0 && o.feeDue > 0) { const x = Math.min(left, o.feeDue); o.feeDue -= x; left -= x; put('fee', feeL, x); }
   if (left > 0) { o.credit += left; put('credit', 'Kept as advance credit', left); }
   return out;
@@ -453,12 +482,27 @@ export function ownerProof(o: Owner, amt: number, d: string, t: string, media?: 
 export function verifyProof(p: Proof, d: string, t: string, by: string, amount?: number) {
   const o = ownerById(p.ownerId);
   if (amount && amount > 0) p.amount = amount;
-  p.status = 'verified'; p.doneOn = d;
+  p.status = 'verified'; p.doneOn = d; p.checkedBy = by;
+  // Cash a building manager took: only now does it count (receipt, balance, Pay Now link, message to the owner).
+  if (p.kind === 'cash') return recordPayment(o, p.amount, `Cash${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || 'Cash #' + p.id, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`);
   return recordPayment(o, p.amount, 'Bank transfer (screenshot checked)', 'Proof #' + p.id, d, 'proof', t, by);
 }
-export function rejectProof(p: Proof, d: string, t: string) {
+/** A building manager records cash they were handed: it waits for an accountant to confirm it, and the owner's
+ *  balance only changes then (verifyProof). */
+export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string) {
+  const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
+    kind: 'cash', ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null };
+  S.proofs.push(pr);
+  log(d, t, 'payment', `${rs(amount)} cash for ${o.apt} recorded by ${byName}${ref ? ` (receipt ${ref})` : ''}, paid ${fd(paidOn)}. Waiting for the accountant to confirm it`, o.id);
+  return pr;
+}
+export function rejectProof(p: Proof, d: string, t: string, by = '', reason = '') {
   const o = ownerById(p.ownerId);
-  p.status = 'rejected'; p.doneOn = d;
+  p.status = 'rejected'; p.doneOn = d; p.checkedBy = by || null; p.reply = reason || null;
+  if (p.kind === 'cash') {   // nothing goes to the owner: it's between the accountant and the building manager
+    log(d, t, 'payment', `Cash of ${rs(p.amount)} for ${o.apt} recorded by ${p.byName || 'a building manager'} was not confirmed by ${by || 'the accountant'}${reason ? `: ${reason}` : ''}. The balance is unchanged`, o.id);
+    return;
+  }
   pushMsg(o, d, t, { kind: 'info', title: 'About your transfer', manual: true, text: `We couldn't find your transfer of ${rs(p.amount)} in our bank account. Please check the reference, or use Pay Now so it is confirmed automatically.` });
   log(d, t, 'message', `Screenshot from ${o.apt} not matched in the bank statement; owner told on WhatsApp`, o.id);
 }
@@ -555,7 +599,9 @@ export const followCount = () => toSendOwners() + S.proofs.filter(p => p.status 
 export const sortedPayments = () => [...S.payments].sort((a, b) => (b.d + b.t).localeCompare(a.d + a.t));
 export function duesBreakdown(o: Owner): Breakdown {
   const rows: Breakdown['rows'] = [];
-  if (o.openingLeft > 0) rows.push({ label: `Earlier dues (before ${fm(goLive().slice(0, 7))})`, short: 'Earlier dues', amount: o.openingLeft });
+  if (o.openingLeft > 0) { const ip = instalmentStatus(o);
+    rows.push({ label: `Earlier dues (before ${fm(goLive().slice(0, 7))})${ip ? ', on an instalment plan' : ''}`, short: 'Earlier dues', amount: o.openingLeft,
+      sub: ip ? (ip.overdue ? `${rs(ip.overdue)} of instalments late` : ip.next ? `next instalment ${rs(ip.next.left)} by ${fds(ip.next.due)}` : undefined) : undefined }); }
   for (const b of billsOf(o)) {
     const m = unpaidMaint(b);
     if (m > 0) rows.push({ label: periodLabel(b) + (b.extras ? (b.months ? ' (with utilities)' : '') : ''), short: periodShort(b), sub: S.today > b.dueDate ? `overdue since ${fds(b.dueDate)}` : `due ${fds(b.dueDate)}`, amount: m });

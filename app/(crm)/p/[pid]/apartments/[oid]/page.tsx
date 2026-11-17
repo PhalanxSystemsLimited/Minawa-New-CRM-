@@ -1,9 +1,9 @@
 // One apartment (the demo's viewOwner): the flat, its owner, and bills, payments, history, notes and messages.
-import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator } from '@/lib/engine';
+import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator, instalmentStatus } from '@/lib/engine';
 import { getStore } from '@/lib/store';
 import type { WaLog } from '@/lib/types';
 import { PLAN_LABEL } from '@/lib/types';
-import { fd, fds, fm, ord, rs, diff, t12 } from '@/lib/fmt';
+import { fd, fds, fm, ord, rs, diff, t12, addDays } from '@/lib/fmt';
 import { Go, A } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
 import { pill, when, viaHtml, waBtn, ownerSince } from '@/components/views/bits';
@@ -82,7 +82,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <div className="bal"><div className="l">{bal < 0 ? 'Credit' : 'Owes'}</div><div className="v num" style={{ color: bal > 0 ? (st === 'flagged' ? 'var(--bad)' : 'var(--fg)') : 'var(--good)' }}>{rs(Math.abs(bal))}</div><div className="cell-sub">{bal < 0 ? 'Used for the next bills' : bal > 0 ? '' : 'All paid'}</div></div>
         </div>
         {closed ? null : <div className="actions">
-          {bal > 0 ? <Go href={m('recpay')} className="btn primary">Record payment</Go> : null}
+          {bal > 0 ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Record cash' : 'Record payment'}</Go> : null}
           {bal > 0 && !o.exempt ? waBtn(o) : null}
           <details className="more"><summary className="btn">More ▾</summary><div className="menu">
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
@@ -94,6 +94,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             {bal > 0 ? null : <Go href={m('recpay')}>Record payment</Go>}
             <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>
             <Go href={m('discount')}>Discount{ask}</Go>
+            {o.openingLeft > 0 ? <Go href={m('instal-3')}>{o.instalments ? 'Change the instalment plan' : 'Instalment plan for old arrears'}{ask}</Go> : null}
+            <Go href={m('due')}>Due date for this owner{ask}</Go>
             <hr />
             <Go href={m('clearance')}>Dues clearance certificate</Go>
             {adminItem('transfer', 'Transfer to a new owner')}
@@ -105,6 +107,17 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       </div>
       {waiting.length ? <div className="card apv-card"><div className="card-row"><h3>Waiting for approval <small>{waiting.length} change{waiting.length === 1 ? '' : 's'} to what {o.name} is charged</small></h3><Go href="/approvals" className="btn sm">Approvals</Go></div>
         <div className="apv-list">{waiting.map(a => <ApprovalItem key={a.id} v={{ a, apt: o.apt, owner: o.name, pname: S.proj.name }} admin={isAdmin()} meId={S.staffId || ''} back={base} showOwner={false} />)}</div></div> : null}
+      {(() => { const cash = S.proofs.filter(p => p.ownerId === o.id && p.kind === 'cash' && (p.status === 'pending' || (p.status === 'rejected' && (p.doneOn || '') >= addDays(S.today, -13))));
+        return cash.length ? <div className="card"><div className="card-row"><h3>Cash recorded <small>the balance changes once the Accountant confirms it</small></h3></div>
+          <div className="list">{cash.map(p => <div className="li" key={p.id}><div className="t"><div className="a"><span className="num">{rs(p.amount)}</span> cash · receipt {p.ref || '—'}</div><div className="b">Recorded by {p.byName} on {fd(p.d)}{p.paidOn ? ` · paid ${fd(p.paidOn)}` : ''}{p.status === 'rejected' ? ` · not confirmed by ${p.checkedBy || 'the accountant'}${p.reply ? `: ${p.reply}` : ''}` : ''}</div></div>
+            {p.status === 'pending' ? <span className="tag warn">Waiting for the Accountant</span> : <span className="tag bad">Not confirmed</span>}</div>)}</div></div> : null; })()}
+      {(() => { const ip = instalmentStatus(o); if (!ip) return null;
+        return <div className="card"><div className="card-row"><h3>Instalment plan <small>old arrears of {rs(ip.plan.total)} · approved {fd(ip.plan.approvedD)}</small></h3>{ip.done ? <span className="tag good">Paid off</span> : ip.overdue ? <span className="tag bad">{rs(ip.overdue)} late</span> : <span className="tag info">On track</span>}</div>
+          <div className="tbl-wrap"><table className="inst-tbl"><thead><tr><th>Instalment</th><th>Due</th><th className="r">Amount</th><th className="r">Paid</th><th className="r">Left</th><th>Status</th></tr></thead><tbody>
+            {ip.items.map(x => <tr key={x.n}><td data-l="Instalment"><b>{x.n} of {ip.items.length}</b></td><td data-l="Due">{fd(x.due)}</td><td data-l="Amount" className="r num">{rs(x.amount)}</td><td data-l="Paid" className="r num">{x.paid ? rs(x.paid) : '–'}</td><td data-l="Left" className="r num">{x.left ? rs(x.left) : '–'}</td>
+              <td data-l="Status">{x.state === 'paid' ? <span className="tag good">Paid</span> : x.state === 'overdue' ? <span className="tag bad">Late</span> : <span className="tag info">Due</span>}</td></tr>)}
+          </tbody></table></div>
+          <p className="cell-sub" style={{ margin: '10px 0 0' }}>Monthly bills carry on as usual. Payments go to late instalments first, then the monthly bills, then the instalments still to come. A late instalment is fined like any late dues.</p></div>; })()}
       {o.exempt ? <div className={`callout ${o.exemptWhy ? 'warn' : ''}`}>{o.exemptWhy ? o.exemptWhy : 'Directors\' apartments are exempt, so no bills are sent.'}</div> : null}
       {(() => { const x = sheetOf(o); if (!x) return null;
         return <div className="card"><div className="card-row"><h3>2026 <small>office sheet as on {fd(x.asOf)}</small></h3><span className="cell-sub">{x.source}</span></div>

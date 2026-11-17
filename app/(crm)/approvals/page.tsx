@@ -25,12 +25,13 @@ export default async function Approvals({ searchParams }: { searchParams: Promis
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Approvals</div></div><div className="crumb-path">Dashboard<span>/</span>Approvals</div></div>
     <div className="page-head"><div><p>{admin
-      ? <>When an accountant changes what an owner is charged (a discount, generator charges, the billing plan, the flat&apos;s monthly fee or an adjustment), the change waits here. It applies only when an admin approves it. Changes made by admins apply straight away.</>
-      : <>Changes you make to what an owner is charged (a discount, generator charges, the billing plan, the flat&apos;s monthly fee or an adjustment) wait for an admin&apos;s approval. Here you can see what is waiting and what was decided.</>}</p></div></div>
+      ? <>When an accountant or a building manager changes what an owner is charged (a discount, generator charges, the billing plan, the flat&apos;s monthly fee, an adjustment, an instalment plan or a due date) or records a new possession, it waits here. It applies only when an admin approves it. Admins can also send a request back with a note on what to change. Changes made by admins apply straight away.</>
+      : <>Changes you ask for (a discount, generator charges, the billing plan, an adjustment, an instalment plan, a due date or a new possession) wait for an admin&apos;s approval. If the Admin asks for changes, the request shows under Decided with the Admin&apos;s note; send a corrected one from the apartment page.</>}</p></div></div>
     <div className="kpis apv-kpis">
       <div className="kpi"><div className="l">Waiting</div><div className="v num">{waiting.length}</div><div className="cell-sub">{admin ? 'for your approval' : 'for an admin'}</div></div>
       <div className="kpi"><div className="l">Approved</div><div className="v num">{n('approved')}</div><div className="cell-sub">last 30 days</div></div>
       <div className="kpi"><div className="l">Rejected</div><div className="v num">{n('rejected')}</div><div className="cell-sub">last 30 days</div></div>
+      {n('changes') ? <div className="kpi"><div className="l">Changes asked</div><div className="v num">{n('changes')}</div><div className="cell-sub">last 30 days · see Decided</div></div> : null}
     </div>
     <div className="card">
       <div className="ptabs" role="tablist" style={{ marginBottom: 14 }}>

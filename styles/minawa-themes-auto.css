@@ -559,6 +559,7 @@ html[data-theme=dark] .apv-reply.bad{background:var(--bad-soft);color:#E8EAED}
 html[data-theme=dark] .req{color:var(--bad)}
 html[data-theme=dark] .bld-pick{border:1px solid var(--line)}
 html[data-theme=dark] .bld-pick legend{color:var(--label, #aaacaf)}
+html[data-theme=dark] .inst-n .chipbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 html[data-theme=dark],html[data-theme=dark] body{background:var(--bg)}
 html[data-theme=dark] body{color:#cfd2d5}
 html[data-theme=dark] body::before{background:var(--bg)}
@@ -1722,6 +1723,7 @@ html[data-theme=frost] .apv-reply.bad{background:var(--bad-soft);color:#E8EAED}
 html[data-theme=frost] .req{color:var(--bad)}
 html[data-theme=frost] .bld-pick{border:1px solid var(--line)}
 html[data-theme=frost] .bld-pick legend{color:var(--label, #aaacaf)}
+html[data-theme=frost] .inst-n .chipbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 html[data-theme=frost],html[data-theme=frost] body{background:var(--bg)}
 html[data-theme=frost] body{color:#cfd2d5}
 html[data-theme=frost] body::before{background:var(--bg)}

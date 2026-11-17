@@ -6,14 +6,16 @@
 // Everything here runs inside the engine (lib/ops.mutate → use), on the project being changed.
 import type { Owner, Approval, ApprovalKind, Plan, Rules } from './types';
 import { PLAN_LABEL } from './types';
+import { blankOwner } from './seed';
+import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
-  sendPaymentLink, pushMsg } from './engine';
+  sendPaymentLink, pushMsg, nextBillFor } from './engine';
 import { fd, fm, rs, ord } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
-  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement' };
+  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date' };
 /** Changes for the whole project (not one owner). */
-export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announce'];
+export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announce', 'possession'];
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
 
 type Disc = { kind: 'pct' | 'fixed' | 'none'; value: number; until: string | null };
@@ -54,6 +56,11 @@ export function describe(o: Owner | null, kind: ApprovalKind, c: Record<string, 
       return { summary: `Monthly fees from ${fd(from)}: ${(ch.length ? ch : list).map(([ty, v]) => `${ty} ${rs(v)}`).join(', ')}`,
         before: (ch.length ? ch : list).map(([ty]) => `${ty} ${rateFor(ty, from) ? rs(rateFor(ty, from)) : 'no rate'}`).join(', ') };
     }
+    case 'possession': return { summary: `New possession: ${String(c.apt)} (${String(c.type)}) to ${String(c.name)} on ${fd(String(c.possession))}, ${PLAN_LABEL[(c.plan as Plan) || 'monthly'].toLowerCase()} billing`, before: 'Not possessed: not billed' };
+    case 'instalments': { const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0);
+      return { summary: `Old arrears of ${rs(tot)} in ${plural(it.length, 'instalment')}: ${it.map(x => `${rs(num(x.amount))} by ${fd(x.due)}`).join(', ')}`,
+        before: o ? (o.instalments ? `A plan of ${plural(o.instalments.items.length, 'instalment')} (${rs(o.instalments.total)})` : `${rs(o.openingLeft || 0)} old arrears, due in full`) : '' }; }
+    case 'due': return { summary: `Due on the ${ord(num(c.dueDay))} of the month after each bill`, before: o?.dueDay ? `Due on the ${ord(o.dueDay)}` : 'The project\'s due date' };
     case 'rules': { const d = rulesDiff(c as unknown as RulesChange); return { summary: `Billing schedule: ${d.map(x => x[1]).join('; ') || 'no change'}`, before: d.map(x => x[0]).join('; ') || 'the same' }; }
     case 'fine': {
       const r = S.settings.rules, n = lateOwners().length;
@@ -89,8 +96,9 @@ function noChange(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown
   if (kind === 'rates') { const from = String(c.from); return ratesOf(c).every(([ty, v]) => cur().rates.some(x => x.type === ty && x.from === from && x.amount === v) || (v === rateFor(ty, from) && rateFor(ty, from) > 0)); }
   if (kind === 'rules') return !rulesDiff(c as unknown as RulesChange).length;
   if (kind === 'fine') return num(Number(c.feePct) * 10) === num(r.feePct * 10) && !!c.fineArrears === !!r.fineArrears && !c.apply;
-  if (kind === 'announce') return false;
+  if (kind === 'announce' || kind === 'possession' || kind === 'instalments') return false;
   if (!o) return false;
+  if (kind === 'due') return (o.dueDay || null) === (num(c.dueDay) || null);
   if (kind === 'discount') { const d = c as unknown as Disc, x = o.discount; return (d.kind === 'none' || !d.value) ? !x || !x.value : !!x && x.kind === d.kind && x.value === d.value && (x.until || null) === (d.until || null); }
   if (kind === 'generator') return !!o.generator === !!c.on;
   if (kind === 'plan') return (o.plan || 'monthly') === c.plan;
@@ -102,6 +110,7 @@ function check(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>) 
     if (kind === 'rates' && (!/^\d{4}-\d{2}-\d{2}$/.test(String(c.from)) || !ratesOf(c).length)) throw new Error('Pick the date the new rates start and enter the rates');
     if (kind === 'fine' && !(Number(c.feePct) >= 0 && Number(c.feePct) <= 50)) throw new Error('The fine must be between 0% and 50%');
     if (kind === 'announce' && !String(c.text || '').trim()) throw new Error('Write the message first');
+    if (kind === 'possession') checkPossession(c);
     return;
   }
   if (!o || o.status !== 'active') throw new Error('This apartment has no current owner.');
@@ -109,6 +118,22 @@ function check(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>) 
   if (kind === 'generator' && !hasGenerator()) throw new Error(`${cur().proj.name} has no generator rate card.`);
   if (kind === 'plan' && !['monthly', 'quarterly', 'annual'].includes(String(c.plan))) throw new Error('Pick a billing plan');
   if (kind === 'adjust' && (!(num(c.amount) > 0) || !String(c.reason || '').trim())) throw new Error('Enter an amount and the reason');
+  if (kind === 'due' && !(num(c.dueDay) >= 1 && num(c.dueDay) <= 28)) throw new Error('Pick a due day between the 1st and the 28th');
+  if (kind === 'instalments') {
+    const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0), today = cur().today;
+    if (!(o.openingLeft > 0)) throw new Error(`${o.apt} has no old arrears to split.`);
+    if (it.length < 2 || it.length > 24) throw new Error('An instalment plan has 2 to 24 instalments');
+    if (it.some(x => !(num(x.amount) > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(x.due)))) throw new Error('Every instalment needs an amount and a due date');
+    if (it.some((x, i) => i && String(x.due) <= String(it[i - 1].due))) throw new Error('Put the instalments in date order, each due after the one before');
+    if (String(it[0].due) < today) throw new Error('The first instalment can\'t be due in the past');
+    if (tot !== num(o.openingLeft)) throw new Error(`The instalments add up to ${rs(tot)}; the old arrears are ${rs(o.openingLeft)}. They must match.`);
+  }
+}
+function checkPossession(c: Record<string, unknown>) {
+  const apt = String(c.apt || '').toUpperCase();
+  if (!apt || !String(c.name || '').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(String(c.possession)) || !c.type) throw new Error('Fill in the apartment, type, owner and possession date');
+  if (cur().owners.some(o => o.status === 'active' && o.apt.toUpperCase() === apt)) throw new Error(`${apt} already has an owner. For a sale, use Transfer on that apartment.`);
+  if (!rateTypes().includes(String(c.type))) throw new Error(`${String(c.type)} has no rate yet. An admin adds it in Settings › Monthly fees.`);
 }
 
 /** Make the change now and record it. `who` is who made it (with who asked for it, when approved). */
@@ -143,6 +168,7 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       log(d, t, 'message', `Announcement sent to ${list.length} owners (${aud === 'all' ? 'all blocks' : 'Block ' + aud})${failed ? `, ${failed} failed` : ''} by ${who}`);
       return `Announcement to ${list.length} owners${failed ? `, ${failed} without a WhatsApp number` : ''}. It waits in To do, to send one by one`;
     }
+    case 'possession': { const r = addPossession(c, who); return `Possession recorded for ${r.apt}. First bill on ${fd(r.next)}.`; }
   }
   if (!o) throw new Error('Apartment not found');
   switch (kind) {
@@ -165,6 +191,19 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       const was = o.plan || 'monthly', plan = c.plan as Plan; o.plan = plan;
       log(d, t, 'admin', `${o.apt} billing plan changed by ${who}: ${PLAN_LABEL[was]} → ${PLAN_LABEL[plan]}`, o.id);
       return `Billing plan changed to ${PLAN_LABEL[plan].toLowerCase()}`;
+    }
+    case 'due': {
+      const dd = num(c.dueDay) || null, was = o.dueDay; o.dueDay = dd;
+      const text = `Due date changed by ${who}: ${was ? `the ${ord(was)}` : 'the project\'s rule'} → ${dd ? `the ${ord(dd)} of the month after each bill` : 'the project\'s rule'}, from the next bill. Bills already made keep their due date.`;
+      o.notes.push({ d, by: who, text }); log(d, t, 'admin', `${o.apt}: ${text}`, o.id);
+      return 'Due date saved; it applies from the next bill';
+    }
+    case 'instalments': {
+      const items = ((c.items || []) as { amount: number; due: string }[]).map(x => ({ amount: num(x.amount), due: String(x.due) })), total = items.reduce((a, x) => a + x.amount, 0);
+      o.instalments = { id: 'IP-' + nid('ip'), approvedD: d, startLeft: num(o.openingLeft), total, items, by: who };
+      const text = `Instalment plan for old arrears set by ${who}: ${items.map(x => `${rs(x.amount)} by ${fd(x.due)}`).join(', ')}. Monthly bills carry on as usual.`;
+      o.notes.push({ d, by: who, text }); log(d, t, 'admin', `${o.apt}: ${text}`, o.id);
+      return `Instalment plan of ${plural(items.length, 'instalment')} saved`;
     }
     case 'rate': {
       const r = num(c.rate) || null, was = o.rate; o.rate = r;
@@ -212,12 +251,17 @@ export function changeOrRequest(o: Owner | null, kind: ApprovalKind, c: Record<s
 }
 
 /** An admin approves (the change is made now) or rejects a request (the note is optional). */
-export function decide(id: string, approve: boolean, reply = ''): { ok: boolean; text: string } {
+export function decide(id: string, approve: boolean | 'changes', reply = ''): { ok: boolean; text: string } {
   const S = cur(), a = S.approvals.find(x => x.id === id), t = at(15), admin = S.staffName || S.by;
   if (!a) return { ok: false, text: 'That request was not found' };
   if (a.status !== 'pending') return { ok: false, text: `That request was already ${a.status === 'withdrawn' ? 'withdrawn' : a.status}${a.decidedByName ? ' by ' + a.decidedByName : ''}` };
   const o = a.ownerId ? ownerById(a.ownerId) : null;
   let text: string;
+  if (approve === 'changes') {
+    Object.assign(a, { status: 'changes', decidedById: S.staffId || null, decidedByName: admin, decidedD: S.today, decidedT: t, reply: reply.trim() || null });
+    log(S.today, t, 'approval', `${admin} asked ${a.byName} to change the request for ${a.ownerId ? o?.apt || 'an apartment' : 'the whole project'} (${KIND_LABEL[a.kind].toLowerCase()}): ${reply.trim()}`, a.ownerId);
+    return { ok: true, text: `Sent back to ${a.byName} with your note` };
+  }
   if (approve) {
     check(o, a.kind, a.change);
     text = noChange(o, a.kind, a.change) ? 'Approved; this was already in place, so nothing changed' : applyChange(o, a.kind, a.change, `${admin}, as asked by ${a.byName}`);
@@ -241,3 +285,18 @@ export function withdraw(id: string, staffId: string | null, admin: boolean): { 
 export const pendingFor = (o: Owner) => cur().approvals.filter(a => a.ownerId === o.id && a.status === 'pending');
 /** Project-wide changes waiting for approval (Settings). */
 export const pendingProject = () => cur().approvals.filter(a => !a.ownerId && a.status === 'pending');
+
+/** A new possession: the flat gets its owner and is billed from now on. Used by an Admin directly, or when an Admin
+ *  approves a building manager's request. */
+export function addPossession(c: Record<string, unknown>, who: string) {
+  checkPossession(c);
+  const S = cur(), apt = String(c.apt).toUpperCase(), phone = String(c.phone || ''), possession = String(c.possession);
+  const plan = (['monthly', 'quarterly', 'annual'].includes(String(c.plan)) ? String(c.plan) : 'monthly') as Plan;
+  const o = blankOwner({ id: 'O' + nid('o'), project: S.project, apt, block: String(c.block || '') || apt.split(/[-\s]/)[0], type: String(c.type), name: String(c.name), phone: phone ? normPhone(phone) : '', email: String(c.email || ''),
+    possession, possessionKnown: true, plan, invalidPhone: !phone, noPhone: !phone,
+    notes: [{ d: S.today, by: who, text: `Possession handed over on ${fd(possession)}.${c.note ? ' ' + String(c.note) : ''}` }] });
+  S.owners.push(o);
+  const next = nextBillFor(o);
+  log(S.today, at(15), 'admin', `New possession: ${apt} (${String(c.type)}) handed over to ${String(c.name)} on ${fd(possession)}, recorded by ${who}. ${PLAN_LABEL[plan]} billing; first bill on ${fd(next)}`, o.id);
+  return { id: o.id, apt, next };
+}

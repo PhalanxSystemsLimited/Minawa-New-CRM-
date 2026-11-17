@@ -8,7 +8,7 @@ import { ownerById, apartments, log, at, nid, pushMsg, createBill, sendBill, rat
 import { fd, fds, fm, rs, waDigits } from './fmt';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
-import { changeOrRequest } from './approvals';
+import { changeOrRequest, addPossession, requestChange } from './approvals';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 const go = (path: string, toast?: string): never => redirect(path + (path.includes('?') ? '&' : '?') + (toast ? 't=' + encodeURIComponent(toast) : ''));
@@ -114,26 +114,23 @@ export async function sendNoticeAction(fdata: FormData) {
 /* ---------- new possession ---------- */
 export async function possessionAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/apartments`;
-  const apt = S(fdata, 'apt').toUpperCase(), name = S(fdata, 'name'), possession = S(fdata, 'possession'), type = S(fdata, 'type'), phone = S(fdata, 'phone');
-  if (!apt || !name || !/^\d{4}-\d{2}-\d{2}$/.test(possession) || !type) go(back + '?m=possession', 'Fill in the apartment, type, owner and possession date');
-  if (phone && waDigits(phone).length < 10) go(back + '?m=possession', 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
-  const out = await mutate(pid, staff, s => {
-    if (s.owners.some(o => o.status === 'active' && o.apt.toUpperCase() === apt)) return { err: `${apt} already has an owner. For a sale, use Transfer on that apartment.` };
-    if (!rateTypes().includes(type)) return { err: `${type} has no rate yet. An admin adds it in Settings › Monthly fees.` };
-    const plan = (['monthly', 'quarterly', 'annual'].includes(S(fdata, 'plan')) ? S(fdata, 'plan') : 'monthly') as Owner['plan'];
-    const o = blankOwner({ id: 'O' + nid('o'), project: pid, apt, block: S(fdata, 'block') || apt.split(/[-\s]/)[0], type, name, phone: phone ? normPhone(phone) : '', email: S(fdata, 'email'),
-      possession, possessionKnown: true, plan, invalidPhone: !phone, noPhone: !phone,
-      notes: [{ d: s.today, by: staffName(staff), text: `Possession handed over on ${fd(possession)}.${S(fdata, 'note') ? ' ' + S(fdata, 'note') : ''}` }] });
-    s.owners.push(o);
-    // When the first bill goes out, and what it covers.
-    const next = nextBillFor(o);
-    const months = monthsToBill(o, next), first = months.length ? monthCharge(o, months[0]) : null;
-    log(s.today, at(15), 'admin', `New possession: ${apt} (${type}) handed over to ${name} on ${fd(possession)} by ${staffName(staff)}. ${plan} billing; first bill on ${fd(next)}`, o.id);
-    return { id: o.id, next, prorated: first && first.from ? `${fm(months[0])} prorated from ${fds(first.from)} (${rs(first.amount)})` : '' };
-  }, { send: false });
-  if ('err' in out) go(back + '?m=possession', out.err);
-  const ok = out as { id: string; next: string; prorated: string };
-  go(`/p/${pid}/apartments/${ok.id}`, `Possession recorded. First bill on ${fd(ok.next)}${ok.prorated ? `: ${ok.prorated}` : ''}.`);
+  const c = { apt: S(fdata, 'apt').toUpperCase(), block: S(fdata, 'block'), type: S(fdata, 'type'), name: S(fdata, 'name'), phone: S(fdata, 'phone'), email: S(fdata, 'email'),
+    possession: S(fdata, 'possession'), plan: S(fdata, 'plan') || 'monthly', note: S(fdata, 'note') };
+  if (!c.apt || !c.name || !/^\d{4}-\d{2}-\d{2}$/.test(c.possession) || !c.type) go(back + '?m=possession', 'Fill in the apartment, type, owner and possession date');
+  if (c.phone && waDigits(c.phone).length < 10) go(back + '?m=possession', 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
+  // An Admin records it at once. A building manager's (or accountant's) possession waits for an Admin's approval:
+  // until then the flat isn't billed.
+  let out: { id?: string; next?: string; requested?: boolean } | null = null, err = '';
+  try {
+    out = await mutate(pid, staff, s => {
+      if (s.role === 'admin') return addPossession(c, staffName(staff));
+      requestChange(null, 'possession', c, c.note || 'New possession handed over');
+      return { requested: true };
+    }, { send: false });
+  } catch (e) { err = (e as Error).message; }
+  if (!out) go(back + '?m=possession', err || 'Not saved');
+  if (out!.requested) go(back, `Sent to the Admin for approval: ${c.apt} to ${c.name} from ${fd(c.possession)}. It is billed once approved.`);
+  go(`/p/${pid}/apartments/${out!.id}`, `Possession recorded. First bill on ${fd(out!.next!)}.`);
 }
 
 /* ---------- adjustments (manual corrections) ---------- */
@@ -159,4 +156,24 @@ export async function companyAction(fdata: FormData) {
   await (await getStore()).saveCompany({ legalName: S(fdata, 'legalName') || 'Minawa (Pvt) Ltd', address: S(fdata, 'address'), ntn: S(fdata, 'ntn'), phone: S(fdata, 'phone'), email: S(fdata, 'email') });
   await staffLog(staff, `Company details changed by ${staffName(staff)}`);
   go('/admin', 'Company details saved. They print on every bill and receipt.');
+}
+
+/* ---------- instalment plans and a due day for one owner (Admin applies; others ask the Admin) ---------- */
+export async function instalmentAction(fdata: FormData) {
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), back = `/p/${pid}/apartments/${oid}`;
+  const amounts = fdata.getAll('amount').map(x => Math.round(+String(x).replace(/[,\s]/g, '') || 0)), dues = fdata.getAll('due').map(String);
+  const items = amounts.map((amount, i) => ({ amount, due: dues[i] || '' })), n = items.length;
+  let r: Awaited<ReturnType<typeof changeOrRequest>> | null = null, err = '';
+  try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'instalments', { items }, S(fdata, 'reason')); }, { send: false }); }
+  catch (e) { err = (e as Error).message; }
+  if (!r) go(`${back}?m=instal-${n}`, err || 'Not saved');
+  go(back, r!.text);
+}
+export async function dueAction(fdata: FormData) {
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), back = `/p/${pid}/apartments/${oid}`;
+  let r: Awaited<ReturnType<typeof changeOrRequest>> | null = null, err = '';
+  try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'due', { dueDay: Math.round(+S(fdata, 'dueDay')) }, S(fdata, 'reason')); }, { send: false }); }
+  catch (e) { err = (e as Error).message; }
+  if (!r) go(`${back}?m=due`, err || 'Not saved');
+  go(back, r!.text);
 }
