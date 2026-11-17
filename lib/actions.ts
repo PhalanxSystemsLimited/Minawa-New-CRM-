@@ -9,7 +9,7 @@ import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
-  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash } from './engine';
+  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
@@ -40,7 +40,8 @@ export async function recordPaymentAction(fdata: FormData) {
     await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method), { send: false });
     go(ownerPath(pid, oid), `${method} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant confirms it; the balance changes then.`);
   }
-  const p = await mutate(pid, staff, s => recordPayment(needOwner(s, oid), amt, 'Cash', S(fdata, 'ref'), s.today, 'staff', at(15), staffName(staff)));
+  if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
+  const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
   redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
 }
 export async function promiseAction(fdata: FormData) {

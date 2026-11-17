@@ -63,6 +63,7 @@ export default async function Tasks() {
             <form action={rejectAction} style={{ display: 'flex', gap: 6 }}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="back" value="/tasks" />{p.kind === 'cash' ? <input name="reply" type="text" placeholder="Why (for the manager)" aria-label="Why it isn't confirmed" style={{ width: 170 }} /> : null}<Submit className="btn sm">{p.kind === 'cash' ? 'Not received' : 'Can\'t find it'}</Submit></form>
           </div></div>)}</div> : <p className="empty">Nothing to check.</p>}
       </div>
+      {(() => { const cash = acc.filter(t => t.id.startsWith('cash')); return cash.length ? <div className="card"><div className="card-row"><h3>Cash to receive and deposit <small>{cash.length} open{late(cash) ? ` · ${late(cash)} late` : ''}</small></h3><Go href="/cash" className="btn sm">Open Cash</Go></div><Table list={cash} staff={staff} today={today} showWho={false} /></div> : null; })()}
       <div className="card"><div className="card-row"><h3>Building managers&apos; To do <small>to follow up · {mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>
     </>;
   }

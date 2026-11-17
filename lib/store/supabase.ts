@@ -149,7 +149,7 @@ export class SupabaseStore implements Store {
     return !!data;   // not released: the lock expiring is the throttle
   }
   async paymentsSince(project: string, since: string) {
-    const { data, error } = await this.db.from('payments').select('id,d,t').eq('project', project).gte('d', since).limit(1000);
+    const { data, error } = await this.db.from('payments').select('id,d,t').eq('project', project).gte('d', since).is('reversed', null).limit(1000);
     if (error) throw new Error(error.message);
     return (data || []).map(r => ({ id: String(r.id), d: String(r.d), t: String(r.t) }));
   }

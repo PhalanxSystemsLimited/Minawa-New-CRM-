@@ -568,6 +568,9 @@ html[data-theme=dark] .doc .vch-in{border:2px solid #161B1F;background:#F3F0EA}
 html[data-theme=dark] .doc .vch-cf{border-top:1px dashed #9aa0a3}
 html[data-theme=dark] .doc .vch-cf-h{color:#53606a}
 html[data-theme=dark] .doc .vch-line{border-bottom:1px solid #9aa0a3}
+html[data-theme=dark] .signin-forgot a,html[data-theme=dark] .signin-sub a{color:inherit}
+html[data-theme=dark] .menu .menu-link{color:#E8EAED}
+html[data-theme=dark] .menu .menu-link:hover{background:var(--hover,rgba(0,0,0,.05))}
 html[data-theme=dark],html[data-theme=dark] body{background:var(--bg)}
 html[data-theme=dark] body{color:#cfd2d5}
 html[data-theme=dark] body::before{background:var(--bg)}
@@ -1750,6 +1753,9 @@ html[data-theme=frost] .doc .vch-in{border:2px solid #161B1F;background:#F3F0EA}
 html[data-theme=frost] .doc .vch-cf{border-top:1px dashed #9aa0a3}
 html[data-theme=frost] .doc .vch-cf-h{color:#53606a}
 html[data-theme=frost] .doc .vch-line{border-bottom:1px solid #9aa0a3}
+html[data-theme=frost] .signin-forgot a,html[data-theme=frost] .signin-sub a{color:inherit}
+html[data-theme=frost] .menu .menu-link{color:#E8EAED}
+html[data-theme=frost] .menu .menu-link:hover{background:var(--hover,rgba(0,0,0,.05))}
 html[data-theme=frost],html[data-theme=frost] body{background:var(--bg)}
 html[data-theme=frost] body{color:#cfd2d5}
 html[data-theme=frost] body::before{background:var(--bg)}

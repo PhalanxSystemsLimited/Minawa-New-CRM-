@@ -6,6 +6,7 @@ import { PLAN_LABEL } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
 import { toggleGeneratorAction } from '@/lib/actions-generator';
 import { possessionAction, adjustAction, instalmentAction, dueAction } from '@/lib/actions-desk';
+import { reverseAction, cancelCashAction } from '@/lib/actions-cash';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
 import { addDays, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
 import { SERVICES } from '@/lib/defaults';
@@ -75,6 +76,23 @@ const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap
 export function OwnerModal({ m, o }: { m: string; o: Owner }) {
   const S = cur(), bal = balance(o);
   if (m.startsWith('instal')) return InstalModal({ o, n: Math.min(24, Math.max(2, +m.split('-')[1] || 3)) });
+  if (m.startsWith('reverse-')) {
+    const p = S.payments.find(x => x.id === m.slice(8));
+    if (!p || cur().role === 'manager') return <ModalShell title="Reverse a payment"><div className="callout">{p ? 'Only the Admin or the Accountant can reverse a payment.' : 'This payment is not there any more (already reversed?).'}</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    return <ModalShell title={`Reverse payment ${p.receipt}`}><form action={reverseAction} style={col}>{hidden(o)}<input type="hidden" name="pay" value={p.id} />
+      <div className="callout bad"><div>For a payment entered by mistake: {rs(p.amount)} cash on {fd(p.d)} (receipt {p.receipt}). Reversing it takes it back exactly as it was shared out, so {o.name} owes it again; it no longer counts in collections or the cash hand-over. The receipt stays on record as reversed.</div></div>
+      {isAdmin() ? null : <div className="callout warn"><div>The Admin approves this first and sees your reason.</div></div>}
+      <div className="form-row"><label htmlFor="rv-r">Why is this payment wrong?</label><input id="rv-r" name="reason" type="text" required placeholder="e.g. Entered twice; the owner paid once (receipt 147)" /></div>
+      <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Reverse payment' : 'Send for approval'}</Submit></div></form></ModalShell>;
+  }
+  if (m.startsWith('cancelcash-')) {
+    const pr = S.proofs.find(x => x.id === m.slice(11) && x.status === 'pending');
+    if (!pr || cur().role !== 'manager' || pr.byId !== S.staffId) return <ModalShell title="Cancel a cash entry"><div className="callout">This entry can&apos;t be cancelled (already confirmed, or not yours).</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    return <ModalShell title="Cancel a cash entry"><form action={cancelCashAction} style={col}>{hidden(o)}<input type="hidden" name="id" value={pr.id} />
+      <div className="callout">{rs(pr.amount)} cash entered on {fd(pr.d)} (receipt {pr.ref || '—'}) is still waiting for the Accountant. Cancelling it takes it off the Accountant&apos;s list; nothing changes on {o.name}&apos;s account.</div>
+      <div className="form-row"><label htmlFor="cc-r">Why? (optional)</label><input id="cc-r" name="reason" type="text" placeholder="e.g. Wrong amount; entering it again" /></div>
+      <div className="m-actions"><CloseBtn /><Submit>Cancel this entry</Submit></div></form></ModalShell>;
+  }
   switch (m) {
     case 'due': return <ModalShell title="Due date for this owner"><form action={dueAction} style={col}>{hidden(o)}
       <div className="callout">For {o.name} only, from the next bill: each bill is due on this day of the month after the bill. {o.dueDay ? `Now: the ${ord(o.dueDay)}.` : 'Now: the project\'s due date.'}</div>

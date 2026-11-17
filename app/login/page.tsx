@@ -5,8 +5,8 @@ import { ThemeSwitch } from '@/components/Shell';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Login({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
-  const { e } = await searchParams;
+export default async function Login({ searchParams }: { searchParams: Promise<{ e?: string; ok?: string }> }) {
+  const { e, ok } = await searchParams;
   const local = !supabaseOn();
   return (
     <div className="signin-page">
@@ -21,9 +21,11 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             <p className="signin-sub">Maintenance dues, WhatsApp bills and payments.</p>
           </header>
           {e ? <div className="callout bad" style={{ marginBottom: 16 }}><div>{e}</div></div> : null}
+          {ok ? <div className="callout good" style={{ marginBottom: 16 }}><div>{ok}</div></div> : null}
           <form action={signIn} className="signin-form">
             <div><label htmlFor="em">Email</label><input id="em" name="email" type="email" autoComplete="username" required placeholder="name@minawa.com" defaultValue={local ? 'admin@minawa.local' : ''} /></div>
             <div><label htmlFor="pw">Password</label><PasswordInput id="pw" name="password" autoComplete="current-password" required placeholder="••••••••••••" /></div>
+            {local ? null : <div className="signin-forgot"><a href="/login/forgot">Forgot password?</a></div>}
             <div className="signin-actions"><Submit className="signin-btn" pendingText="Signing in…"><span>Sign in</span><span className="signin-arr" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span></Submit></div>
           </form>
           {local ? <div className="callout warn" style={{ marginTop: 18 }}><div><b>Local mode</b> (no Supabase connected). Sign in as <b>admin@minawa.local</b> or <b>accountant@minawa.local</b>, password <b>minawa</b>. Data is kept in <code>data/local-db.json</code>.</div></div> : null}

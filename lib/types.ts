@@ -117,16 +117,30 @@ export interface Message {
   status: MsgStatus; waId: string | null; error: string | null; manual: boolean; shot: boolean; sentAt: string | null;
 }
 
-export interface Applied { kind: 'dues' | 'fee' | 'credit'; label: string; amount: number }
+/** What a payment paid. ref: the bill id, 'arrears', 'fee' or 'credit' (so a payment can be reversed exactly). */
+export interface Applied { kind: 'dues' | 'fee' | 'credit'; label: string; amount: number; ref?: string }
 export interface Payment {
   id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; method: string; ref: string;
   /** staff: entered by staff; proof: a checked bank screenshot or a building manager's entry. ('link' only on old records.) */
   source: 'link' | 'staff' | 'proof'; by: string; before: number; applied: Applied[]; balAfter: number; receipt: string;
+  /** Who is holding the cash: the building manager who took it, or the Accountant for cash paid at the office. */
+  collectorId?: string | null; collectorName?: string | null;
+  /** The cash hand-over it went in (payments are cash only: building manager → Accountant → bank). */
+  handoverId?: string | null;
+  /** A wrong payment taken back: when, by whom and why. Reversed payments stay in the database for the record. */
+  reversed?: { d: ISODate; t: string; by: string; reason: string } | null;
+}
+/** Cash a building manager hands over to the Accountant (or cash paid at the office), followed to the bank deposit. */
+export interface Handover {
+  id: string; project: string; fromId: string | null; fromName: string; amount: number; paymentIds: string[];
+  d: ISODate; t: string; status: 'pending' | 'received' | 'disputed';
+  receivedBy: string | null; receivedD: ISODate | null; note: string | null; reply: string | null;
+  depositSlip: string | null; depositD: ISODate | null; depositedBy: string | null;
 }
 
 /** Money waiting for an accountant to check: a bank-transfer screenshot an owner sent (`transfer`), or cash a building
  *  manager recorded (`cash`: the balance changes only once the accountant confirms it). */
-export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected'; msgId: string | null; doneOn: ISODate | null; media: string | null;
+export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected' | 'cancelled'; msgId: string | null; doneOn: ISODate | null; media: string | null;
   kind?: 'transfer' | 'cash'; method?: string | null; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null }
 export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean }
 export interface Clearance { no: string; ownerId: string; project: string; d: ISODate; by: string }
@@ -162,7 +176,7 @@ export interface State {
   /** Who is acting right now: their log entries carry it, so admins can see each person's activity. */
   staffId?: string | null; staffName?: string | null;
   rates: Rate[]; templates: Record<string, Template>; settings: ProjectSettings;
-  owners: Owner[]; bills: Bill[]; entries: Entry[]; messages: Message[]; payments: Payment[];
+  owners: Owner[]; bills: Bill[]; entries: Entry[]; messages: Message[]; payments: Payment[]; handovers: Handover[];
   proofs: Proof[]; alerts: Alert[]; clearances: Clearance[]; charges: Charge[]; notices: Notice[];
   /** Changes to an owner's charges that an accountant asked for, waiting for (or decided by) an admin. */
   approvals: Approval[];
@@ -180,7 +194,7 @@ export interface State {
  *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
  *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
  *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate';
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'changes';
 export interface Approval {
   id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;

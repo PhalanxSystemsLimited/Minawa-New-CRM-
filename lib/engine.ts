@@ -15,7 +15,7 @@
 // Engine functions are synchronous and work on one project's State, set with use(). The store loads the
 // State, the engine changes it, and the store saves what changed. Messages are only recorded here: staff send
 // them by hand from Send on WhatsApp. Payments are entered by staff (building managers' wait for the accountant).
-import type { State, Owner, Bill, Message, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
+import type { State, Owner, Bill, Message, Handover, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
 import { PLAN_MONTHS } from './types';
 import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT, addMonths, monthsBetween, dayIn } from './fmt';
 
@@ -324,21 +324,21 @@ function syncFee(o: Owner, d: string) {
 function allocate(o: Owner, amt: number): Applied[] {
   let left = amt;
   const out: Applied[] = [];
-  const put = (kind: Applied['kind'], label: string, x: number) => { if (x <= 0) return; const r = out.find(y => y.label === label); if (r) r.amount += x; else out.push({ kind, label, amount: x }); };
+  const put = (kind: Applied['kind'], label: string, x: number, ref?: string) => { if (x <= 0) return; const r = out.find(y => y.label === label); if (r) r.amount += x; else out.push({ kind, label, amount: x, ...(ref ? { ref } : {}) }); };
   const dues = duesOf(o), fee = o.feeDue || 0, feeL = `Fine (${feePct()}%)`;
   const toFee = dues > 0 ? Math.min(fee, Math.round(amt * fee / (dues + fee))) : Math.min(fee, amt);
-  o.feeDue = fee - toFee; left -= toFee; put('fee', feeL, toFee);
+  o.feeDue = fee - toFee; left -= toFee; put('fee', feeL, toFee, 'fee');
   const arrL = `Earlier dues (before ${fm(goLive().slice(0, 7))})`;
   if (o.instalments && o.openingLeft > 0) {
     // On an instalment plan: late instalments first, then the monthly bills (so they stay paid as usual), and the
     // instalments not yet due only after that. One arrears balance, never counted twice.
     const late = Math.min(left, instOverdue(o, S.today), o.openingLeft);
-    if (late > 0) { o.openingLeft -= late; left -= late; put('dues', `${arrL}, late instalments`, late); }
-  } else if (o.openingLeft > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x); }
-  for (const b of billsOf(o)) { if (left <= 0) break; const x = Math.min(left, b.net - b.paid); if (x > 0) { b.paid += x; left -= x; put('dues', `${b.months ? 'Maintenance' : 'Utilities'}, ${periodLabel(b)}`, x); } }
-  if (o.instalments && o.openingLeft > 0 && left > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', `${arrL}, instalments ahead of time`, x); }
-  if (left > 0 && o.feeDue > 0) { const x = Math.min(left, o.feeDue); o.feeDue -= x; left -= x; put('fee', feeL, x); }
-  if (left > 0) { o.credit += left; put('credit', 'Kept as advance credit', left); }
+    if (late > 0) { o.openingLeft -= late; left -= late; put('dues', `${arrL}, late instalments`, late, 'arrears'); }
+  } else if (o.openingLeft > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x, 'arrears'); }
+  for (const b of billsOf(o)) { if (left <= 0) break; const x = Math.min(left, b.net - b.paid); if (x > 0) { b.paid += x; left -= x; put('dues', `${b.months ? 'Maintenance' : 'Utilities'}, ${periodLabel(b)}`, x, b.id); } }
+  if (o.instalments && o.openingLeft > 0 && left > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', `${arrL}, instalments ahead of time`, x, 'arrears'); }
+  if (left > 0 && o.feeDue > 0) { const x = Math.min(left, o.feeDue); o.feeDue -= x; left -= x; put('fee', feeL, x, 'fee'); }
+  if (left > 0) { o.credit += left; put('credit', 'Kept as advance credit', left, 'credit'); }
   return out;
 }
 /** A credit or waiver given by staff (e.g. an agreed reduction): lowers what is owed like a payment, without a receipt. */
@@ -533,7 +533,7 @@ export function verifyProof(p: Proof, d: string, t: string, by: string, amount?:
   if (amount && amount > 0) p.amount = amount;
   p.status = 'verified'; p.doneOn = d; p.checkedBy = by;
   // A payment a building manager entered: only now does it count (receipt, balance, message to the owner).
-  if (p.kind === 'cash') { const m = p.method || 'Cash'; return recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`); }
+  if (p.kind === 'cash') { const m = p.method || 'Cash'; return recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`, { collectorId: p.byId || null, collectorName: p.byName || 'Building manager' }); }
   return recordPayment(o, p.amount, 'Bank transfer (screenshot checked)', 'Proof #' + p.id, d, 'proof', t, by);
 }
 /** A building manager enters a cash payment (payments are in cash only): it waits for an accountant to confirm it, and
@@ -565,6 +565,80 @@ export function sendDues(o: Owner, d: string, t: string) {
   const m = pushMsg(o, d, t, { kind: 'link', title: 'Your dues', text: fill(S.templates.link.text, vars), tpl: 'link', vars, pdf: { kind: 'statement', id: o.id }, manual: true });
   log(d, t, 'message', `Dues of ${rs(bal)} ready to send to ${o.apt} by ${S.by}`, o.id);
   return m;
+}
+
+/* ---------- cash: reversals, cancellations, hand-overs and bank deposits ----------
+ * Payments are cash only. A building manager takes the cash and enters it; once the Accountant confirms it, the payment
+ * counts and the cash is "in hand" with that manager until he hands it over. The Accountant receives the hand-over and
+ * later deposits it in the bank (deposit slip). Cash paid at the office is with the Accountant from the start. */
+
+/** Cash paid at the office, recorded by the Accountant: it counts at once and is already with the Accountant. */
+export function officeCash(o: Owner, amt: number, ref: string, d: string, t: string, staffId: string | null, name: string) {
+  const p = recordPayment(o, amt, 'Cash (paid at the office)', ref, d, 'staff', t, name, { collectorId: staffId, collectorName: name });
+  const h: Handover = { id: 'HO-' + (100 + nid('ho')), project: S.project, fromId: staffId, fromName: `${name} (office)`, amount: amt, paymentIds: [p.id], d, t,
+    status: 'received', receivedBy: name, receivedD: d, note: 'Cash paid at the office', reply: null, depositSlip: null, depositD: null, depositedBy: null };
+  S.handovers.push(h); p.handoverId = h.id;
+  return p;
+}
+/** Take back a wrong payment exactly as it was shared out (bills, old arrears, fine, credit). The payment stays in the
+ *  database marked as reversed; the ledger gets a matching entry, so the balance is back to what it was. */
+export function reversePayment(o: Owner, p: Payment, reason: string, by: string, d: string, t: string) {
+  if (p.reversed) throw new Error('This payment was already reversed.');
+  const label = (b: Bill) => `${b.months ? 'Maintenance' : 'Utilities'}, ${periodLabel(b)}`;
+  for (const a of p.applied || []) {
+    const ref = a.ref || (a.kind === 'fee' ? 'fee' : a.kind === 'credit' ? 'credit' : a.label.startsWith('Earlier dues') ? 'arrears' : billsOf(o).find(b => label(b) === a.label)?.id || 'arrears');
+    if (ref === 'fee') o.feeDue = (o.feeDue || 0) + a.amount;
+    else if (ref === 'arrears') o.openingLeft = (o.openingLeft || 0) + a.amount;
+    else if (ref === 'credit') {
+      let x = a.amount; const fromCredit = Math.min(o.credit || 0, x); o.credit -= fromCredit; x -= fromCredit;
+      // Credit already used on later bills: those bills are unpaid again by that much.
+      for (const b of [...billsOf(o)].reverse()) { if (x <= 0) break; const y = Math.min(x, b.fromCredit || 0); if (y > 0) { b.fromCredit -= y; b.paid -= y; x -= y; } }
+    } else { const b = S.bills.find(x => x.id === ref); if (b) b.paid = Math.max(0, b.paid - a.amount); else o.openingLeft = (o.openingLeft || 0) + a.amount; }
+  }
+  addEntry(o.id, d, 'reversal', p.amount, `Payment reversed · ${p.receipt} · ${reason}`, { ref: p.receipt, pid: p.id });
+  p.reversed = { d, t, by, reason };
+  // Out of any hand-over not yet deposited; its receipt message, if still waiting, is not sent.
+  const h = p.handoverId ? S.handovers.find(x => x.id === p.handoverId) : null;
+  if (h && !h.depositSlip) { h.paymentIds = h.paymentIds.filter(x => x !== p.id); h.amount -= p.amount; }
+  for (const m of S.messages) if (m.status === 'pending' && m.pdf?.kind === 'receipt' && m.pdf.id === p.id) { m.status = 'skipped'; m.error = `Payment reversed on ${fd(d)}`; }
+  log(d, t, 'payment', `Payment ${p.receipt} of ${rs(p.amount)} for ${o.apt} reversed by ${by}: ${reason}. ${o.apt} owes ${rs(balance(o))} again${h && h.depositSlip ? `. It was already deposited (slip ${h.depositSlip}): correct the bank record` : ''}`, o.id);
+  return p;
+}
+/** A building manager takes back a cash entry he made by mistake, before the Accountant confirms it. */
+export function cancelCash(pr: Proof, by: string, reason: string, d: string, t: string) {
+  if (pr.status !== 'pending') throw new Error('Only an entry still waiting for the Accountant can be cancelled.');
+  pr.status = 'cancelled'; pr.doneOn = d; pr.reply = `Cancelled by ${by}${reason ? `: ${reason}` : ''}`;
+  log(d, t, 'payment', `Cash entry of ${rs(pr.amount)} for ${ownerById(pr.ownerId)?.apt} (receipt ${pr.ref || '—'}) cancelled by ${by}${reason ? `: ${reason}` : ''}`, pr.ownerId);
+}
+/** Confirmed cash still with this person (not handed over yet). */
+export const cashInHand = (collectorId: string) => S.payments.filter(p => p.collectorId === collectorId && !p.handoverId && !p.reversed);
+/** A building manager hands all his confirmed cash in this building over to the Accountant. */
+export function handOver(collectorId: string, name: string, note: string, d: string, t: string) {
+  const list = cashInHand(collectorId);
+  if (!list.length) throw new Error('There is no confirmed cash to hand over.');
+  const h: Handover = { id: 'HO-' + (100 + nid('ho')), project: S.project, fromId: collectorId, fromName: name, amount: list.reduce((a, p) => a + p.amount, 0), paymentIds: list.map(p => p.id), d, t,
+    status: 'pending', receivedBy: null, receivedD: null, note: note || null, reply: null, depositSlip: null, depositD: null, depositedBy: null };
+  S.handovers.push(h); list.forEach(p => { p.handoverId = h.id; });
+  log(d, t, 'payment', `${name} handed over ${rs(h.amount)} cash (${list.length} payment${list.length === 1 ? '' : 's'}, ${h.id}) to the Accountant${note ? `: ${note}` : ''}`);
+  return h;
+}
+/** The Accountant counts a hand-over: received in full, or a problem (short, missing), sent back with a note. */
+export function receiveHandover(h: Handover, ok: boolean, by: string, reply: string, d: string, t: string) {
+  if (h.status !== 'pending') throw new Error('This hand-over was already dealt with.');
+  if (ok) { h.status = 'received'; h.receivedBy = by; h.receivedD = d; h.reply = reply || null; }
+  else {
+    h.status = 'disputed'; h.receivedBy = by; h.receivedD = d; h.reply = reply || 'Not as entered';
+    // The cash goes back to "in hand" so the building manager can hand it over again once it is sorted out.
+    for (const p of S.payments) if (p.handoverId === h.id) p.handoverId = null;
+  }
+  log(d, t, 'payment', ok ? `${by} received ${rs(h.amount)} cash from ${h.fromName} (${h.id})` : `${by} did not accept ${h.id} from ${h.fromName} (${rs(h.amount)}): ${h.reply}`);
+}
+/** Received cash put in the bank: the deposit slip number and date go on each hand-over. */
+export function depositHandovers(ids: string[], slip: string, depositD: string, by: string, d: string, t: string) {
+  const list = S.handovers.filter(h => ids.includes(h.id) && h.status === 'received' && !h.depositSlip);
+  for (const h of list) { h.depositSlip = slip; h.depositD = depositD; h.depositedBy = by; }
+  if (list.length) log(d, t, 'payment', `${rs(list.reduce((a, h) => a + h.amount, 0))} cash deposited in the bank by ${by}, slip ${slip} (${fd(depositD)}): ${list.map(h => h.id).join(', ')}`);
+  return list;
 }
 
 /* ---------- derived ---------- */

@@ -789,3 +789,5 @@ button.lv-kpi{cursor:pointer}
 @media (min-width:768px) and (max-width:1599px){
   .lv-layout.lv-dash{grid-template-columns:minmax(0,1fr)}
 }
+.si-cash{--si-a:#FCD34D;--si-b:#B45309;--si-g:rgba(217,119,6,.7)}
+.si-rpt{--si-a:#93C5FD;--si-b:#1D4ED8;--si-g:rgba(37,99,235,.7)}

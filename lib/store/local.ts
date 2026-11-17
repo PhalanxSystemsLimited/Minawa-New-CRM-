@@ -10,7 +10,7 @@ import { buildSample, SAMPLE_START } from '../seed';
 interface DB {
   projects: Project[]; templates: Record<string, Template>; settings: Record<string, ProjectSettings>; counters: Record<string, number>;
   log: LogEntry[]; staff: Staff[]; company?: Company; walog?: WaLog[];
-  owners: object[]; bills: object[]; entries: object[]; messages: object[]; payments: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
+  owners: object[]; bills: object[]; entries: object[]; messages: object[]; payments: object[]; handovers?: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
 }
 const FILE = path.join(process.cwd(), 'data', 'local-db.json');
 const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unknown> };
@@ -18,7 +18,7 @@ const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unk
 function empty(): DB {
   return { projects: PROJECTS.map(p => ({ ...p })), templates: JSON.parse(JSON.stringify(TEMPLATES)), settings: {}, counters: {}, log: [],
     staff: [{ id: 'local-admin', email: 'admin@minawa.local', name: 'Admin', role: 'admin', active: true }, { id: 'local-accountant', email: 'accountant@minawa.local', name: 'Accountant', role: 'accountant', active: true }, { id: 'local-manager', email: 'manager@minawa.local', name: 'Building Manager', role: 'manager', active: true, projects: ['cc'] }],
-    owners: [], bills: [], entries: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], rates: [] };
+    owners: [], bills: [], entries: [], messages: [], payments: [], handovers: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], rates: [] };
 }
 function db(): DB {
   if (g.__minawaDb) return g.__minawaDb;
@@ -47,7 +47,7 @@ function flush() {
   fs.renameSync(tmp, FILE);
 }
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
-const tbl = (d: DB, t: TableName) => (d as unknown as Record<string, Record<string, unknown>[]>)[t];
+const tbl = (d: DB, t: TableName) => ((d as unknown as Record<string, Record<string, unknown>[]>)[t] ||= []);
 
 export class LocalStore implements Store {
   kind = 'local' as const;
@@ -61,7 +61,7 @@ export class LocalStore implements Store {
       project: pid, proj: clone(proj), today: o.today, goLive: proj.goLive || o.today, by: o.by || 'System', role: o.role || 'admin',
       rates: pick('rates') as unknown as Rate[], templates: clone(d.templates),
       settings: defaultSettings(pid, clone(d.settings[pid] || null)),
-      owners: pick('owners'), bills: pick('bills'), entries: pick('entries'), messages: pick('messages'), payments: pick('payments'),
+      owners: pick('owners'), bills: pick('bills'), entries: pick('entries'), messages: pick('messages'), payments: pick('payments'), handovers: pick('handovers'),
       proofs: pick('proofs'), alerts: pick('alerts'), clearances: pick('clearances'), charges: pick('charges'), notices: pick('notices'), approvals: pick('approvals'), log: [], seq: clone(d.counters)
     } as unknown as State;
     s.company = { ...DEFAULT_COMPANY, ...(d.company || {}) };
@@ -92,7 +92,7 @@ export class LocalStore implements Store {
     t.__minawaThrottle[name] = now + seconds * 1000; return true;
   }
   async paymentsSince(project: string, since: string) {
-    return (db().payments as { id: string; project: string; d: string; t: string }[]).filter(p => p.project === project && p.d >= since).map(p => ({ id: p.id, d: p.d, t: p.t }));
+    return (db().payments as { id: string; project: string; d: string; t: string; reversed?: unknown }[]).filter(p => p.project === project && p.d >= since && !p.reversed).map(p => ({ id: p.id, d: p.d, t: p.t }));
   }
   async withLock<T>(fn: () => Promise<T>): Promise<T> {
     const prev = g.__minawaLock || Promise.resolve();

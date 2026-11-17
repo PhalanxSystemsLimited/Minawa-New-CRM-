@@ -20,11 +20,14 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
     // Accountant's (and an Admin's), so a manager doesn't see them here.
     const mgrs = S.managers || [], acts = S.role === 'manager', money = S.role !== 'manager';
     const pr = money ? S.proofs.filter(p => p.status === 'pending') : [], fl = failedList(), al = S.alerts.filter(a => !a.done), ts = toDoGroups(), tsN = ts.reduce((a, g) => a + g.n, 0);
+    const held = acts ? S.payments.filter(p => p.collectorId === S.staffId && !p.handoverId && !p.reversed) : [], heldAmt = held.reduce((a, p) => a + p.amount, 0);
     const hid = (id: string) => <><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={id} /></>;
     const head = <div className="page-head"><div><h2>To do</h2><p>{acts ? 'What needs a person. The CRM makes bills, reminders and notices at 11:00 AM; they wait here for you to send one by one on WhatsApp.' : `${mgrs.length ? `Sent by ${mgrs.join(', ')} (building manager).` : 'No building manager is assigned to this building yet: the Admin assigns one in Staff & connections.'} You can follow it here; the sending is theirs.`}</p></div></div>;
-    if (!tsN && !pr.length && !fl.length && !al.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
+    if (!tsN && !pr.length && !fl.length && !al.length && !held.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
     return <>
       {projHead('follow')}{head}
+      {held.length ? <div className="card"><div className="card-row"><h3>Cash to hand over <small>{rs(heldAmt)} · {held.length} confirmed payment{held.length === 1 ? '' : 's'}</small></h3><Go href="/cash" className="btn sm primary">Hand over to the Accountant</Go></div>
+        <p className="cell-sub" style={{ margin: 0 }}>The Accountant has confirmed these; give the cash to the Accountant and press Hand over on the Cash page.</p></div> : null}
       {tsN ? <div className="card"><div className="card-row"><h3>Send on WhatsApp <small>{tsN} owner{tsN === 1 ? '' : 's'} waiting · one by one</small></h3>{acts ? <Go href={`/p/${pid}/send?type=queue&kind=all&go=1`} className="btn sm wa"><Wa /> Send all, one by one</Go> : null}</div>
         <div className="list">{ts.map(g => <div className="li" key={g.key}><div className="t"><div className="a">{g.label} · <span className="num">{g.n}</span> owner{g.n === 1 ? '' : 's'}</div><div className="b">{g.hint} · waiting since {fds(g.since)}</div></div>
           {acts ? <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa"><Wa /> Send {g.n === 1 ? 'it' : 'one by one'}</Go> : <span className="tag warn">{mgrs.length ? `Waiting for ${mgrs[0]}` : 'No building manager yet'}</span>}</div>)}</div>

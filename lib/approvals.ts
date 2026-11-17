@@ -9,11 +9,11 @@ import { PLAN_LABEL } from './types';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
-  sendDues, pushMsg, nextBillFor, anchorOf } from './engine';
+  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment } from './engine';
 import { fd, fm, rs, ord, addDays } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
-  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date' };
+  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment' };
 /** Changes for the whole project (not one owner). */
 export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announce', 'possession'];
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
@@ -61,6 +61,8 @@ export function describe(o: Owner | null, kind: ApprovalKind, c: Record<string, 
     case 'instalments': { const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0);
       return { summary: `Old arrears of ${rs(tot)} in ${plural(it.length, 'instalment')}: ${it.map(x => `${rs(num(x.amount))} by ${fd(x.due)}`).join(', ')}`,
         before: o ? (o.instalments ? `A plan of ${plural(o.instalments.items.length, 'instalment')} (${rs(o.instalments.total)})` : `${rs(o.openingLeft || 0)} old arrears, due in full`) : '' }; }
+    case 'reverse': { const p = cur().payments.find(x => x.id === String(c.pid));
+      return { summary: `Reverse payment ${p ? `${p.receipt} of ${rs(p.amount)} (${fd(p.d)})` : String(c.pid)}: ${String(c.reason || '')}`, before: p ? `Counted: ${rs(p.amount)} cash, receipt ${p.receipt}` : 'Payment not found' }; }
     case 'posdate': { const pd = String(c.possession), day = o?.firstBill ? +addDays(pd, cur().settings.rules.graceDays ?? 25).slice(8) : +pd.slice(8);
       return { summary: `Possession date ${fd(pd)}: billed on the ${ord(day)} from the next bill`, before: o ? (o.possessionKnown ? `Possession ${fd(o.possession)}, billed on the ${ord(anchorOf(o).day)}` : `No possession date on file, billed on the ${ord(cur().settings.rules.billDay)}`) : '' }; }
     case 'due': return { summary: `Due on the ${ord(num(c.dueDay))} of the month after each bill`, before: o?.dueDay ? `Due on the ${ord(o.dueDay)}` : 'The project\'s due date' };
@@ -102,6 +104,7 @@ function noChange(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown
   if (kind === 'announce' || kind === 'possession' || kind === 'instalments') return false;
   if (!o) return false;
   if (kind === 'due') return (o.dueDay || null) === (num(c.dueDay) || null);
+  if (kind === 'reverse') return !cur().payments.some(x => x.id === String(c.pid));
   if (kind === 'posdate') return o.possessionKnown && o.possession === String(c.possession);
   if (kind === 'discount') { const d = c as unknown as Disc, x = o.discount; return (d.kind === 'none' || !d.value) ? !x || !x.value : !!x && x.kind === d.kind && x.value === d.value && (x.until || null) === (d.until || null); }
   if (kind === 'generator') return !!o.generator === !!c.on;
@@ -110,6 +113,7 @@ function noChange(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown
   return false;
 }
 function check(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>) {
+  if (kind === 'reverse') { const p = cur().payments.find(x => x.id === String(c.pid)); if (!p || (o && p.ownerId !== o.id)) throw new Error('That payment was not found'); if (!String(c.reason || '').trim()) throw new Error('Write why this payment is wrong'); }
   if (isProjectKind(kind)) {
     if (kind === 'rates' && (!/^\d{4}-\d{2}-\d{2}$/.test(String(c.from)) || !ratesOf(c).length)) throw new Error('Pick the date the new rates start and enter the rates');
     if (kind === 'fine' && !(Number(c.feePct) >= 0 && Number(c.feePct) <= 50)) throw new Error('The fine must be between 0% and 50%');
@@ -196,6 +200,12 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       const was = o.plan || 'monthly', plan = c.plan as Plan; o.plan = plan;
       log(d, t, 'admin', `${o.apt} billing plan changed by ${who}: ${PLAN_LABEL[was]} → ${PLAN_LABEL[plan]}`, o.id);
       return `Billing plan changed to ${PLAN_LABEL[plan].toLowerCase()}`;
+    }
+    case 'reverse': {
+      const p = S.payments.find(x => x.id === String(c.pid));
+      if (!p) throw new Error('That payment is not there any more (already reversed?)');
+      reversePayment(o, p, String(c.reason || 'No reason given'), who, d, t);
+      return `Payment ${p.receipt} reversed; ${o.apt} owes ${rs(balance(o))} again`;
     }
     case 'posdate': {
       const pd = String(c.possession), was = o.possessionKnown ? fd(o.possession) : 'not on file', wasDay = anchorOf(o).day;
