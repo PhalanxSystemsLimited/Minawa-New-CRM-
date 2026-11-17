@@ -167,7 +167,7 @@ export function pendingGroups(filter?: (m: Message) => boolean) {
 }
 /** To do: the messages waiting to be sent by hand, in groups (the 25th's bills, the reminders on the 3rd and 7th…). */
 export const TODO_GROUPS: { key: string; label: string; hint: string; kinds: string[] }[] = [
-  { key: 'bill', label: 'Monthly bills', hint: 'First alert: the bill made on the 25th, with the Pay Now link', kinds: ['bill'] },
+  { key: 'bill', label: 'Monthly bills', hint: 'First alert: the bill made on the customer\'s billing date, with the Pay Now link', kinds: ['bill'] },
   { key: 'reminder', label: 'Reminders', hint: 'Unpaid bills, on the 3rd and 7th of the month', kinds: ['reminder'] },
   { key: 'notice', label: 'Final notices', hint: 'Unpaid after the due date: the fine is added', kinds: ['notice'] },
   { key: 'receipt', label: 'Payment receipts', hint: 'Owners who have paid', kinds: ['receipt'] },

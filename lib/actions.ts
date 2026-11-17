@@ -10,7 +10,7 @@ import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, cancelLinks, unitOf, log, at, nid, rateTypes,
   verifyProof, rejectProof, sendPaymentLink, setTargetOption, pushMsg, payLink, resyncFines, apartments, monthsToBill, billDateOf, recordCash } from './engine';
-import { fd, rs, ord, waDigits, todayPKT, addDays } from './fmt';
+import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
 import { changeOrRequest, type ChangeResult } from './approvals';
@@ -116,13 +116,13 @@ export async function editOwnerAction(fdata: FormData) {
     if (name && name !== o.name) { ch.push(`name ${o.name} → ${name}`); o.name = name; }
     if (phone !== o.phone) { ch.push(`WhatsApp ${o.phone || 'none'} → ${phone || 'none'}`); o.phone = phone; o.noPhone = !phone; o.invalidPhone = !phone; }
     if (email !== o.email) o.email = email;
-    if (pos && (pos !== o.possession || !o.possessionKnown)) { ch.push(`possession ${o.possessionKnown ? fd(o.possession) : 'not on file'} → ${fd(pos)}`); o.possession = pos; o.possessionKnown = true; if (o.firstBill) o.firstBill = addDays(pos, s.settings.rules.graceDays ?? 25); }
     o.abroad = fdata.get('abroad') === 'on';
     if (staff.role === 'admin') { const ex = fdata.get('exempt') === 'on'; if (ex !== o.exempt) { ch.push(ex ? 'now exempt' : 'no longer exempt'); o.exempt = ex; if (!ex) o.exemptWhy = null; } }
     if (ch.length) log(s.today, at(15), 'admin', `${o.apt} edited by ${staffName(staff)}: ${ch.join('; ')}`, o.id);
     // What the flat is charged (billing plan, own monthly fee): an accountant's change waits for an admin's approval.
     const out: ChangeResult[] = [], why = S(fdata, 'why');
     const plan = S(fdata, 'plan');
+    if (pos && (pos !== o.possession || !o.possessionKnown)) out.push(changeOrRequest(o, 'posdate', { possession: pos }, why));
     if (plan && ['monthly', 'quarterly', 'annual'].includes(plan)) out.push(changeOrRequest(o, 'plan', { plan }, why));
     if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null }, why)); }
     return out.filter(x => x.done === 'requested').map(x => x.summary);
