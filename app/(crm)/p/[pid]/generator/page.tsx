@@ -5,10 +5,13 @@ import { fm, fd, rs } from '@/lib/fmt';
 import { GeneratorList, type GenRow } from '@/components/GeneratorList';
 import { projectPage, projHead } from '@/components/views/project';
 
+import { redirect } from 'next/navigation';
+import { requireStaff } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
 export default async function GeneratorPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
+  if ((await requireStaff()).role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('The generator charges list is kept by the building manager.')}`);
   return projectPage(pid, sp, () => {
     const S = cur();
     if (!hasGenerator()) return <>{projHead('generator')}<div className="card allclear"><div className="big">No generator charges here</div><p className="muted">{S.proj.name} has no generator rate card. An admin can add one in Settings › Monthly fees (a type named &quot;… + generator&quot;).</p></div></>;

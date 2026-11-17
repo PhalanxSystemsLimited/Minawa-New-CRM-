@@ -1,7 +1,7 @@
 'use server';
 // Generator Charges List: put flats on or off it. A flat on the list is billed on the "<type> + generator" rate card
 // (Royal Enclave: 15,000 a month instead of 12,000). Bills already made keep their amount, so a change only counts
-// from the next month not yet billed. An admin's change applies at once; an accountant's waits for an admin's approval.
+// from the next month not yet billed. The list is kept by the building manager; each change waits for the Admin's approval.
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireStaff } from './session';
@@ -13,6 +13,7 @@ export interface GeneratorResult { ok: boolean; changed: number; requested: numb
 
 export async function setGeneratorAction(input: { pid: string; ids: string[]; on: boolean; why?: string }): Promise<GeneratorResult> {
   const staff = await requireStaff(), on = !!input.on, ids = [...new Set((input.ids || []).map(String))];
+  if (staff.role !== 'manager') return { ok: false, changed: 0, requested: 0, error: 'The generator charges list is kept by the building manager.' };
   if (!ids.length) return { ok: false, changed: 0, requested: 0, error: 'Tick at least one apartment.' };
   try {
     const out = await mutate(input.pid, staff, s => {

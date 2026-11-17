@@ -32,7 +32,7 @@ export function projHead(tab: Tab, ownerTitle?: string) {
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
-    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && (k === 'settings' || k === 'generator')) && !((k === 'utilities' || k === 'send') && S.role !== 'manager') && !(k === 'follow' && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
+    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && k === 'settings') && !((k === 'utilities' || k === 'send' || k === 'generator') && S.role !== 'manager') && !(k === 'follow' && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
       <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}</nav></TabScroller>
   </>;
 }

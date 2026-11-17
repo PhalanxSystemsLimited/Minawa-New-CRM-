@@ -119,6 +119,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </>}
       <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
+    {staff.role === 'manager' && st.length ? <div className="card mgr-desk"><div className="card-row"><h3>Your buildings <small>sending, utility bills and the generator list are yours</small></h3></div>
+      {st.map(x => { const ut = x.s.settings.rules.utilities, gen = x.s.rates.some(r => r.type.endsWith(' + generator')), cm = today.slice(0, 7);
+        const act = x.s.owners.filter(o => o.status === 'active'), done = ut[0] ? act.filter(o => x.s.charges.some(c => c.ownerId === o.id && c.period === cm && c.kind === ut[0] && c.amount)).length : 0;
+        return <div key={x.p.id} className="mgr-desk-r"><div className="mgr-desk-n"><b>{x.p.name}</b><small>{x.p.place}</small></div><div className="desk-acts">
+          <Go href={`/p/${x.p.id}/send`} className="btn sm wa">Send on WhatsApp</Go>
+          {ut.map(k => <Go key={k} href={`/p/${x.p.id}/utilities?kind=${encodeURIComponent(k)}`} className="btn sm">{k} bills <span className="lv-mini">{k === ut[0] ? `${done} of ${act.length} for ${MONL[+cm.slice(5) - 1]}` : ''}</span></Go>)}
+          {gen ? <Go href={`/p/${x.p.id}/generator`} className="btn sm">Generator charges list <span className="lv-mini">{act.filter(o => o.generator).length} on it</span></Go> : null}
+          <Go href={`/p/${x.p.id}/apartments?f=owing`} className="btn sm">Enter a payment</Go>
+        </div></div>; })}
+    </div> : null}
 
     <div className="lv-layout lv-dash">
     <div className="lv-main">

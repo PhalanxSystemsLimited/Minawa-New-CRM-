@@ -292,3 +292,12 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .inst-n { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
 .inst-n .chipbtn.on { background: var(--ink); color: #fff; border-color: var(--ink) }
 .inst-rows { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow: auto; padding-right: 4px }
+
+/* Building manager's dashboard: each building's own work (sending, utility bills, generator list, payments) */
+.mgr-desk { margin-bottom: 18px }
+.mgr-desk-r { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line, #E8E2D8) }
+.card-row + .mgr-desk-r { border-top: 0 }
+.mgr-desk-n { display: flex; flex-direction: column; min-width: 170px }
+.mgr-desk-n small { color: var(--muted, #8A8378); font-size: 12px }
+.mgr-desk-r .desk-acts { margin: 0; flex-wrap: wrap }
+@media (max-width: 767px) { .mgr-desk-r { flex-direction: column; align-items: stretch } }

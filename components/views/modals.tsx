@@ -152,7 +152,8 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       {isAdmin() ? <div className="callout">Shows in the apartment&apos;s history with your name and the reason.</div>
         : <div className="callout warn"><div>An admin has to approve this first, and sees your reason. Once approved, it shows in the apartment&apos;s history with your name and the reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save adjustment' : 'Send for approval'}</Submit></div></form></ModalShell>;
-    case 'generator': { const on = !o.generator;
+    case 'generator': { if (cur().role !== 'manager') return <ModalShell title="Generator charges"><div className="callout">The generator charges list is kept by the building manager.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+      const on = !o.generator;
       return <ModalShell title={on ? 'Add generator charges' : 'Remove generator charges'}><form action={toggleGeneratorAction} style={col}>{hidden(o)}<input type="hidden" name="on" value={on ? '1' : '0'} />
         <div className="callout">{on ? `${o.apt} goes on the Generator Charges List` : `${o.apt} comes off the Generator Charges List`}. It counts from the flat&apos;s next bill; bills already made don&apos;t change.</div>
         {isAdmin() ? null : <><div className="form-row"><label htmlFor="gn-w">Reason for the admin <span className="req">(required)</span></label><input id="gn-w" name="why" type="text" required placeholder="e.g. Generator connection installed on 10 Nov" /></div>

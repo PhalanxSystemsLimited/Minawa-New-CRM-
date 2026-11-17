@@ -89,7 +89,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
             <Go href={m('note')}>Add note</Go>
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
             <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
-            {hasGenerator() ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>
+            {hasGenerator() && S.role === 'manager' ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>
               : <Go href={m('generator')}>{o.generator ? 'Remove generator charges' : 'Add generator charges'}{ask}</Go> : null}
             {bal > 0 || S.role === 'admin' ? null : <Go href={m('recpay')}>Record payment</Go>}
             <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>

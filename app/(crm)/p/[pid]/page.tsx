@@ -1,5 +1,5 @@
 // A project's Overview (the demo's viewDash).
-import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillOf, apartments, isBillingDay, billsOf, unpaidMaint, firstBillDate, sheetStats, openingDue } from '@/lib/engine';
+import { cur, balance, getTarget, collections, sortedPayments, ownerById, upcoming, followCount, nextEvent, ownerStatus, nextBillOf, apartments, isBillingDay, billsOf, unpaidMaint, firstBillDate, sheetStats, openingDue, hasGenerator } from '@/lib/engine';
 import { addDays, hour12, ord, diff } from '@/lib/fmt';
 import { MONL, dim, fds, fd, fm, fmShort, rs, dow, dowl, short, nextMonth, dayIn } from '@/lib/fmt';
 import { famOf } from '@/lib/queries';
@@ -108,6 +108,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
           <div className="desk-acts">
             {ut && mgr ? <Go href={`${P}/utilities?period=${np}`} className="btn sm primary">Enter {ut.toLowerCase()} bills <span className="lv-mini">{utDone} of {flats.length}</span></Go> : null}
             {mgr ? <Go href={`${P}/send?mode=notice`} className="btn sm">Send a notice</Go> : null}
+            {mgr && hasGenerator() ? <Go href={`${P}/generator`} className="btn sm">Generator charges list</Go> : null}
             <Go href={`${P}/apartments?m=possession`} className="btn sm">New possession</Go>
             {S.role !== 'admin' ? <Go href={`${P}/apartments?f=owing`} className="btn sm">Record a payment</Go> : null}
           </div></div>;
