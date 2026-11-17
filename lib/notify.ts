@@ -36,7 +36,7 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
     for (const p of s.proofs) {
       if (staff.role === 'accountant' && p.status === 'pending')
         out.push({ id: `proof:${s.project}:${p.id}`, at: `${p.d} ${p.t}`, tone: 'info', title: p.kind === 'cash' ? 'Payment to confirm' : 'Bank screenshot to check',
-          text: `${apt(p.ownerId)} · ${s.proj.name} · ${rs(p.amount)}${p.kind === 'cash' ? ` ${(p.method || 'cash').toLowerCase()} entered by ${p.byName || 'a building manager'}` : ''}`, href: `/tasks#proof-${p.id}` });
+          text: `${apt(p.ownerId)} · ${s.proj.name} · ${rs(p.amount)}${p.kind === 'cash' ? ` cash entered by ${p.byName || 'a building manager'}` : ''}`, href: `/tasks#proof-${p.id}` });
       if (staff.role === 'manager' && p.kind === 'cash' && p.byId === staff.id && p.status !== 'pending' && (p.doneOn || '') >= since)
         out.push({ id: `proofd:${s.project}:${p.id}:${p.status}`, at: `${p.doneOn} 23:59`, tone: p.status === 'verified' ? 'good' : 'bad',
           title: p.status === 'verified' ? 'Payment confirmed' : 'Payment not confirmed', text: `${apt(p.ownerId)} · ${rs(p.amount)}${p.status === 'verified' ? ` confirmed by ${p.checkedBy || 'the Accountant'}` : p.reply ? `: ${p.reply}` : ''}`, href: `${P}/apartments/${p.ownerId}` });

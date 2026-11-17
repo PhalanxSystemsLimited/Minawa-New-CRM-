@@ -58,11 +58,20 @@ const styles = () => withFonts({
   rsText: { color: '#4a524c', fontSize: 9, marginTop: 1 },
   rsAmt: { marginLeft: 'auto', fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 15, color: INK },
   cert: { borderWidth: 2, borderColor: INK, backgroundColor: STONE, padding: 9, textAlign: 'center', fontWeight: 700, letterSpacing: 1, color: INK },
-  foot: { color: '#4a524c', fontSize: 8.5 }
+  foot: { color: '#4a524c', fontSize: 8.5 },
+  vch: { flexDirection: 'row', gap: 8 },
+  vchB: { flexGrow: 1, flexBasis: 0, borderWidth: 1, borderColor: LINE, padding: 9 },
+  vchIn: { backgroundColor: STONE, borderColor: INK, borderWidth: 2 },
+  vchL: { color: MUTED, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 },
+  vchV: { fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 16, color: INK, marginTop: 2 },
+  vchS: { color: '#697277', fontSize: 8, marginTop: 2 },
+  cf: { marginTop: 10, borderTopWidth: 1, borderTopColor: '#9aa0a3', borderStyle: 'dashed', paddingTop: 8 },
+  cfH: { color: MUTED, fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
+  cfLine: { borderBottomWidth: 1, borderBottomColor: '#9aa0a3', height: 12, width: 140 }
 });
 
 function Doc({ d }: { d: DocData }) {
-  const { Document, Page, Text, View, Image } = R!;
+  const { Document, Page, Text, View, Image, Svg, Path } = R!;
   const st = styles() as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   const logo = fs.existsSync(pub('assets', 'minawa-logo.png')) ? pub('assets', 'minawa-logo.png') : null;
   return (
@@ -73,8 +82,12 @@ function Doc({ d }: { d: DocData }) {
             <View>{/* eslint-disable-next-line jsx-a11y/alt-text */}{logo ? <Image src={logo} style={st.logo} /> : <Text style={{ fontWeight: 700 }}>Minawa Group</Text>}<Text style={st.sub}>{d.subtitle}</Text></View>
             <View><Text style={st.ref}>{d.refNo}</Text><Text style={[st.sub, { textAlign: 'right' }]}>{d.refSub}</Text></View>
           </View>
-          {d.stamp ? <View style={d.stamp.sp ? [st.stamp, st.stampSp] : st.stamp}><Text style={st.rsIc}>✓</Text><View><Text style={st.rsTitle}>{d.stamp.title}</Text><Text style={st.rsText}>{d.stamp.text}</Text></View><Text style={st.rsAmt}>{d.stamp.amount}</Text></View> : null}
+          {d.stamp ? <View style={d.stamp.sp ? [st.stamp, st.stampSp] : st.stamp}><View style={[st.rsIc, { paddingTop: 0, alignItems: 'center', justifyContent: 'center' }]}><Svg width={12} height={12} viewBox="0 0 24 24"><Path d="M5 12.5l4.2 4.2L19 7" stroke="#fff" strokeWidth={3.2} fill="none" /></Svg></View><View><Text style={st.rsTitle}>{d.stamp.title}</Text><Text style={st.rsText}>{d.stamp.text}</Text></View><Text style={st.rsAmt}>{d.stamp.amount}</Text></View> : null}
           {d.certificate ? <Text style={st.cert}>{d.certificate}</Text> : null}
+          {d.voucher ? <View style={st.vch}>
+            <View style={[st.vchB, st.vchIn]}><Text style={st.vchL}>Payable by {d.voucher.due}</Text><Text style={st.vchV}>{d.voucher.within}</Text></View>
+            <View style={st.vchB}><Text style={st.vchL}>After the due date</Text>{d.voucher.after ? <Text style={st.vchV}>{d.voucher.after}</Text> : null}<Text style={st.vchS}>{d.voucher.afterNote}</Text></View>
+          </View> : null}
           {(d.paras || []).map((p, i) => <Text key={i}>{p}</Text>)}
           <View style={st.kv}>{d.kv.map(([k, v]) => <View key={k} style={st.kvItem}><Text style={st.kvLabel}>{k}</Text><Text>{v}</Text></View>)}</View>
           {d.tables.map((t, i) => (
@@ -90,6 +103,8 @@ function Doc({ d }: { d: DocData }) {
           {d.fine ? <Text style={st.fine}>{d.fine}</Text> : null}
           {d.foot ? <Text style={st.foot}>{d.foot}</Text> : null}
           {d.org ? <Text style={[st.foot, { borderTopWidth: 1, borderTopColor: LINE, paddingTop: 6 }]}>{d.org}</Text> : null}
+          {d.counterfoil ? <View style={st.cf} wrap={false}><Text style={st.cfH}>Office copy · kept by the building manager</Text>
+            <View style={st.kv}>{d.counterfoil.map(([k, v]) => <View key={k} style={st.kvItem}><Text style={st.kvLabel}>{k}</Text>{v ? <Text>{v}</Text> : <View style={st.cfLine} />}</View>)}</View></View> : null}
         </View>
       </Page>
     </Document>

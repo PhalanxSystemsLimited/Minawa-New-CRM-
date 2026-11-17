@@ -6,6 +6,17 @@ import type { Message, Owner } from './types';
 import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct } from './engine';
 import { rs, fd, fill, addDays } from './fmt';
 import { intl } from './dispatch';
+import { docToken, type DocKind } from './doclink';
+
+/** The CRM's public address, for the PDF links in messages (set by the action that writes them). */
+let DOC_BASE = '';
+export const setDocBase = (u: string) => { DOC_BASE = (u || '').replace(/\/$/, ''); };
+/** The PDF that goes with a message, as a link the owner can open without signing in. */
+function pdfLine(pdf: Message['pdf']) {
+  if (!pdf || !DOC_BASE) return null;
+  const url = `${DOC_BASE}/d/${docToken(cur().project, pdf.kind as DocKind, pdf.id)}`;
+  return lines('', pdf.kind === 'receipt' ? '🧾 *Your payment receipt (PDF):*' : '📄 *Your bill voucher (PDF), with the due date:*', url);
+}
 
 export type SendType = 'link' | 'bill' | 'reminder' | 'notice' | 'receipt' | 'custom' | 'queue';
 export const SEND_TYPES: { key: SendType; label: string; hint: string }[] = [
@@ -74,11 +85,9 @@ function duesList(o: Owner, total: number) {
   return lines('', '*Your dues*', ...bd.rows.map(r => `• ${r.label}: ${rs(r.amount)}${r.sub ? ` _(${r.sub})_` : ''}`),
     bd.fee ? `• Late fine (${feePct()}%): ${rs(bd.fee)}` : null, RULE, `*Total to pay: ${rs(total)}*`);
 }
-/** How to pay: to the building manager (cash or cheque, against a receipt) or by bank transfer to the project's account. */
+/** How to pay: in cash to the building manager, against a receipt (payments are in cash only). */
 function payBlock() {
-  const bank = (cur().proj.bank || '').trim();
-  return lines('', '💳 *How to pay*', '• Cash or cheque: to your building manager, who gives you a receipt',
-    bank ? `• Bank transfer: ${bank}` : null, bank ? '_After a transfer, please send the bank receipt on this chat._' : null);
+  return lines('', '💵 *How to pay*', '• In cash to your building manager. Please bring this bill voucher and take a receipt.', '• Only cash is accepted; please do not pay by bank transfer or cheque.');
 }
 const foot = () => lines('', 'For any questions, just reply to this message.', '', 'Thank you,', '*Minawa Group*', '_Maintenance Department_');
 
@@ -93,8 +102,10 @@ type Item = Omit<SendItem, 'key' | 'fromMsg' | 'replaces'>;
 export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t: string, opts: Opts = {}, billId?: string, payId?: string): Item | null {
   const S = cur(), f = ownerFacts(o), bal = f.bal;
   const base = { ownerId: o.id, apt: o.apt, name: o.name, phone: o.phone, to: intl(o.phone) };
+  // The PDF goes in as a link just above the sign-off (the voucher with the due date, or the receipt).
+  const withPdf = (text: string, pdf: Message['pdf']) => { const l = pdfLine(pdf), f = foot(); return l && text.endsWith(f) ? text.slice(0, -f.length) + l + '\n' + f : text; };
   const out = (kind: string, title: string, text: string, pdf: Message['pdf']): Item =>
-    ({ ...base, kind, title, text, pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null });
+    ({ ...base, kind, title, text: withPdf(text, pdf), pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null });
   if (type === 'custom') {
     const l = opts.pay && bal > 0;
     const v = { name: niceName(o.name), apt: o.apt, block: o.block || '', project: S.proj.name, total: rs(Math.max(0, bal)), dues: rs(Math.max(0, bal)), due: f.bill ? fd(f.bill.dueDate) : '' };
@@ -157,7 +168,7 @@ export const TODO_GROUPS: { key: string; label: string; hint: string; kinds: str
   { key: 'bill', label: 'Monthly bills', hint: 'First alert: the bill made on the customer\'s billing date', kinds: ['bill'] },
   { key: 'reminder', label: 'Reminders', hint: 'Unpaid bills, on the 3rd and 7th of the due month', kinds: ['reminder'] },
   { key: 'notice', label: 'Final notices', hint: 'Unpaid after the due date: the fine is added', kinds: ['notice'] },
-  { key: 'receipt', label: 'Payment receipts', hint: 'Owners who have paid', kinds: ['receipt'] },
+  { key: 'receipt', label: 'Payment confirmations', hint: 'Payments the Accountant confirmed: send each owner their receipt (PDF)', kinds: ['receipt'] },
   { key: 'link', label: 'Dues messages', hint: 'Updated dues and how to pay', kinds: ['link'] },
   { key: 'other', label: 'Notices and messages', hint: 'Maintenance notices and announcements', kinds: ['alert', 'announcement', 'info', 'statement', 'reply'] }
 ];

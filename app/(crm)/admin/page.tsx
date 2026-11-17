@@ -77,7 +77,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <div className="card"><h3>Before go-live <small>from Minawa&apos;s checklist</small></h3><ul className="rules">
         <li>A WhatsApp number Minawa owns for sending by hand, signed in on WhatsApp Web, shown as &quot;Minawa Group&quot;.</li>
         <li>Owners&apos; WhatsApp numbers and possession dates, imported in each project&apos;s Apartments › Import.</li>
-        <li>Bank account per building, printed on bills (each project&apos;s Settings).</li>
         <li>Remove WHATSAPP_TEST_NUMBER, so chats open with the owners.</li>
       </ul></div>
     </div>

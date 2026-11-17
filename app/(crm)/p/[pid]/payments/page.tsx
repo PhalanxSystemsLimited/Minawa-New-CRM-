@@ -3,14 +3,13 @@ import { cur, ownerById, getTarget } from '@/lib/engine';
 import { MONL, fm, fd, rs, prevMonth, t12 } from '@/lib/fmt';
 import { payFiltered } from '@/lib/queries';
 import { Ic } from '@/components/icons';
-import { Go, A, LiveSearch, GoSelect } from '@/components/client';
+import { Go, A, LiveSearch } from '@/components/client';
 import { projectPage, projHead, newPayments, payKey, paySeenCookie } from '@/components/views/project';
 import { PayRows, MarkPaymentsSeen } from '@/components/PayRows';
 import { when, viaHtml, ownerHref } from '@/components/views/bits';
 
 export const dynamic = 'force-dynamic';
-const FAMS = ['Cash', 'Bank', 'Cheque'] as const;
-const FAM_LABEL: Record<string, string> = { Cash: 'Cash', Bank: 'Bank transfer or deposit', Cheque: 'Cheque' };
+
 
 export default async function Payments({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
@@ -26,14 +25,13 @@ export default async function Payments({ params, searchParams }: { params: Promi
       return <div className={`callout ${pc >= 100 ? 'good' : ''}`} style={{ marginBottom: 14 }}><Ic n="target" s={18} /><div><b>{fm(p)} target {rs(t.total)}</b> · {rs(got)} collected, {pc}%{pc >= 100 ? ', target met' : `, ${rs(t.total - got)} to go`}. <A href={`${P}?per=${per}&m=target`}>See how it&apos;s made up</A></div></div>; })();
     return <>
       {projHead('payments')}
-      <div className="page-head"><div><h2>Payments</h2><p>Every payment: who paid, how much, how and when. Payments a building manager enters appear here once the Accountant confirms them. Click a payment to see all its details.</p></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{S.role !== 'admin' ? <Go href={`/p/${pid}/apartments?f=owing`} className="btn primary">{S.role === 'manager' ? 'Enter a payment' : 'Record a payment'}</Go> : null}<a className="btn" href={`/api/export/payments?project=${pid}&per=${per}&fam=${fam}&q=${encodeURIComponent(sp.q || '')}`}>Export CSV</a></div></div>
+      <div className="page-head"><div><h2>Payments</h2><p>Every payment: who paid, how much, how and when. Payments a building manager enters appear here once the Accountant confirms them. Click a payment to see all its details.</p></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{S.role !== 'admin' ? <Go href={`/p/${pid}/apartments?f=owing`} className="btn primary">{S.role === 'manager' ? 'Enter a cash payment' : 'Record a cash payment'}</Go> : null}<a className="btn" href={`/api/export/payments?project=${pid}&per=${per}&fam=${fam}&q=${encodeURIComponent(sp.q || '')}`}>Export CSV</a></div></div>
       <MarkPaymentsSeen cookie={paySeenCookie(S.staffId || 'x', pid)} latest={latest} seen={S.paySeen || null} />
       {fresh.size ? <div className="callout good" style={{ marginBottom: 14 }}><div><b>{fresh.size} new payment{fresh.size === 1 ? '' : 's'}</b> since you last opened Payments. They&apos;re marked <b>New</b> below. Click a payment to see all its details.</div></div> : null}
       {callout}
       <div className="card"><div className="toolbar" style={{ marginBottom: 14 }}>
         <LiveSearch name="q" id="paySearch" placeholder="Search owner, apartment, receipt or reference" ariaLabel="Search payments" defaultValue={sp.q || ''} />
         {pers.map(([k, l]) => <Go key={k} href={qs({ per: k })} className="chipbtn" pressed={per === k} replace>{l}</Go>)}
-        <GoSelect name="fam" id="payFam" style={{ width: 'auto' }} ariaLabel="Payment method" value={fam} options={[['all', 'All methods'], ...FAMS.map(f => [f, FAM_LABEL[f]] as [string, string])]} />
       </div><div id="payTable">
         {!rows.length ? <p className="empty">No payments match. Try another period or method.</p> :
           <div className="tbl-wrap"><table className="pay-table"><thead><tr><th style={{ width: 28 }}></th><th>When</th><th>Apartment</th><th className="r">Amount</th><th>Received</th><th>Receipt</th></tr></thead>

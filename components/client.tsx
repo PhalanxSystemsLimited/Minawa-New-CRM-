@@ -9,7 +9,7 @@ export function Go({ href, className, children, title, ariaLabel, current, press
 }) {
   const r = useRouter();
   const cur = current === true ? 'page' : current === false ? undefined : current;
-  return <button type="button" className={className} title={title} aria-label={ariaLabel} aria-current={cur} aria-pressed={pressed} style={style}
+  return <button type="button" className={className} title={title} aria-label={ariaLabel} aria-current={cur} aria-pressed={pressed} style={style} data-href={href}
     onClick={e => { e.stopPropagation(); closeSide(); if (replace) r.replace(href, { scroll: false }); else r.push(href); }}>{children}</button>;
 }
 /** A link styled as the demo's plain links (<a href="#">). */
@@ -21,8 +21,8 @@ export function A({ href, className, children, title }: { href: string; classNam
 export function GoRow({ href, as = 'tr', className, children }: { href: string; as?: 'tr' | 'div'; className?: string; children?: ReactNode }) {
   const r = useRouter();
   const go = () => r.push(href);
-  if (as === 'div') return <div className={className} onClick={go}>{children}</div>;
-  return <tr className={className} onClick={go}>{children}</tr>;
+  if (as === 'div') return <div className={className} onClick={go} data-href={href}>{children}</div>;
+  return <tr className={className} onClick={go} data-href={href}>{children}</tr>;
 }
 function closeSide() { if (typeof document !== 'undefined') document.body.classList.remove('side-open'); }
 

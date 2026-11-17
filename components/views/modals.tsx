@@ -1,7 +1,6 @@
 // Modals, opened from the address (?m=… or ?doc=kind:id) so every one can be linked to and closed with Back.
 // Plain functions, called inside use(state, …).
 import type { Owner } from '@/lib/types';
-import { MANAGER_METHODS } from '@/lib/engine';
 import { cur, ownerById, balance, duesBreakdown, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
 import { PLAN_LABEL } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
@@ -23,6 +22,8 @@ export function DocView({ d }: { d: DocData }) {
       {d.stamp ? <div className={'rstamp' + (d.stamp.sp ? ' sp' : '')}><span className="rs-ic" aria-hidden="true">✓</span><div className="rs-t"><b>{d.stamp.title}</b><span>{d.stamp.text}</span></div><div className="rs-amt num">{d.stamp.amount}</div></div> : null}
       {d.certificate ? <div className="stamp">{d.certificate}</div> : null}
       {(d.paras || []).map((p, i) => <div key={i}>{p}</div>)}
+      {d.voucher ? <div className="vch"><div className="vch-b vch-in"><span>Payable by {d.voucher.due}</span><b className="num">{d.voucher.within}</b></div>
+        <div className="vch-b"><span>After the due date</span>{d.voucher.after ? <b className="num">{d.voucher.after}</b> : null}<small>{d.voucher.afterNote}</small></div></div> : null}
       <div className="kv">{d.kv.map(([k, v]) => <div key={k}><span>{k}</span>{v}</div>)}</div>
       {d.tables.map((t, i) => <table key={i}>{t.head ? <thead><tr><th>{t.head[0]}</th><th className="r">{t.head[1]}</th></tr></thead> : null}<tbody>
         {t.rows.map((r, j) => <tr key={j} className={r.tot ? 'tot' : undefined}><td>{r.bold ? <b>{r.label}</b> : r.label}{r.sub ? <div className="sub">{r.sub}</div> : null}</td><td className="r num">{r.bold ? <b>{r.amount}</b> : r.amount}</td></tr>)}
@@ -31,6 +32,7 @@ export function DocView({ d }: { d: DocData }) {
       {d.fine ? <div className="fine">{d.fine}</div> : null}
       {d.foot ? <div className="rfoot">{d.foot}</div> : null}
       {d.org ? <div className="rfoot" style={{ borderTop: '1px solid var(--line)', paddingTop: 8 }}>{d.org}</div> : null}
+      {d.counterfoil ? <div className="vch-cf"><div className="vch-cf-h">✂ Office copy · kept by the building manager</div><div className="kv">{d.counterfoil.map(([k, v]) => <div key={k}><span>{k}</span>{v || <i className="vch-line" />}</div>)}</div></div> : null}
     </div>
   );
 }
@@ -81,22 +83,21 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       {isAdmin() ? null : <div className="callout warn"><div>The Admin approves this first and sees your reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save due date' : 'Send for approval'}</Submit></div></form></ModalShell>;
     case 'recpay': if (cur().role === 'admin') return <ModalShell title="Record a payment"><div className="callout">Payments are entered by the building manager or the Accountant.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
-      if (cur().role === 'manager') return <ModalShell title="Enter a payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">A payment {o.name} made: cash or a cheque handed to you, or a bank transfer. It goes to the Accountant to confirm; {o.name}&apos;s balance changes once it is confirmed. {o.name} owes {rs(Math.max(0, bal))}.</div>
-      <div className="form-row"><label htmlFor="rc-m">Paid by</label><select id="rc-m" name="method" defaultValue="Cash">{MANAGER_METHODS.map(x => <option key={x} value={x}>{x}</option>)}</select></div>
+      if (cur().role === 'manager') return <ModalShell title="Enter a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
+      <div className="callout">Cash {o.name} paid you by hand (payments are in cash only). It goes to the Accountant to confirm; {o.name}&apos;s balance changes once it is confirmed and the receipt is made. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="grid2" style={{ gap: 10 }}>
         <div className="form-row"><label htmlFor="rc-amt">Amount (Rs)</label><input id="rc-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
         <div className="form-row"><label htmlFor="rc-d">Paid on</label><input id="rc-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
       </div>
-      <div className="form-row"><label htmlFor="rc-ref">Receipt, cheque or bank reference number</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147 · cheque 004512 · FT2611044417" required /></div>
+      <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave (from the voucher&apos;s office copy or your receipt book)</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" required /></div>
       <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
       <div className="m-actions"><CloseBtn /><Submit>Send to the Accountant</Submit></div></form></ModalShell>;
-      return <ModalShell title="Record bank payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">For money paid into Minawa&apos;s bank account, by cheque or in cash at the office. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      return <ModalShell title="Record a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
+      <div className="callout">Cash {o.name} paid at the office (payments are in cash only). It counts straight away and the receipt is made for the building manager to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
-      <div className="form-row"><label htmlFor="rp-m">Method</label><select id="rp-m" name="method"><option>Bank deposit</option><option>Bank transfer outside the provider</option><option>Cheque</option><option>Cash at the office</option></select></div>
-      <div className="form-row"><label htmlFor="rp-ref">Bank reference</label><input id="rp-ref" name="ref" type="text" placeholder="e.g. FT2611044417" required /></div>
-      <div className="m-actions"><CloseBtn /><Submit>Record payment</Submit></div></form></ModalShell>;
+      <input type="hidden" name="method" value="Cash" />
+      <div className="form-row"><label htmlFor="rp-ref">Receipt number given</label><input id="rp-ref" name="ref" type="text" placeholder="e.g. Office book 2, No. 58" required /></div>
+      <div className="m-actions"><CloseBtn /><Submit>Record cash payment</Submit></div></form></ModalShell>;
     case 'promise': return <ModalShell title="Promise to pay"><form action={act.promiseAction} style={col}>{hidden(o)}
       <div className="form-row"><label htmlFor="pp-d">Owner promised to pay by</label><input id="pp-d" name="d" type="date" required min={addDays(S.today, 1)} max={addDays(S.today, 60)} defaultValue={addDays(S.today, 7)} /></div>
       <div className="form-row"><label htmlFor="pp-n">What they said</label><input id="pp-n" name="note" type="text" placeholder="e.g. Salary comes on the 10th" /></div>

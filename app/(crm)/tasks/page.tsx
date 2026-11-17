@@ -16,6 +16,10 @@ const status = (t: Task, today: string) => t.overdue
   ? <span className="tag bad">Late · {diff(today, t.deadline)} day{diff(today, t.deadline) === 1 ? '' : 's'}</span>
   : t.deadline === today ? <span className="tag warn">Due today</span> : <span className="tag info">Open</span>;
 
+/** Someone watching another person's task (the Admin, or the Accountant following a building manager) opens where
+ *  they can see it, not the screen where it is done: sending is the building manager's, so it opens Messages. */
+const watchHref = (t: Task) => t.href.includes('/send') ? `/p/${t.project}/messages` : t.href.replace(/\?m=fix&from=todo$/, '');
+
 function Table({ list, staff, today, showWho }: { list: Task[]; staff: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['listStaff']>>; today: string; showWho: boolean }) {
   if (!list.length) return <p className="empty">Nothing pending.</p>;
   return <div className="tbl-wrap"><table className="task-tbl"><thead><tr><th>Task</th><th>Building</th><th>Customer</th>{showWho ? <th>Responsible</th> : null}<th>Since</th><th>Deadline</th><th>Status</th><th></th></tr></thead><tbody>
@@ -27,7 +31,7 @@ function Table({ list, staff, today, showWho }: { list: Task[]; staff: Awaited<R
       <td data-l="Since" style={{ whiteSpace: 'nowrap' }}>{fds(t.since)}</td>
       <td data-l="Deadline" style={{ whiteSpace: 'nowrap' }}>{fds(t.deadline)}</td>
       <td data-l="Status">{status(t, today)}</td>
-      <td className="r"><Go href={t.href} className="btn sm">Open</Go></td>
+      <td className="r"><Go href={showWho ? watchHref(t) : t.href} className="btn sm">Open</Go></td>
     </tr>)}
   </tbody></table></div>;
 }
@@ -50,9 +54,9 @@ export default async function Tasks() {
   if (me.role === 'accountant') {
     const proofs = states.flatMap(s => use(s, () => s.proofs.filter(p => p.status === 'pending').map(p => ({ p, o: ownerById(p.ownerId), s }))));
     return <>
-      {head('To do', 'Money to check: bank transfers owners sent as a screenshot, and payments building managers entered (cash, cheque or bank transfer). An owner\'s balance changes only once you confirm.')}
+      {head('To do', 'Money to check: cash payments building managers entered. An owner\'s balance changes only once you confirm.')}
       <div className="card"><div className="card-row"><h3>Payments to check <small>{proofs.length} waiting</small></h3></div>
-        {proofs.length ? <div className="list">{proofs.map(({ p, o, s }) => <div className="li" key={p.id} id={`proof-${p.id}`}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {p.kind === 'cash' ? <span className="tag warn">{p.method || 'Cash'} · building manager</span> : <span className="tag info">Bank screenshot</span>}</div>
+        {proofs.length ? <div className="list">{proofs.map(({ p, o, s }) => <div className="li" key={p.id} id={`proof-${p.id}`}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {p.kind === 'cash' ? <span className="tag warn">Cash · building manager</span> : <span className="tag info">Bank screenshot</span>}</div>
             <div className="b">{o.name} · {s.proj.name} · {p.kind === 'cash' ? <>recorded by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · ref ${p.ref}` : ''}{p.note ? ` · ${p.note}` : ''}</> : `screenshot sent ${fd(p.d)}`}</div></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <form action={verifyAction}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="amt" value={p.amount} /><input type="hidden" name="back" value="/tasks" /><Submit className="btn sm primary">{p.kind === 'cash' ? 'Confirm payment' : 'It\'s in the bank'}</Submit></form>

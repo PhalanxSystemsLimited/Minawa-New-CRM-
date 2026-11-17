@@ -536,9 +536,9 @@ export function verifyProof(p: Proof, d: string, t: string, by: string, amount?:
   if (p.kind === 'cash') { const m = p.method || 'Cash'; return recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`); }
   return recordPayment(o, p.amount, 'Bank transfer (screenshot checked)', 'Proof #' + p.id, d, 'proof', t, by);
 }
-/** A building manager enters a payment (cash, bank transfer or cheque): it waits for an accountant to confirm it, and
+/** A building manager enters a cash payment (payments are in cash only): it waits for an accountant to confirm it, and
  *  the owner's balance only changes then (verifyProof). Proofs of kind 'cash' are these manager entries. */
-export const MANAGER_METHODS = ['Cash', 'Bank transfer', 'Cheque'];
+export const MANAGER_METHODS = ['Cash'];   // payments are in cash only
 export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash') {
   const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
     kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null };

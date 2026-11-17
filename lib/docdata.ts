@@ -3,7 +3,7 @@
 // Call inside use(state, …).
 import type { Bill, Payment, Owner, Clearance } from './types';
 import { t12 } from '@/lib/fmt';
-import { cur, ownerById, duesBreakdown, balance, feePct, periodLabel } from './engine';
+import { cur, ownerById, duesBreakdown, balance, feePct, periodLabel, billsOf, unpaidMaint, openingDue, fineBase } from './engine';
 import { fd, fm, fmShort, rs } from './fmt';
 
 export interface DocRow { label: string; sub?: string; amount: string; bold?: boolean; tot?: boolean }
@@ -15,14 +15,25 @@ export interface DocData {
   kv: [string, string][];
   tables: { head?: [string, string]; rows: DocRow[] }[];
   howToPay?: string[] | null; fine?: string | null; foot?: string | null; paras?: string[]; org?: string;
+  /** Bill vouchers: the amount payable by the due date, and after it (with the fine), in a strip at the top. */
+  voucher?: { no: string; due: string; within: string; after: string | null; afterNote: string } | null;
+  /** Bill vouchers: the office copy at the foot, cut off and kept by the building manager when they take the money. */
+  counterfoil?: [string, string][] | null;
 }
+/** What a customer pays by the due date, and after it: the fine is added on what is unpaid then. */
+function voucherOf(o: Owner, no: string, due: string, total: number): NonNullable<DocData['voucher']> {
+  const fineNow = o.feeDue || 0, fineThen = Math.round(fineBase(o) * feePct() / 100), extra = Math.max(0, fineThen - fineNow);
+  return { no, due: fd(due), within: rs(Math.max(0, total)), after: extra > 0 ? rs(total + extra) : null,
+    afterNote: extra > 0 ? `includes the ${feePct()}% fine` : `a ${feePct()}% fine is added on unpaid bills after the due date` };
+}
+const counterfoilOf = (o: Owner, no: string, due: string, total: number): [string, string][] =>
+  [['Voucher', no], ['Apartment', `${o.apt} · ${o.name}`], ['Due date', fd(due)], ['Amount', rs(Math.max(0, total))], ['Received (Rs)', ''], ['Building manager\'s signature', '']];
 /** Company line printed at the foot of every document. */
 export function orgLine() { const c = cur().company; if (!c) return ''; return [c.legalName, c.address, c.ntn ? `NTN ${c.ntn}` : '', c.phone, c.email].filter(Boolean).join(' · '); }
 const S = () => cur();
-/** How an owner pays: the building manager (cash or cheque) or a bank transfer to the project's account. */
-const howToPay = (ref: string) => { const bank = (S().proj.bank || '').trim();
-  return ['Pay your building manager in cash or by cheque, and keep the receipt they give you.',
-    bank ? `Or transfer to ${bank}, reference ${ref}, and send the bank receipt on WhatsApp.` : 'Or ask your building manager for the bank details for a transfer.']; };
+/** How an owner pays: in cash to the building manager, against a receipt (payments are in cash only). */
+const howToPay = (ref: string) => [`Pay in cash to your building manager and show this voucher (${ref}). They keep the office copy and give you a receipt.`,
+  'Only cash is accepted: no bank transfers or cheques. Your payment receipt is sent to you on WhatsApp once it is confirmed.'];
 
 export function billDoc(b: Bill): DocData {
   const o = ownerById(b.ownerId), proj = S().proj;
@@ -43,18 +54,20 @@ export function billDoc(b: Bill): DocData {
     tables[0].rows[tables[0].rows.length - 1] = { label: 'Total payable', amount: rs(Math.max(0, b.prev + b.net - b.fromCredit)), tot: true };
     if (b.prev) tables[0].rows.splice(tables[0].rows.length - 1, 0, { label: 'Earlier unpaid dues', amount: rs(b.prev) });
   }
+  const total = b.bd ? b.bd.total : Math.max(0, b.prev + b.net - b.fromCredit), vno = `V-${b.id}`;
   return {
-    org: orgLine(), kind: 'bill', filename: `Bill-${b.period}${b.months > 1 ? '-' + b.periodEnd : ''}-${o.apt}.pdf`, project: proj.name, subtitle: `${proj.name} · Maintenance bill`, refNo: b.id, refSub: periodLabel(b),
+    org: orgLine(), kind: 'bill', filename: `Bill-voucher-${b.period}${b.months > 1 ? '-' + b.periodEnd : ''}-${o.apt}.pdf`, project: proj.name, subtitle: `${proj.name} · Maintenance bill voucher`, refNo: vno, refSub: periodLabel(b),
+    voucher: voucherOf(o, vno, b.dueDate, total), counterfoil: counterfoilOf(o, vno, b.dueDate, total),
     kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Billing date', fd(b.billDate)], ['Due date', fd(b.dueDate)]],
     tables,
-    howToPay: howToPay(`${o.apt}-${fmShort(b.period)}`),
+    howToPay: howToPay(vno),
     fine: `If anything is still unpaid after ${fd(b.dueDate)}, a fine of ${feePct()}% of ${S().settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} is added. If dues remain unpaid by ${fd(b.finalDate)}, utilities may be disconnected.`
   };
 }
 
 export function receiptDoc(p: Payment): DocData {
   const o = ownerById(p.ownerId), proj = S().proj;
-  const stamp = { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: p.source === 'proof' ? `Checked and confirmed by ${p.by}` : `Recorded by ${p.by}`, amount: rs(p.amount) };
+  const stamp = { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: p.source === 'proof' ? `Paid in cash · ${p.by}` : `Paid in cash · recorded by ${p.by}`, amount: rs(p.amount) };
   const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${t12(p.t)}`],
     ['Payment method', p.method], ['Reference', p.ref], ['Payment ID', p.id]];
   const rank = { dues: 0, fee: 1, credit: 2 }, rows = (p.applied || []).slice().sort((a, b) => rank[a.kind] - rank[b.kind]);
@@ -65,7 +78,7 @@ export function receiptDoc(p: Payment): DocData {
       { head: ['This payment paid', 'Amount'], rows: [...(rows.length ? rows.map(r => ({ label: r.label, amount: rs(r.amount) })) : [{ label: 'Maintenance dues, oldest first', amount: rs(p.amount) }]), { label: 'Amount received', amount: rs(p.amount), tot: true }] },
       { rows: [...(p.before != null ? [{ label: 'Owed before this payment', amount: p.before < 0 ? `${rs(-p.before)} credit` : rs(p.before) }] : []), { label: 'Balance now', amount: bal, bold: true }] }
     ],
-    foot: `${p.source === 'proof' ? `Recorded once ${p.by.includes('checked by') ? 'the accountant confirmed it' : 'the bank transfer was checked'} (${p.by}).` : `Recorded in the CRM by ${p.by}.`} Dues are paid oldest first; the ${feePct()}% late fee is paid in proportion.`
+    foot: `${p.source === 'proof' ? `Cash received by the building manager and confirmed by the Accountant (${p.by}).` : `Cash recorded in the CRM by ${p.by}.`} Dues are paid oldest first; the ${feePct()}% late fee is paid in proportion.`
   };
 }
 
@@ -75,11 +88,16 @@ export function statementDoc(o: Owner): DocData {
   rows.push({ label: 'Dues', amount: rs(bd.dues), bold: true });
   if (bd.fee) rows.push({ label: `Fine ${feePct()}%`, sub: `of ${rs(bd.dues)} dues`, amount: rs(bd.fee) });
   rows.push({ label: 'Total to pay', amount: rs(bal), tot: true });
+  // The due date on the voucher: the latest unpaid bill's, or the old arrears' (15 Dec at go-live); overdue: today.
+  const open = billsOf(o).filter(b => unpaidMaint(b) > 0), lastDue = open.length ? open[open.length - 1].dueDate : null;
+  const due = lastDue && lastDue >= today ? lastDue : !lastDue && (o.openingLeft || 0) > 0 && openingDue() >= today ? openingDue() : today;
+  const vno = `V-${o.apt.replace(/\s+/g, '')}-${today.replace(/-/g, '')}`;
   return {
-    org: orgLine(), kind: 'statement', filename: `Statement-${o.apt}-${today}.pdf`, project: proj.name, subtitle: `${proj.name} · Statement of dues`, refNo: `Apt ${o.apt}`, refSub: fd(today),
-    kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Statement date', fd(today)]],
+    org: orgLine(), kind: 'statement', filename: `Bill-voucher-${o.apt}-${today}.pdf`, project: proj.name, subtitle: `${proj.name} · Maintenance bill voucher`, refNo: vno, refSub: `Issued ${fd(today)}`,
+    voucher: bal > 0 ? voucherOf(o, vno, due, bal) : null, counterfoil: bal > 0 ? counterfoilOf(o, vno, due, bal) : null,
+    kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Issued on', fd(today)], ['Due date', bal > 0 ? (due > today ? fd(due) : 'Overdue: please pay now') : 'Nothing due']],
     tables: [{ head: ['What is owed', 'Amount'], rows }],
-    howToPay: howToPay(o.apt),
+    howToPay: howToPay(vno),
     fine: `While anything is overdue, a fine of ${feePct()}% of ${S().settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} applies. Dues left unpaid past the final deadline may lead to utilities being disconnected.`
   };
 }

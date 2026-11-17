@@ -68,7 +68,7 @@ function QuickActions({ projects, pid, role }: { projects: { id: string; name: s
   // Sending on WhatsApp is the building manager's work; payments are entered by building managers and accountants.
   const mgr = role === 'Building manager', all: [string, string, (id: string) => string][] = [
     ['link', 'Send dues on WhatsApp', id => `/p/${id}?m=sendpick`],
-    ['pay', 'Record a payment', id => `/p/${id}/apartments?f=owing`],
+    ['pay', 'Record a cash payment', id => `/p/${id}/apartments?f=owing`],
     ['ann', 'Send an announcement', id => `/p/${id}/send?mode=announce`],
     ['notice', 'Send a maintenance notice', id => `/p/${id}/send?mode=notice`]
   ];

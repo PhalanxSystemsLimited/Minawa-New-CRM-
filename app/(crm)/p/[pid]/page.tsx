@@ -110,7 +110,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
             {mgr ? <Go href={`${P}/send?mode=notice`} className="btn sm">Send a notice</Go> : null}
             {mgr && hasGenerator() ? <Go href={`${P}/generator`} className="btn sm">Generator charges list</Go> : null}
             <Go href={`${P}/apartments?m=possession`} className="btn sm">New possession</Go>
-            {S.role !== 'admin' ? <Go href={`${P}/apartments?f=owing`} className="btn sm">{mgr ? 'Enter a payment' : 'Record a payment'}</Go> : null}
+            {S.role !== 'admin' ? <Go href={`${P}/apartments?f=owing`} className="btn sm">{mgr ? 'Enter a cash payment' : 'Record a cash payment'}</Go> : null}
           </div></div>;
       })()}
       <div className="ov2">

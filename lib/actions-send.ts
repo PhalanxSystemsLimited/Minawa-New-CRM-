@@ -5,11 +5,12 @@ import type { Owner, WaLog, Staff } from './types';
 import { getStore } from './store';
 import { intl } from './dispatch';
 import { requireStaff, requireRole, staffName } from './session';
+import { siteOrigin } from './doclink';
 import { mutate, load } from './ops';
 import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting } from './engine';
 import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
-import { compose, composeQueued, cantSend, pendingGroups, toDoKinds, type SendItem, type SendType } from './manual-send';
+import { compose, composeQueued, cantSend, pendingGroups, toDoKinds, type SendItem, type SendType, setDocBase } from './manual-send';
 
 const who = (o: Owner) => `Apt ${o.apt} · ${o.name} (${o.phone || 'no number'})`;
 const owes = (o: Owner) => { const b = balance(o); return b > 0 ? `; balance ${rs(b)}` : b < 0 ? `; credit ${rs(-b)}` : '; paid up'; };
@@ -33,6 +34,7 @@ export interface Prepared { items: SendItem[]; left: { apt: string; why: string 
 /** Writes the messages with today's figures. Nothing is sent. */
 export async function prepareSendAction(input: { pid: string; type: SendType; ids: string[]; title?: string; text?: string; pay?: boolean; notice?: string; only?: string }): Promise<Prepared> {
   const staff = await requireRole('manager');
+  setDocBase(await siteOrigin());
   const type = TYPES.includes(input.type) ? input.type : 'link';
   const ids = new Set((input.ids || []).map(String));
   if (type === 'custom' && !String(input.text || '').trim()) return { items: [], left: [], test: waTestNumber() || null };
@@ -150,6 +152,7 @@ function resendItem(o: Owner, d: string, t: string, replacesOf: (o: Owner) => st
  *  it leaves To do only once the accountant confirms it was sent. */
 export async function fixNumberSendAction(input: { pid: string; oid: string; phone: string }): Promise<ResendResult> {
   const staff = await requireRole('manager'), phone = String(input.phone || '').trim();
+  setDocBase(await siteOrigin());
   if (waDigits(phone).length < 10) return { ok: false, error: 'That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.' };
   try {
     const r = await mutate(input.pid, staff, s => {
@@ -172,6 +175,7 @@ export async function fixNumberSendAction(input: { pid: string; oid: string; pho
 /** To do: open the chat again for an owner whose number was fixed but whose message wasn't sent yet. */
 export async function resendFixedAction(input: { pid: string; oid: string }): Promise<ResendResult> {
   const staff = await requireRole('manager');
+  setDocBase(await siteOrigin());
   try {
     const ready = await mutate(input.pid, staff, s => {
       const o = ownerById(input.oid);

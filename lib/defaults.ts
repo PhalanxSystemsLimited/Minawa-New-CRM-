@@ -19,13 +19,13 @@ export const SAMPLE_BANK = 'Minawa Group – Maintenance · Sample Bank Ltd · I
 // Variables ({{name}}, {{total}}…) are filled in from the owner's figures.
 export const TEMPLATES: Record<string, Template> = {
   bill: { key: 'bill', label: 'Bill', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_bill',
-    text: 'Hi {{name}}, your maintenance bill for {{month}} (Apt {{apt}}) is {{amount}}.\n\nYour dues: {{breakdown}}\nDues: {{dues}}\nFine: {{fee}}\nTotal payable: {{total}}, due by {{due}}\n\nYour statement is attached. Pay your building manager (cash or cheque, against a receipt) or by bank transfer to the account on the statement.' },
+    text: 'Hi {{name}}, your maintenance bill for {{month}} (Apt {{apt}}) is {{amount}}.\n\nYour dues: {{breakdown}}\nDues: {{dues}}\nFine: {{fee}}\nTotal payable: {{total}}, due by {{due}}\n\nYour bill voucher is attached. Please pay in cash to your building manager and take a receipt (cash only).' },
   notice: { key: 'notice', label: 'Disconnection notice', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_final_notice',
     text: 'Dear {{name}}, final notice for Apt {{apt}}.\n\nYour dues: {{breakdown}}\nDues: {{dues}}\nFine: {{fee}}\nTotal overdue: {{total}}\n\nPlease pay by {{final}}, or your utilities will be disconnected.' },
   reminder: { key: 'reminder', label: 'Reminder before the due date', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_reminder',
-    text: 'Hi {{name}}, a reminder from Minawa Group: your maintenance for Apt {{apt}} is due on {{due}}.\n\nYour dues: {{breakdown}}\nTotal to pay: {{total}}\n\nPay your building manager (cash or cheque, against a receipt) or by bank transfer to the account on your statement. Please ignore this if you have already paid.' },
+    text: 'Hi {{name}}, a reminder from Minawa Group: your maintenance for Apt {{apt}} is due on {{due}}.\n\nYour dues: {{breakdown}}\nTotal to pay: {{total}}\n\nPlease pay in cash to your building manager and take a receipt (cash only). Please ignore this if you have already paid.' },
   link: { key: 'link', label: 'Your dues', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_payment_link',
-    text: 'Hi {{name}}, this is Minawa Group with your dues for Apt {{apt}}.\n\nYour dues: {{breakdown}}\nDues: {{dues}}\nFine: {{fee}}\nTotal to pay: {{total}}\n\nPay your building manager (cash or cheque, against a receipt) or by bank transfer to the account on your statement.' },
+    text: 'Hi {{name}}, this is Minawa Group with your dues for Apt {{apt}}.\n\nYour dues: {{breakdown}}\nDues: {{dues}}\nFine: {{fee}}\nTotal to pay: {{total}}\n\nPlease pay in cash to your building manager and take a receipt (cash only).' },
   receipt: { key: 'receipt', label: 'Receipt', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_receipt',
     text: 'Payment received: {{paid}} for Apt {{apt}} on {{date}}. Remaining balance: {{balance}}. Thank you. Your receipt is attached.' },
   credit: { key: 'credit', label: 'Bill paid from credit', status: 'approved', pending: null, submittedOn: null, metaName: 'minawa_bill_credit',

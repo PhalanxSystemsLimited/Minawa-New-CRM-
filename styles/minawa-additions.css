@@ -293,3 +293,14 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .inst-n .chipbtn.on { background: var(--ink); color: #fff; border-color: var(--ink) }
 .inst-rows { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow: auto; padding-right: 4px }
 
+
+/* Bill vouchers: what to pay by the due date and after it, and the office copy at the foot */
+.doc .vch { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.doc .vch-b { border: 1px solid #dfe5e4; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px }
+.doc .vch-b span { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #53606a }
+.doc .vch-b b { font-size: 20px; color: #161B1F }
+.doc .vch-b small { font-size: 11px; color: #697277 }
+.doc .vch-in { border: 2px solid #161B1F; background: #F3F0EA }
+.doc .vch-cf { border-top: 1px dashed #9aa0a3; padding-top: 10px; margin-top: 4px }
+.doc .vch-cf-h { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #53606a; margin-bottom: 8px }
+.doc .vch-line { display: block; border-bottom: 1px solid #9aa0a3; height: 16px; max-width: 180px }

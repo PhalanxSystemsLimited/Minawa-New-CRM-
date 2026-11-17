@@ -9,7 +9,7 @@ import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
-  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, MANAGER_METHODS } from './engine';
+  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
@@ -31,16 +31,16 @@ export async function recordPaymentAction(fdata: FormData) {
   if (!(amt > 0)) go(ownerPath(pid, oid), 'Enter an amount');
   // Payments are entered by building managers and accountants only (no online payments).
   if (staff.role === 'admin') go(ownerPath(pid, oid), 'Payments are entered by the building manager or the Accountant');
-  // A building manager enters cash, a bank transfer or a cheque; it waits for the accountant, and the balance changes
+  // A building manager enters cash (payments are in cash only); it waits for the accountant, and the balance changes
   // only once confirmed.
   if (staff.role === 'manager') {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
-    const method = MANAGER_METHODS.includes(S(fdata, 'method')) ? S(fdata, 'method') : 'Cash';
-    if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', method === 'Cash' ? 'Enter the receipt number you gave the owner' : method === 'Cheque' ? 'Enter the cheque number' : 'Enter the bank reference');
+    const method = 'Cash';
+    if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
     await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method), { send: false });
     go(ownerPath(pid, oid), `${method} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant confirms it; the balance changes then.`);
   }
-  const p = await mutate(pid, staff, s => recordPayment(needOwner(s, oid), amt, S(fdata, 'method'), S(fdata, 'ref'), s.today, 'staff', at(15), staffName(staff)));
+  const p = await mutate(pid, staff, s => recordPayment(needOwner(s, oid), amt, 'Cash', S(fdata, 'ref'), s.today, 'staff', at(15), staffName(staff)));
   redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
 }
 export async function promiseAction(fdata: FormData) {
@@ -143,7 +143,7 @@ export async function pickAction(fdata: FormData) {
 /* ---------- to do ---------- */
 export async function verifyAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), amt = Math.round(+S(fdata, 'amt') || 0), back = S(fdata, 'back');
-  if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Bank transfers are checked by the Accountant');
+  if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Payments are confirmed by the Accountant');
   const p = await mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (!pr || pr.status !== 'pending') return null; return verifyProof(pr, s.today, at(15), staffName(staff), amt); });
   if (!p) go(back || `/p/${pid}/todo`, 'Already handled');
   if (back) go(back, `Payment recorded: receipt ${p!.receipt}`);
@@ -151,7 +151,7 @@ export async function verifyAction(fdata: FormData) {
 }
 export async function rejectAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back');
-  if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Bank transfers are checked by the Accountant');
+  if (staff.role === 'manager') go(back || `/p/${pid}/todo`, 'Payments are confirmed by the Accountant');
   const kind = await mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (!pr || pr.status !== 'pending') return null; rejectProof(pr, s.today, at(15), staffName(staff), S(fdata, 'reply')); return pr.kind || 'transfer'; });
   if (!kind) go(back || `/p/${pid}/todo`, 'Already handled');
   go(back || `/p/${pid}/todo`, kind === 'cash' ? 'Marked as not received. The building manager sees your note.' : 'Owner told on WhatsApp');
