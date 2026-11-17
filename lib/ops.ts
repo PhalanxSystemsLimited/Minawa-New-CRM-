@@ -5,12 +5,14 @@ import { use, runDaily, setTarget, log, at, payLink, payStaleLink } from './engi
 import { safepayConfigured, safepayMode, getQuickLink } from './safepay';
 import { dispatch, checkSafepay } from './dispatch';
 import { todayPKT, addDays, nowPKT, rs, hour12 } from './fmt';
-import { staffName } from './session';
+import { staffName, canOpen } from './session';
 
-export async function projects(): Promise<Project[]> { return (await getStore()).listProjects(); }
-export async function liveProjects() { return (await projects()).filter(p => p.live); }
+/** The projects (buildings) a person may see: all of them, or a Building manager's assigned ones. */
+export async function projects(staff?: Staff | null): Promise<Project[]> { return (await (await getStore()).listProjects()).filter(p => canOpen(staff, p.id)); }
+export async function liveProjects(staff?: Staff | null) { return (await projects(staff)).filter(p => p.live); }
 
 export async function load(pid: string, staff?: Staff | null): Promise<State> {
+  if (!canOpen(staff, pid)) throw new Error('This building isn\'t assigned to you.');
   const store = await getStore();
   const s = await store.loadState(pid, { today: todayPKT(), by: staff ? staffName(staff) : 'System', role: staff?.role || 'admin' });
   s.staffId = staff?.id || null; s.staffName = staff ? staffName(staff) : null;

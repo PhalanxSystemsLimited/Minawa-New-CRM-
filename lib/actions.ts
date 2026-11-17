@@ -3,7 +3,7 @@
 // (lib/ops.mutate), lets the dispatcher send what was queued, then returns to the page with a message.
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import type { Owner, State } from './types';
+import type { Owner, State, Staff } from './types';
 import { requireStaff, requireAdmin, roleName, staffName } from './session';
 import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
@@ -217,7 +217,10 @@ export async function simulatePayAction(fdata: FormData) {
 /* ---------- staff (admins) ---------- */
 /* ---------- staff (admins) ---------- */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const roleLabel = (r: string) => r === 'admin' ? 'Admin' : 'Accountant';
+const roleLabel = (r: string) => r === 'admin' ? 'Admin' : r === 'manager' ? 'Building manager' : 'Accountant';
+const roleOf = (v: string): Staff['role'] => v === 'admin' ? 'admin' : v === 'manager' ? 'manager' : 'accountant';
+/** The buildings ticked on the staff form (only kept for Building managers). */
+const buildingsOf = (f: FormData, role: string) => role === 'manager' ? f.getAll('projects').map(String).filter(Boolean) : [];
 async function authAdmin() {
   const { createClient } = await import('@supabase/supabase-js');
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } }).auth.admin;
@@ -228,7 +231,7 @@ export async function staffAction(fdata: FormData) {
   const me = await requireAdmin(), store = await getStore();
   const id = S(fdata, 'id'), list = await store.listStaff(), st = list.find(x => x.id === id), back = `/admin?edit=${encodeURIComponent(id)}`;
   if (!st) go('/admin', 'Not found');
-  const name = S(fdata, 'name') || st!.name, email = S(fdata, 'email').toLowerCase() || st!.email, role = S(fdata, 'role') === 'admin' ? 'admin' : 'accountant',
+  const name = S(fdata, 'name') || st!.name, email = S(fdata, 'email').toLowerCase() || st!.email, role = roleOf(S(fdata, 'role')), projects = buildingsOf(fdata, role),
     active = !!fdata.get('active'), password = String(fdata.get('password') ?? '');
   if (!EMAIL_RE.test(email)) go(back, 'Enter a valid email');
   if (list.some(x => x.id !== id && x.email.toLowerCase() === email)) go(back, 'Someone else already signs in with that email');
@@ -239,6 +242,8 @@ export async function staffAction(fdata: FormData) {
   if (name !== st!.name) ch.push(`name ${st!.name} → ${name}`);
   if (email !== st!.email) ch.push(`email ${st!.email} → ${email}`);
   if (role !== st!.role) ch.push(`role ${roleLabel(st!.role)} → ${roleLabel(role)}`);
+  if (role === 'manager' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ') || 'none'}`);
+  if (role === 'manager' && !projects.length) go(back, 'Tick at least one building for a building manager');
   if (active !== st!.active) ch.push(active ? 'can sign in again' : 'sign-in turned off');
   if (password) ch.push('password changed');
   if (!ch.length) go('/admin', 'Nothing changed');
@@ -246,7 +251,7 @@ export async function staffAction(fdata: FormData) {
     const { error } = await (await authAdmin()).updateUserById(id, { ...(email !== st!.email ? { email, email_confirm: true } : {}), ...(password ? { password } : {}) });
     if (error) go(back, `Couldn't update the login: ${error.message}`);
   } else if (password) go(back, 'Local mode has one shared password (LOCAL_PASSWORD). Connect Supabase to give each person their own.');
-  await store.saveStaff({ ...st!, name, email, role, active });
+  await store.saveStaff({ ...st!, name, email, role, active, projects });
   await staffLog(me, `${name}'s account changed by ${staffName(me)}: ${ch.join('; ')}`);
   go('/admin', `${name} updated${password ? '. Give them the new password' : ''}`);
 }
@@ -254,8 +259,9 @@ export async function staffAction(fdata: FormData) {
 /** Add someone: a Supabase login (email + first password, confirmed) and their staff row with the role. */
 export async function inviteAction(fdata: FormData) {
   const me = await requireAdmin();
-  const email = S(fdata, 'email').toLowerCase(), name = S(fdata, 'name'), role = S(fdata, 'role') === 'admin' ? 'admin' : 'accountant', password = String(fdata.get('password') ?? '');
+  const email = S(fdata, 'email').toLowerCase(), name = S(fdata, 'name'), role = roleOf(S(fdata, 'role')), projects = buildingsOf(fdata, role), password = String(fdata.get('password') ?? '');
   if (!email || !name || password.length < 8) go('/admin?add=1', 'Enter a name, an email and a password of at least 8 characters');
+  if (role === 'manager' && !projects.length) go('/admin?add=1', 'Tick at least one building for a building manager');
   if (!EMAIL_RE.test(email)) go('/admin?add=1', 'Enter a valid email');
   const store = await getStore(), list = await store.listStaff();
   if (list.some(x => x.email.toLowerCase() === email)) go('/admin', `${email} is already on the staff list. Use Edit to change their details.`);
@@ -266,7 +272,8 @@ export async function inviteAction(fdata: FormData) {
     if (error || !data.user) go('/admin?add=1', `Couldn't add: ${error?.message}`);
     id = data.user!.id;
   }
-  await store.saveStaff({ id, email, name, role, active: true });
-  await staffLog(me, `${name} (${email}) added as ${role === 'admin' ? 'an admin' : 'an accountant'} by ${staffName(me)}`);
-  go('/admin', `${name} can now sign in as ${role === 'admin' ? 'an admin' : 'an accountant'}`);
+  await store.saveStaff({ id, email, name, role, active: true, projects });
+  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : 'an accountant';
+  await staffLog(me, `${name} (${email}) added as ${as} by ${staffName(me)}`);
+  go('/admin', `${name} can now sign in as ${as}`);
 }

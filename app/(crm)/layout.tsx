@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
-  const projs = await listProjects();
+  const projs = await listProjects(staff);
   // Approvals waiting: all of them for admins, your own for accountants.
   let approvals = 0;
   const jar = await cookies();

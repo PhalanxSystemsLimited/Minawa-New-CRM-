@@ -282,3 +282,8 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .side-pay { margin-right: 4px; box-shadow: 0 0 0 2px rgba(217, 45, 32, .25) }
 .apv-reply.bad { background: var(--bad-soft); color: var(--fg) }
 .req { font-weight: 600; color: var(--bad); text-transform: none; letter-spacing: 0 }
+
+/* staff form: the buildings a building manager may open */
+.bld-pick { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px 12px; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 14px }
+.bld-pick legend { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--label, #526070); padding: 0 6px }
+.bld-pick p { grid-column: 1 / -1 }

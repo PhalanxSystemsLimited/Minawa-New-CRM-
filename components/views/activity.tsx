@@ -3,7 +3,7 @@ import type { LogEntry, Project, Staff } from '@/lib/types';
 import { dow, fd, fds, addDays, todayPKT, t12 } from '@/lib/fmt';
 
 export const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join('') || '?';
-export const roleTag = (r: string) => r === 'admin' ? <span className="tag info">Admin</span> : <span className="tag">Accountant</span>;
+export const roleTag = (r: string) => r === 'admin' ? <span className="tag info">Admin</span> : r === 'manager' ? <span className="tag warn">Building manager</span> : <span className="tag">Accountant</span>;
 /* Colour-coded activity badges: one for what kind of action it was (with an icon), and, where the entry says so,
  * one for how it ended (sent / not sent, prepared, created…). Colours come from the theme. */
 type Tone = 'good' | 'bad' | 'warn' | 'info' | 'accent' | 'muted' | 'wa' | 'in';

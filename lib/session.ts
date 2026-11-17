@@ -41,9 +41,17 @@ export async function requireStaff(): Promise<Staff> {
 }
 export async function requireAdmin(): Promise<Staff> {
   const s = await requireStaff();
-  if (s.role !== 'admin') throw new Error('Only admins (the CEO and directors) can do this.');
+  if (s.role !== 'admin') redirect('/?flash=' + encodeURIComponent('Only an Admin (the owner or a director) can do that.'));
   return s;
 }
-export const roleName = (s: Staff) => s.role === 'admin' ? 'Admin' : 'Accountant';
+export const ROLE_NAMES: Record<Staff['role'], string> = { admin: 'Admin', accountant: 'Accountant', manager: 'Building manager' };
+export const roleName = (s: Staff) => ROLE_NAMES[s.role] || 'Accountant';
+/** Which buildings someone may open: Admins and Accountants all of them, a Building manager only those assigned. */
+export const canOpen = (s: Staff | null | undefined, pid: string) => !s || s.role !== 'manager' || (s.projects || []).includes(pid);
+export async function requireRole(...roles: Staff['role'][]): Promise<Staff> {
+  const s = await requireStaff();
+  if (!roles.includes(s.role)) redirect('/?flash=' + encodeURIComponent('That page isn\'t part of your role.'));
+  return s;
+}
 /** The person's name, for "recorded by" on payments, notes and the activity log. */
 export const staffName = (s: Staff) => s.name?.trim() || roleName(s);

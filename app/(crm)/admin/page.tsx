@@ -14,12 +14,12 @@ export const dynamic = 'force-dynamic';
 export default async function Admin({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams;
   const me = await requireAdmin(), store = await getStore(), staff = await store.listStaff(), co = await store.getCompany();
-  const projs = await listProjects(), acts = await store.getLog({ staffOnly: true, limit: 400 });
+  const projs = await listProjects(me), acts = await store.getLog({ staffOnly: true, limit: 400 });
   const last = new Map<string, { d: string; t: string }>();
   for (const e of acts) if (e.staffId && !last.has(e.staffId)) last.set(e.staffId, { d: e.d, t: e.t });
   const accIds = staff.filter(x => x.role === 'accountant').map(x => x.id);
   const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && !['signin', 'signout'].includes(e.kind)).slice(0, 8);
-  const sorted = [...staff].sort((a, b) => (a.role === b.role ? 0 : a.role === 'admin' ? -1 : 1) || a.name.localeCompare(b.name));
+  const rank = { admin: 0, accountant: 1, manager: 2 } as const, sorted = [...staff].sort((a, b) => (rank[a.role] - rank[b.role]) || a.name.localeCompare(b.name));
   const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add'];
   const app = process.env.APP_URL || '';
   const row = (name: string, ok: boolean, what: string, tag?: string) => <div className="li"><div className="t"><div className="a">{name}</div><div className="b">{what}</div></div>{ok ? <span className={`tag ${tag === 'warn' ? 'warn' : 'good'}`}>{tag && tag !== 'warn' ? tag : 'On'}</span> : <span className="tag bad">Not set up</span>}</div>;
@@ -30,13 +30,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
           <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}</td>
           <td className="cell-sub">{s.email}</td>
-          <td>{roleTag(s.role)}</td>
+          <td>{roleTag(s.role)}{s.role === 'manager' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || 'No building yet'}</div> : null}</td>
           <td>{s.active ? <span className="tag good">Can sign in</span> : <span className="tag bad">Turned off</span>}</td>
           <td className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{l ? lastSeen(l.d, l.t) : 'Not yet'}</td>
           <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/log?who=${encodeURIComponent(s.id)}`} className="btn sm">Activity</Go> <Go href={`/admin?edit=${encodeURIComponent(s.id)}`} className="btn sm">Edit</Go></td>
         </tr>; })}
       </tbody></table></div>
-      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins can change everything, approve accountants' changes, do transfers and manage staff. Accountants record payments, enter utility bills, send notices and payment links by hand, and record new possessions; their changes to charges and settings wait for an admin's approval.</p>
+      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants look after payments and bills; their changes go to an Admin for approval. Building managers only see the buildings ticked for them: they record cash, send reminders on WhatsApp and ask the Admin for changes for an owner.</p>
     </div>
     <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, links, fines) shows here." />
@@ -45,7 +45,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <form action={inviteAction} className="rules-form">
         <div className="form-row"><label htmlFor="iv-n">Name</label><input id="iv-n" name="name" required /></div>
         <div className="form-row"><label htmlFor="iv-e">Email (they sign in with it)</label><input id="iv-e" name="email" type="email" autoComplete="off" required /></div>
-        <div className="form-row"><label htmlFor="iv-r">Role</label><select id="iv-r" name="role" defaultValue="accountant"><option value="accountant">Accountant</option><option value="admin">Admin (CEO, directors)</option></select></div>
+        <div className="form-row"><label htmlFor="iv-r">Role</label><select id="iv-r" name="role" defaultValue="accountant"><option value="accountant">Accountant</option><option value="manager">Building manager</option><option value="admin">Admin (owner, directors)</option></select></div>
+        <fieldset className="bld-pick"><legend>Buildings (for a building manager)</legend>{projs.map(p => <label key={p.id} className="cb"><input type="checkbox" name="projects" value={p.id} /> {p.name}</label>)}<p className="cell-sub" style={{ margin: '4px 0 0' }}>A building manager only sees the buildings ticked here. Ignored for admins and accountants.</p></fieldset>
         <div className="form-row"><label htmlFor="iv-p">Password (8+ characters)</label><PasswordInput id="iv-p" name="password" autoComplete="new-password" minLength={8} required /></div>
         <p className="cell-sub" style={{ margin: 0 }}>They can sign in straight away. Give them the email and password yourself.</p>
         <div className="m-actions"><CloseBtn keys={keys} /><Submit>Add</Submit></div>
@@ -54,7 +55,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <form action={staffAction} className="rules-form"><input type="hidden" name="id" value={ed.id} />
         <div className="form-row"><label htmlFor="ed-n">Name</label><input id="ed-n" name="name" defaultValue={ed.name} required /></div>
         <div className="form-row"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
-        <div className="form-row"><label htmlFor="ed-r">Role</label><select id="ed-r" name="role" defaultValue={ed.role}><option value="accountant">Accountant</option><option value="admin">Admin (CEO, directors)</option></select></div>
+        <div className="form-row"><label htmlFor="ed-r">Role</label><select id="ed-r" name="role" defaultValue={ed.role}><option value="accountant">Accountant</option><option value="manager">Building manager</option><option value="admin">Admin (owner, directors)</option></select></div>
+        <fieldset className="bld-pick"><legend>Buildings (for a building manager)</legend>{projs.map(p => <label key={p.id} className="cb"><input type="checkbox" name="projects" value={p.id} defaultChecked={(ed.projects || []).includes(p.id)} /> {p.name}</label>)}<p className="cell-sub" style={{ margin: '4px 0 0' }}>A building manager only sees the buildings ticked here. Ignored for admins and accountants.</p></fieldset>
         <div className="form-row"><label htmlFor="ed-p">New password <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(leave empty to keep the current one)</span></label><PasswordInput id="ed-p" name="password" autoComplete="new-password" minLength={8} /></div>
         <label className="cb"><input type="checkbox" name="active" defaultChecked={ed.active} /> Can sign in{ed.id === me.id ? ' (you can\'t turn off your own access)' : ''}</label>
         <div className="m-actions"><CloseBtn keys={keys} /><Submit>Save changes</Submit></div>

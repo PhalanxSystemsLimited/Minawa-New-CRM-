@@ -1,7 +1,7 @@
 // Data model. One shape is used everywhere: the billing engine, the screens, and both stores (Supabase and the
 // local file store). It mirrors the demo's state, so the engine logic carries over line for line.
 
-export type Role = 'admin' | 'accountant';
+export type Role = 'admin' | 'accountant' | 'manager';
 export type ISODate = string; // YYYY-MM-DD
 
 export interface Project {
@@ -176,4 +176,5 @@ export interface Approval {
 /** Minawa's company details, printed on every bill, statement and receipt. */
 export interface Company { legalName: string; address: string; ntn: string; phone: string; email: string }
 
-export interface Staff { id: string; email: string; name: string; role: Role; active: boolean }
+/** `projects`: for a building manager, the buildings (project ids) they may open; the Admin assigns them. */
+export interface Staff { id: string; email: string; name: string; role: Role; active: boolean; projects?: string[] }

@@ -12,7 +12,7 @@ const PERIODS: [string, string][] = [['today', 'Today'], ['7', 'Last 7 days'], [
 
 export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, string>; fixedProject?: string }) {
   const me = await requireStaff(), admin = me.role === 'admin';
-  const store = await getStore(), staff = await store.listStaff(), projs = (await listProjects()).filter(p => p.live);
+  const store = await getStore(), staff = await store.listStaff(), projs = (await listProjects(me)).filter(p => p.live);
   const today = todayPKT(), per = PERIODS.some(p => p[0] === sp.per) ? sp.per : '30', pid = fixedProject || sp.p || '', ans = sp.a === 'sent' || sp.a === 'not_sent' ? sp.a : '';
   const who = admin ? sp.who || 'all' : me.id, q = (sp.q || '').toLowerCase();
   const since = per === 'all' ? null : per === 'today' ? today : addDays(today, -(+per - 1));

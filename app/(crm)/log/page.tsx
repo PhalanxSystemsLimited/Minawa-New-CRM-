@@ -14,7 +14,7 @@ const ALIAS: Record<string, string> = { job: 'change', link: 'money' };
 
 export default async function Activity({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const me = await requireStaff(), admin = me.role === 'admin';
-  const sp = await searchParams, store = await getStore(), staff = await store.listStaff(), projs = await listProjects();
+  const sp = await searchParams, store = await getStore(), staff = await store.listStaff(), projs = await listProjects(me);
   const f0 = ALIAS[sp.f] || sp.f, f = f0 && f0 in GROUPS ? f0 : 'all', pid = sp.p || '';
   const who = admin ? sp.who || 'all' : 'all';
   const person = admin ? staff.find(s => s.id === who) : undefined;

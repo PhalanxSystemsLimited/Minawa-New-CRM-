@@ -18,6 +18,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
   const { pid } = await params, sp = await searchParams;
   return projectPage(pid, sp, () => {
     const S = cur(), ad = isAdmin(), dis = !ad, r = S.settings.rules;
+    if (S.role === 'manager') return <>{projHead('settings')}<div className="card allclear"><div className="big">Settings are looked after by the Admin and Accountant</div><p className="muted">To change something for one owner (plan, discount, due date), open the apartment and send a request.</p></div></>;
     // Accountants can change the fees, the schedule, the fine and send announcements: each change waits for an admin.
     const waiting = pendingProject();
     const why = (id: string) => ad ? null : <div className="form-row"><label htmlFor={id}>Reason for the admin <span className="req">(required)</span></label><input id={id} name="why" type="text" required placeholder="Why this change is needed" /></div>;

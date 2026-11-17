@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams;
   const staff = await requireStaff();
-  const projs = await listProjects();
+  const projs = await listProjects(staff);
   const live = projs.filter(p => p.live), off = projs.filter(p => !p.live);
   const states = await Promise.all(live.map(p => load(p.id, staff)));
   const today = todayPKT(), mon = today.slice(0, 7), monName = MONL[+mon.slice(5) - 1];

@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   const me = await currentStaff();
   if (!me) return new Response('sign in first', { status: 401 });
   const u = new URL(req.url), g = (k: string) => u.searchParams.get(k) || '';
-  const store = await getStore(), staff = await store.listStaff(), projs = await listProjects(), today = todayPKT();
+  const store = await getStore(), staff = await store.listStaff(), projs = await listProjects(me), today = todayPKT();
   const per = g('per') || 'all', since = per === 'all' ? null : per === 'today' ? today : addDays(today, -(+per - 1 || 29));
   const who = me.role === 'admin' ? g('who') || 'all' : me.id;
   const ids = who === 'all' ? null : who === 'accountants' ? staff.filter(s => s.role === 'accountant').map(s => s.id) : [who];

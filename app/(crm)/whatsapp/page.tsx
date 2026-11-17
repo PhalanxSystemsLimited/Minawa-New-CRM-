@@ -21,7 +21,7 @@ export default async function WhatsApp({ searchParams }: { searchParams: Promise
     </div>
   </>;
   if (view === 'log') return <>{head}<WaLogBody sp={sp} /></>;
-  const rows = await Promise.all((await liveProjects()).map(async p => {
+  const rows = await Promise.all((await liveProjects(staff)).map(async p => {
     const s = await load(p.id, staff), m = s.messages.filter(x => x.from === 'biz' && diff(s.today, x.d) <= 30);
     const c = (k: string[]) => m.filter(x => k.includes(x.status)).length;
     return { p, total: m.length, ok: c(['sent', 'delivered', 'read']), queued: c(['queued']), pending: c(['pending']), bad: c(['failed', 'skipped']), noNumber: s.owners.filter(o => o.status === 'active' && !o.exempt && o.invalidPhone).length };

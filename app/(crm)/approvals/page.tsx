@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function Approvals({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const me = await requireStaff(), admin = me.role === 'admin', sp = await searchParams;
   const show = sp.s === 'done' ? 'done' : 'waiting', back = `/approvals${show === 'done' ? '?s=done' : ''}`;
-  const projs = (await listProjects()).filter(p => p.live);
+  const projs = (await listProjects(me)).filter(p => p.live);
   const states = await Promise.all(projs.map(p => load(p.id, me)));
   const all: ApprovalView[] = states.flatMap(s => use(s, () => s.approvals.filter(a => admin || a.byId === me.id)
     .map(a => { const o = a.ownerId ? ownerById(a.ownerId) : null; return { a, apt: o?.apt || '', owner: o?.name || '', pname: s.proj.name }; })));

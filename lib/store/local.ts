@@ -17,7 +17,7 @@ const g = globalThis as unknown as { __minawaDb?: DB; __minawaLock?: Promise<unk
 
 function empty(): DB {
   return { projects: PROJECTS.map(p => ({ ...p })), templates: JSON.parse(JSON.stringify(TEMPLATES)), settings: {}, counters: {}, log: [],
-    staff: [{ id: 'local-admin', email: 'admin@minawa.local', name: 'Admin', role: 'admin', active: true }, { id: 'local-accountant', email: 'accountant@minawa.local', name: 'Accountant', role: 'accountant', active: true }],
+    staff: [{ id: 'local-admin', email: 'admin@minawa.local', name: 'Admin', role: 'admin', active: true }, { id: 'local-accountant', email: 'accountant@minawa.local', name: 'Accountant', role: 'accountant', active: true }, { id: 'local-manager', email: 'manager@minawa.local', name: 'Building Manager', role: 'manager', active: true, projects: ['cc'] }],
     owners: [], bills: [], entries: [], links: [], messages: [], payments: [], proofs: [], alerts: [], clearances: [], charges: [], notices: [], approvals: [], rates: [] };
 }
 function db(): DB {
