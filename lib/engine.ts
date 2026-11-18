@@ -169,15 +169,24 @@ export function slotOf(o: Owner, k: number): Slot | null {
   // possessions recorded in the CRM (firstBill set) from their possession date.
   if (!o.firstBill && S.goLive > from) from = S.goLive;
   if (o.possessionKnown && o.possession > from) from = o.possession;
+  const lb = lastBilled(o); if (lb && lb >= from) from = addDays(lb, 1);
   if (from > to) return null;
   return { k, from, to, due, billOn: addDays(due, -R().billLead), days: diff(due, from), full: Math.max(1, diff(due, start)) };
 }
-let billKeys: { arr: Bill[]; len: number; set: Set<string> } | null = null;
-/** Whether the period due on `due` is billed already (a set of owner|due date, rebuilt when the bills change). */
-function billedSlot(o: Owner, due: string) {
-  if (!billKeys || billKeys.arr !== S.bills || billKeys.len !== S.bills.length) billKeys = { arr: S.bills, len: S.bills.length, set: new Set(S.bills.filter(b => b.months > 0).map(b => `${b.ownerId}|${b.dueDate}`)) };
-  return billKeys.set.has(`${o.id}|${due}`);
+let billKeys: { arr: Bill[]; len: number; set: Set<string>; last: Map<string, string> } | null = null;
+function keys() {
+  if (!billKeys || billKeys.arr !== S.bills || billKeys.len !== S.bills.length) {
+    const last = new Map<string, string>();
+    for (const b of S.bills) if (b.months > 0 && b.covTo && b.covTo > (last.get(b.ownerId) || '')) last.set(b.ownerId, b.covTo);
+    billKeys = { arr: S.bills, len: S.bills.length, set: new Set(S.bills.filter(b => b.months > 0).map(b => `${b.ownerId}|${b.dueDate}`)), last };
+  }
+  return billKeys;
 }
+/** Whether the period due on `due` is billed already (a set of owner|due date, rebuilt when the bills change). */
+const billedSlot = (o: Owner, due: string) => keys().set.has(`${o.id}|${due}`);
+/** The last day already billed for this customer: a period never starts before it, so changing a possession date
+ *  (and with it the due day) never bills the same days twice. */
+const lastBilled = (o: Owner) => keys().last.get(o.id) || null;
 /** The first period worth looking at: the one that reaches go-live. */
 const firstK = (o: Owner) => o.firstBill ? 1 : Math.max(1, Math.floor(monthsBetween(seriesMonth(o), S.goLive.slice(0, 7)) / planN(o)));
 /** Periods whose bill is due to be made on or before day d and isn't made yet (oldest first; catches up missed days). */

@@ -820,3 +820,4 @@ button.lv-kpi{cursor:pointer}
 .nav-prog.run{opacity:1}.nav-prog.run i{width:82%;transition:width 8s cubic-bezier(.1,.7,.1,1)}
 .nav-prog.done{opacity:0;transition:opacity .35s .15s}.nav-prog.done i{width:100%;transition:width .2s ease}
 @media (prefers-reduced-motion:reduce){.pg-load,.pg-load-mark,.pg-load-bar i{animation:none}.nav-prog i{transition:none}}
+.si-pos{--si-a:#C4B5FD;--si-b:#6D28D9;--si-g:rgba(124,58,237,.7)}

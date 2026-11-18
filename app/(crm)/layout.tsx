@@ -28,7 +28,8 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     // Payments this person hasn't seen on the project's Payments page yet.
     const since = jar.get(paySeenCookie(staff.id, p.id))?.value || addDays(todayPKT(), -NEW_DAYS) + 'T00:00';
     const pays = s.payments.filter(x => payKey(x) > since).length;
-    return { id: p.id, name: p.name, place: p.place, live: true, todo: myTasks(projectTasks(s), staff).length, pays };
+    const nopos = s.owners.filter(o => o.status === 'active' && !o.possessionKnown).length;
+    return { id: p.id, name: p.name, place: p.place, live: true, todo: myTasks(projectTasks(s), staff).length, pays, nopos };
   }));
   // The bell: an Admin's approvals; everyone else's own To do (see lib/tasks.ts).
   const admin = staff.role === 'admin', todo = admin ? approvals : nav.reduce((s, p) => s + p.todo, 0), firstTodo = nav.find(p => p.todo)?.id || null;

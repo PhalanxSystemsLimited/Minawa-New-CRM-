@@ -9,7 +9,7 @@ import { PLAN_LABEL } from './types';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
-  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill } from './engine';
+  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf } from './engine';
 import { fd, fm, rs, ord, addDays } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
@@ -72,8 +72,8 @@ function describeRaw(o: Owner | null, kind: ApprovalKind, c: Record<string, unkn
       : { summary: `Resume maintenance for ${o?.apt}`, before: o?.flagged ? `Discontinued${o.flaggedOn ? ` since ${fd(o.flaggedOn)}` : ''}` : 'Maintenance running' };
     case 'reverse': { const p = cur().payments.find(x => x.id === String(c.pid));
       return { summary: `Reverse payment ${p ? `${p.receipt} of ${rs(p.amount)} (${fd(p.d)})` : String(c.pid)}: ${String(c.reason || '')}`, before: p ? `Counted: ${rs(p.amount)} cash, receipt ${p.receipt}` : 'Payment not found' }; }
-    case 'posdate': { const pd = String(c.possession), day = o?.firstBill ? +addDays(pd, cur().settings.rules.graceDays ?? 25).slice(8) : +pd.slice(8);
-      return { summary: `Possession date ${fd(pd)}: billed on the ${ord(day)} from the next bill`, before: o ? (o.possessionKnown ? `Possession ${fd(o.possession)}, billed on the ${ord(anchorOf(o).day)}` : `No possession date on file, billed on the ${ord(cur().settings.rules.billDay)}`) : '' }; }
+    case 'posdate': { const pd = String(c.possession);
+      return { summary: `Possession date ${fd(pd)}: due on the ${ord(+pd.slice(8))} from the next bill`, before: o ? (o.possessionKnown ? `Possession ${fd(o.possession)}, due on the ${ord(dueDayOf(o))}` : 'No possession date on file, due on the 1st') : '' }; }
     case 'due': return { summary: `Due on the ${ord(num(c.dueDay))} of the month after each bill`, before: o?.dueDay ? `Due on the ${ord(o.dueDay)}` : 'The project\'s due date' };
     case 'rules': { const d = rulesDiff(c as unknown as RulesChange); return { summary: `Billing schedule: ${d.map(x => x[1]).join('; ') || 'no change'}`, before: d.map(x => x[0]).join('; ') || 'the same' }; }
     case 'fine': {
@@ -228,11 +228,11 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       return `Payment ${p.receipt} reversed; ${o.apt} owes ${rs(balance(o))} again`;
     }
     case 'posdate': {
-      const pd = String(c.possession), was = o.possessionKnown ? fd(o.possession) : 'not on file', wasDay = anchorOf(o).day;
+      const pd = String(c.possession), was = o.possessionKnown ? fd(o.possession) : 'not on file', wasDay = dueDayOf(o);
       o.possession = pd; o.possessionKnown = true; if (o.firstBill) o.firstBill = addDays(pd, S.settings.rules.graceDays ?? 25);
-      const text = `Possession date changed by ${who}: ${was} → ${fd(pd)}. Billed on the ${ord(anchorOf(o).day)} (was the ${ord(wasDay)}) from the next bill; bills already made stay as they are.`;
+      const text = `Possession date set by ${who}: ${was} → ${fd(pd)}. Due on the ${ord(dueDayOf(o))} (was the ${ord(wasDay)}) from the next bill; bills already made stay as they are.`;
       o.notes.push({ d, by: who, text }); log(d, t, 'admin', `${o.apt}: ${text}`, o.id);
-      return `Possession date saved; billed on the ${ord(anchorOf(o).day)} from the next bill`;
+      return `Possession date saved; due on the ${ord(dueDayOf(o))} from the next bill`;
     }
     case 'due': {
       const dd = num(c.dueDay) || null, was = o.dueDay; o.dueDay = dd;

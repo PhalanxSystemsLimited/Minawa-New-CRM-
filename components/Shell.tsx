@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Ic, Wa } from './icons';
 import { Go, GlobalSearch } from './client';
 
-export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number; pays?: number }
+export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number; pays?: number; nopos?: number }
 
 export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects: NavProject[]; admin: boolean; role?: string; approvals?: number; me?: { name: string; role: string; signOut: () => Promise<void> } }) {
   const path = usePathname();
@@ -31,6 +31,7 @@ export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects
         <Go href="/approvals" className="side-i si si-apv" current={path.startsWith('/approvals')}><span className="si-ic" aria-hidden="true"><Ic n="check" /></span><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
         {(() => { const n = admin ? 0 : projects.reduce((a, p) => a + (p.todo || 0), 0); return <Go href="/tasks" className="side-i si si-todo" current={path.startsWith('/tasks')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">{admin ? 'Team To do' : 'To do'}</span>{n ? <span className="side-b" title={`${n} task${n === 1 ? '' : 's'} for you`}>{n}</span> : null}</Go>; })()}
         {role !== 'manager' ? <Go href="/received" className="side-i si si-rcv" current={path.startsWith('/received')}><span className="si-ic" aria-hidden="true"><Ic n="wallet" /></span><span className="side-l">Received payments</span></Go> : null}
+        {(() => { const n = projects.reduce((a, p) => a + (p.nopos || 0), 0); return <Go href="/possession" className="side-i si si-pos" current={path.startsWith('/possession')}><span className="si-ic" aria-hidden="true"><Ic n="building" /></span><span className="side-l">Possession dates</span>{n ? <span className="side-b" title={`${n} customer${n === 1 ? '' : 's'} with no possession date`}>{n}</span> : null}</Go>; })()}
         <Go href="/cash" className="side-i si si-cash" current={path.startsWith('/cash')}><span className="si-ic" aria-hidden="true"><Ic n="wallet" /></span><span className="side-l">Cash</span></Go>
         <Go href="/reports" className="side-i si si-rpt" current={path.startsWith('/reports')}><span className="si-ic" aria-hidden="true"><Ic n="trend" /></span><span className="side-l">Reports</span></Go>
         <Go href="/log" className="side-i si si-log" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">Activity</span></Go>

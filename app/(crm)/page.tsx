@@ -124,6 +124,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
     {(() => {
+      // Customers with no possession date (due on the 1st until one is added), for the person's buildings.
+      const per = states.map(s => ({ p: s.proj, n: s.owners.filter(o => o.status === 'active' && !o.possessionKnown).length })).filter(x => x.n), n = per.reduce((a, x) => a + x.n, 0);
+      if (!n) return null;
+      return <div className="card nopos-card"><div className="card-row"><h3>{n} customer{n === 1 ? '' : 's'} with no possession date <small>due on the 1st until a date is added</small></h3><A href="/possession" className="btn sm primary">Add possession dates</A></div>
+        <p className="cell-sub" style={{ margin: 0 }}>{per.map(x => `${x.p.name}: ${x.n}`).join(' · ')}{staff.role === 'admin' ? '' : ' · your dates go to the Admin for approval'}</p></div>;
+    })()}
+    {(() => {
       // Past due (Phase 2): customers whose bill (or old arrears) is past its due date, worst first. The building manager
       // can send a reminder straight away; others open the customer.
       const late = duesList(states, true).slice(0, 8), all = duesList(states, true).length;
