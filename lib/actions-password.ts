@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { requireStaff, supabaseOn, supabaseServer, staffName } from './session';
 import { staffLog } from './ops';
 import { siteOrigin } from './doclink';
+import { getStore } from './store';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '');
 const go = (path: string, key: 'e' | 'ok' | 't', msg: string): never => redirect(path + (path.includes('?') ? '&' : '?') + key + '=' + encodeURIComponent(msg));
@@ -44,18 +45,28 @@ export async function forgotAction(fd: FormData) {
   const sb = await supabaseServer();
   const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: `${await siteOrigin()}/auth/reset` });
   if (error && /rate|limit|seconds/i.test(error.message)) go('/login/forgot', 'e', 'Too many tries. Wait a minute and try again.');
-  go('/login/forgot', 'ok', `If ${email} has a CRM account, a reset link is on its way. Open it on this device and browser, then choose a new password.`);
+  go('/login/forgot', 'ok', `If ${email} has a CRM account, a reset link is on its way. It works once, on any phone or computer, for one hour.`);
 }
 
 /** The page the reset link leads to: sets the new password, then signs out so you sign in with it. */
 export async function resetAction(fd: FormData) {
   if (!supabaseOn()) go('/login', 'e', 'Local mode: nothing to reset.');
+  const th = S(fd, 'th').trim(), back = th ? `/login/reset?th=${encodeURIComponent(th)}` : '/login/reset';
   const pw = S(fd, 'password'), bad = weak(pw, S(fd, 'again'));
-  if (bad) go('/login/reset', 'e', bad);
-  const sb = await supabaseServer(), { data } = await sb.auth.getUser();
+  if (bad) go(back, 'e', bad);
+  const sb = await supabaseServer();
+  if (th) {
+    // The token in the link is what says which account this is: Supabase finds the account it was made for, checks it
+    // is unused and not expired, and signs in as that account for this request only. It can't be used again.
+    const { error } = await sb.auth.verifyOtp({ token_hash: th, type: 'recovery' });
+    if (error) go('/login/forgot', 'e', 'This reset link has expired or was already used. Ask for a new one.');
+  }
+  const { data } = await sb.auth.getUser();
   if (!data.user) go('/login/forgot', 'e', 'The reset link has expired. Ask for a new one.');
   const { error } = await sb.auth.updateUser({ password: pw });
   if (error) go('/login/reset', 'e', error.message);
+  const st = (await (await getStore()).listStaff().catch(() => [])).find(x => x.id === data.user!.id);
+  if (st) await staffLog(st, `${staffName(st)} reset their password from the email link`, { kind: 'admin' });
   await sb.auth.signOut();
   go('/login', 'ok', 'Password changed. Sign in with the new password.');
 }
