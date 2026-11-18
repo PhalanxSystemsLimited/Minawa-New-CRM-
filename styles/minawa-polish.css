@@ -11,15 +11,15 @@
 :root{
   --e-out:cubic-bezier(.16,1,.3,1); --e-spring:cubic-bezier(.34,1.56,.64,1); --e-io:cubic-bezier(.65,0,.35,1);
   --px-ink:#0F172A; --px-card:#fff; --px-line:#E6E4DD; --px-soft:#F6F4EF; --px-mute:#64748B;
-  --grid-ink:rgba(15,23,42,.085); --sky-ink:rgba(15,23,42,.055); --sky-ink-2:rgba(217,93,57,.07);
+  --sky-ink:rgba(15,23,42,.055); --sky-ink-2:rgba(217,93,57,.07);
   --il-s:#FFFFFF; --il-s2:#F4EFE7; --il-l:#CBC4B6; --il-w:#E2DCD0; --il-sh:rgba(15,23,42,.07); --il-sp:#EFA98E; --il-d:#E9E2D6;
   --skyline:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 150'%3E%3Cpath d='M0 150V110h30V80h40v30h20V50h50v60h15V90h35V30h20V18h10v12h20v80h25V70h45v40h20V95h30V55h55v55h20V85h40v25h25V40h30V30h15v10h15v70h20V100h20v50z'/%3E%3C/svg%3E");
 }
 :root[data-theme=dark]{--px-ink:#F3F4F6; --px-card:#17181B; --px-line:#2A2D33; --px-soft:#1E2024; --px-mute:#9AA3AF;
-  --grid-ink:rgba(255,255,255,.07); --sky-ink:rgba(255,255,255,.045); --sky-ink-2:rgba(217,93,57,.14);
+  --sky-ink:rgba(255,255,255,.045); --sky-ink-2:rgba(217,93,57,.14);
   --il-s:#24262B; --il-s2:#1B1D21; --il-l:#4A4F58; --il-w:#3A3E46; --il-sh:rgba(0,0,0,.45); --il-sp:#F0896A; --il-d:#30343B}
 :root[data-theme=frost]{--px-ink:#fff; --px-card:rgba(255,255,255,.14); --px-line:rgba(255,255,255,.24); --px-soft:rgba(255,255,255,.1); --px-mute:rgba(240,246,244,.78);
-  --grid-ink:rgba(255,255,255,.1); --sky-ink:rgba(12,22,38,.34); --sky-ink-2:rgba(12,22,38,.2);
+  --sky-ink:rgba(12,22,38,.34); --sky-ink-2:rgba(12,22,38,.2);
   --il-s:rgba(255,255,255,.3); --il-s2:rgba(255,255,255,.16); --il-l:rgba(255,255,255,.6); --il-w:rgba(255,255,255,.42); --il-sh:rgba(6,14,28,.3); --il-sp:#FFD0BD; --il-d:rgba(255,255,255,.4)}
 
 /* ---------- tones: --ta solid, --tb its lighter partner, --ts a soft wash, --ti the icon ink ---------- */
@@ -249,8 +249,10 @@ html[data-theme=frost] .ba .ba-off{fill:rgba(255,255,255,.28)}html[data-theme=fr
 .bs-grid{gap:18px}
 .bs-card{position:relative;overflow:hidden;padding-top:0;gap:0;transition:transform .5s var(--e-out),box-shadow .5s var(--e-out),border-color .3s}
 .bs-card:nth-child(4n+1){--ba-c:#D95D39}.bs-card:nth-child(4n+2){--ba-c:#0D9488}.bs-card:nth-child(4n+3){--ba-c:#2563EB}.bs-card:nth-child(4n+4){--ba-c:#7C3AED}
-.bs-grid{align-items:start}
-.bs-top{position:relative;display:flex;align-items:flex-end;margin:0 -20px 12px;padding:18px 20px 14px;min-height:98px;
+.bs-grid{align-items:stretch}
+.bs-card{display:flex;flex-direction:column}
+.bs-card > .bs-acts{margin-top:auto;padding-top:12px}
+.bs-top{position:relative;display:flex;align-items:flex-end;margin:0 -20px 12px;padding:18px 20px 14px;min-height:122px;flex:none;
   background:linear-gradient(160deg,color-mix(in srgb,var(--ba-c) 13%,transparent),transparent 75%);border-bottom:1px solid var(--px-line)}
 .bs-top .ba{position:absolute;right:12px;bottom:0;width:128px;height:auto;pointer-events:none;transition:transform .7s var(--e-out)}
 .bs-card:hover .bs-top .ba{transform:translateY(-3px) scale(1.04)}
@@ -341,19 +343,13 @@ html[data-theme] .bc-bar b{background:#fff;color:#0F172A}
 @media (max-width:640px){.age{grid-template-columns:repeat(2,minmax(0,1fr))}.bc-bars{padding-right:0}.bc-grid i{display:none}}
 
 /* ---------- backdrops ---------- */
-.lv-aurora .bg-grid{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,var(--grid-ink) 1.2px,transparent 0);background-size:22px 22px;
-  -webkit-mask-image:radial-gradient(1100px 620px at 68% 0%,#000 10%,transparent 72%);mask-image:radial-gradient(1100px 620px at 68% 0%,#000 10%,transparent 72%)}
-/* the skyline: behind the glass in Frost, and closing every page (above the footer line) in all themes */
-.lv-aurora .bg-sky{display:none;position:absolute;left:0;right:0;bottom:0;height:min(26vh,230px);background:linear-gradient(180deg,var(--sky-ink-2),var(--sky-ink));
-  -webkit-mask:var(--skyline) repeat-x left bottom/auto 100%;mask:var(--skyline) repeat-x left bottom/auto 100%;animation:skyIn 1.6s var(--e-out) both}
-html[data-theme=frost] .lv-aurora .bg-sky{display:block}
-@keyframes skyIn{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+/* a skyline closes every page, above the footer line (Light and Dark) */
 .foot-note{position:relative;padding-top:86px!important}
 .foot-note::before{content:"";position:absolute;left:0;right:0;top:0;height:74px;background:linear-gradient(180deg,var(--sky-ink-2),var(--sky-ink));
   -webkit-mask:var(--skyline) repeat-x center bottom/auto 100%;mask:var(--skyline) repeat-x center bottom/auto 100%}
 .foot-note::after{content:"";position:absolute;left:0;right:0;top:74px;height:1px;background:linear-gradient(90deg,transparent,var(--px-line) 15%,var(--px-line) 85%,transparent)}
-html[data-theme=frost] .foot-note::before{background:rgba(255,255,255,.2)}
-@media (max-width:900px){.lv-aurora .bg-sky{height:110px;opacity:.7}.foot-note{padding-top:66px!important}.foot-note::before{height:54px}.foot-note::after{top:54px}}
+html[data-theme=frost] .foot-note{padding-top:0!important}html[data-theme=frost] .foot-note::before,html[data-theme=frost] .foot-note::after{display:none}
+@media (max-width:900px){.foot-note{padding-top:66px!important}.foot-note::before{height:54px}.foot-note::after{top:54px}}
 /* Light: warmer, calmer glows */
 .lv-aurora .a1{background:radial-gradient(circle,rgba(217,93,57,.17),rgba(217,93,57,0) 62%)}
 .lv-aurora .a2{background:radial-gradient(circle,rgba(13,148,136,.12),rgba(13,148,136,0) 62%)}
@@ -363,28 +359,31 @@ html[data-theme=dark] body{background-image:radial-gradient(1100px 600px at 82% 
 html[data-theme=dark] .lv-aurora .a1{background:radial-gradient(circle,rgba(217,93,57,.2),transparent 62%)}
 html[data-theme=dark] .lv-aurora .a2{background:radial-gradient(circle,rgba(79,70,229,.14),transparent 62%)}
 html[data-theme=dark] .lv-aurora .a3{background:radial-gradient(circle,rgba(13,148,136,.09),transparent 62%)}
-/* Frost: a winter-dusk sky in place of the forest photo, with the skyline and slow lights behind the glass */
-html[data-theme=frost],html[data-theme=frost] body{background:
-  radial-gradient(1200px 720px at 10% -12%,#8CC3E0 0%,transparent 60%),
-  radial-gradient(980px 660px at 94% -4%,#9A8FD6 0%,transparent 58%),
-  radial-gradient(1100px 720px at 80% 108%,#3FA39E 0%,transparent 60%),
-  radial-gradient(820px 600px at -4% 104%,#D99272 0%,transparent 56%),
-  linear-gradient(160deg,#3A5B7A,#2A3F5A 55%,#22324A)!important;background-attachment:fixed!important}
-@media screen and (min-width:901px){
-  html[data-theme=frost] body:has(> .app){background:
-    radial-gradient(1200px 720px at 10% -12%,#8CC3E0 0%,transparent 60%),
-    radial-gradient(980px 660px at 94% -4%,#9A8FD6 0%,transparent 58%),
-    radial-gradient(1100px 720px at 80% 108%,#3FA39E 0%,transparent 60%),
-    radial-gradient(820px 600px at -4% 104%,#D99272 0%,transparent 56%),
-    linear-gradient(160deg,#3A5B7A,#2A3F5A 55%,#22324A)!important;background-attachment:fixed!important}
-}
-html[data-theme=frost] body::after{background:linear-gradient(180deg,rgba(10,18,32,.05),rgba(10,18,32,.12) 55%,rgba(8,14,26,.2))}
-html[data-theme=frost] .lv-aurora{display:block}
-html[data-theme=frost] .lv-aurora .a1{background:radial-gradient(circle,rgba(255,255,255,.2),transparent 60%)}
-html[data-theme=frost] .lv-aurora .a2{background:radial-gradient(circle,rgba(125,211,252,.2),transparent 60%)}
-html[data-theme=frost] .lv-aurora .a3{background:radial-gradient(circle,rgba(253,186,116,.14),transparent 60%)}
-html[data-theme=frost] .signin-page,html[data-theme=frost] .signin-bg{background:radial-gradient(1200px 720px at 10% -12%,#8CC3E0 0%,transparent 60%),radial-gradient(980px 660px at 94% -4%,#9A8FD6 0%,transparent 58%),radial-gradient(1100px 720px at 80% 108%,#3FA39E 0%,transparent 60%),linear-gradient(160deg,#3A5B7A,#2A3F5A 55%,#22324A)}
-
+/* Frost: the misty-forest photo, brightened (public/themes/frost-mist.jpg, made from frost.jpg), with clearer glass: a neutral
+   grey-white pane instead of a tinted one, a brighter edge and a softer shadow, so the photo stays visible */
+html[data-theme=frost],html[data-theme=frost] body{background:#7E8F8B url('/themes/frost-mist.jpg') center/cover fixed no-repeat!important}
+@media screen and (min-width:901px){html[data-theme=frost] body:has(> .app){background:#7E8F8B url('/themes/frost-mist.jpg') center/cover fixed no-repeat!important}}
+html[data-theme=frost] body::after{background:linear-gradient(180deg,rgba(14,24,22,.1),rgba(14,24,22,.16) 55%,rgba(10,18,16,.3))}
+html[data-theme=frost] .card,html[data-theme=frost] .stat,html[data-theme=frost] .kpi,html[data-theme=frost] .pcard,html[data-theme=frost] .proj-tabs,html[data-theme=frost] .offp,
+html[data-theme=frost] .lv-needs .lv-need,html[data-theme=frost] .lv-money,html[data-theme=frost] .callout,html[data-theme=frost] .strip{
+  background:linear-gradient(155deg,rgba(255,255,255,.24),rgba(255,255,255,.09) 60%),rgba(66,80,77,.4)!important;border:1px solid rgba(255,255,255,.34)!important;
+  -webkit-backdrop-filter:blur(26px) saturate(1.15)!important;backdrop-filter:blur(26px) saturate(1.15)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 0 1px rgba(255,255,255,.04),0 22px 46px -26px rgba(8,16,14,.55)!important}
+html[data-theme=frost] .lv-kpi,html[data-theme=frost] .lv-next,html[data-theme=frost] .lv-pre > div,html[data-theme=frost] .lv-mini-cycle span{background:rgba(255,255,255,.13)!important;border-color:rgba(255,255,255,.28)!important}
+html[data-theme=frost] .side{background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.07)),rgba(66,80,77,.38)!important;-webkit-backdrop-filter:blur(28px) saturate(1.15);backdrop-filter:blur(28px) saturate(1.15);border-right:1px solid rgba(255,255,255,.26)!important}
+html[data-theme=frost] .top{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.07)),rgba(92,104,101,.2)!important;-webkit-backdrop-filter:blur(24px) saturate(1.15);backdrop-filter:blur(24px) saturate(1.15);border-bottom-color:rgba(255,255,255,.24)!important}
+@media (max-width:900px){html[data-theme=frost] .side{background:rgba(58,70,67,.92)!important}}
+@media screen and (min-width:901px){html[data-theme=frost] .app{box-shadow:0 0 0 1px rgba(255,255,255,.3),0 30px 80px -24px rgba(0,0,0,.55)}}
+html[data-theme=frost] .tbl-wrap thead th{background:rgba(255,255,255,.14)!important}
+/* words stay easy to read on the lighter glass */
+:root[data-theme=frost]{--muted:rgba(255,255,255,.9);--label:rgba(255,255,255,.92)}
+html[data-theme=frost] .lv-money :is(small,.s,.l),html[data-theme=frost] .lv-money-rt span,html[data-theme=frost] .lv-stack-k span,html[data-theme=frost] .lv-mini-cycle span,
+html[data-theme=frost] .lv-need-s,html[data-theme=frost] .cell-sub,html[data-theme=frost] .muted,html[data-theme=frost] .card h3 small,html[data-theme=frost] .bs-l,html[data-theme=frost] .bs-v small,
+html[data-theme=frost] .kpi > .l,html[data-theme=frost] .strip-t span{color:rgba(255,255,255,.9)!important}
+html[data-theme=frost] .lv-kpi.hl :is(.l,.s){color:#FFE3D6!important}
+html[data-theme=frost] .side-i{color:rgba(255,255,255,.94)}html[data-theme=frost] .side-i .ico{color:rgba(255,255,255,.8)}html[data-theme=frost] .side-i.grp .ico:first-child{color:#FFB59B}
+html[data-theme=frost] main,html[data-theme=frost] .side{text-shadow:0 1px 2px rgba(10,18,16,.28)}
+html[data-theme=frost] main :is(.btn,.tag,input,select,textarea,.dot-n,.side-b,.chip-t,.lv-cal,.doc,.doc *,.m-card,.m-card *){text-shadow:none}
 /* ---------- Dark and Frost: the new pieces ---------- */
 html[data-theme] .kpi > .v{color:#fff}
 html[data-theme=frost] .ph-ic{box-shadow:0 14px 26px -14px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.5)}
@@ -392,7 +391,6 @@ html[data-theme=frost] .kpi-ic,html[data-theme=frost] .ic-tile{background:rgba(2
 html[data-theme=frost] h3[data-hic]:not([data-hic=""])::before{background:#fff}
 html[data-theme=frost] .lv-lbl::before{background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
 html[data-theme=frost] .il .il-a{fill:#FF9A75}html[data-theme=frost] .il .il-acc-l{stroke:#FF9A75}
-html[data-theme=frost] .strip{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
 html[data-theme=frost] .bs-top{background:linear-gradient(160deg,rgba(255,255,255,.14),transparent 75%)}
 html[data-theme=frost] .bs-top .bs-name a:hover{color:#FFD0BD}
 html[data-theme=frost] .dn-bg{stroke:rgba(255,255,255,.22)}html[data-theme=frost] .dn-fg{stroke:#fff;filter:none}
@@ -418,7 +416,7 @@ html.vt-theme::view-transition-new(root){animation:vtGrow .7s var(--e-io) both;z
 /* ---------- less motion, and print ---------- */
 @media (prefers-reduced-motion:reduce){
   main > :not(#modal),.kpis > *,.bs-grid > *,.lv-needs > *,.tbl-wrap tbody tr,.ph-ic,.ph-ic::before,.ph-ic .ico > *,.m-card,.m-back,.more[open] > .menu,.more[open] > .menu > *,
-  .bell-btn,.bell-btn *,.bell-btn::after,.dot-n,.side-b,.side-pay,.il,.il *,.bc-bar,.sb-bar > span,.bs-bar span,.dn-fg,.lv-aurora .bg-sky,.side-i[aria-current="page"]::after{animation:none!important}
+  .bell-btn,.bell-btn *,.bell-btn::after,.dot-n,.side-b,.side-pay,.il,.il *,.bc-bar,.sb-bar > span,.bs-bar span,.dn-fg,.side-i[aria-current="page"]::after{animation:none!important}
   .ph-ic .ico > *{stroke-dasharray:none}.il .il-t{stroke-dashoffset:0}.bell-btn .bl-w{opacity:0}
   main .px-wait{opacity:1}
   .kpi,.bs-card,.btn,.side-i,.side-p{transition:none}
@@ -428,7 +426,7 @@ html.vt-theme::view-transition-new(root){animation:vtGrow .7s var(--e-io) both;z
   main .px-wait{opacity:1!important}
   main > *,.kpis > *,.tbl-wrap tbody tr,.bc-bar,.sb-bar > span,.dn-fg,.ph-ic,.ph-ic .ico > *{animation:none!important}
   .ph-ic .ico > *{stroke-dasharray:none!important}
-  .bg-grid,.bg-sky,.foot-note::before,.foot-note::after{display:none}
+  .foot-note::before,.foot-note::after{display:none}
   .bc-bar b{display:none}
 }
 
@@ -445,3 +443,6 @@ html.vt-theme::view-transition-new(root){animation:vtGrow .7s var(--e-io) both;z
 .si-apv .si-ic svg path{stroke-dasharray:none}
 .si-apv:hover .si-ic svg path{animation:none}
 .si-apv:hover .si-ic svg path:last-child{stroke-dasharray:16;animation:lvTick 1.2s var(--lv-ease) infinite}
+html[data-theme=frost] .tbl-wrap td,html[data-theme=frost] .list .li .a{color:rgba(255,255,255,.96)}
+html[data-theme=frost] .tag.good{background:rgba(34,120,74,.5);color:#D9FBE5}html[data-theme=frost] .tag.warn{background:rgba(150,96,10,.5);color:#FFEFC2}
+html[data-theme=frost] .tag.bad{background:rgba(160,40,34,.5);color:#FFE1DE}html[data-theme=frost] .tag.info{background:rgba(37,84,170,.5);color:#DCE9FF}

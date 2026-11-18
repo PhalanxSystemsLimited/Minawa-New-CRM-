@@ -206,7 +206,7 @@ export function LiveEffects() {
     document.addEventListener('pointerdown', ripple, { passive: true });
     return () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerleave', leave); document.removeEventListener('pointerdown', ripple); };
   }, []);
-  return <div className="lv-aurora" aria-hidden="true"><i className="a1"></i><i className="a2"></i><i className="a3"></i><b className="bg-grid"></b><b className="bg-sky"></b></div>;
+  return <div className="lv-aurora" aria-hidden="true"><i className="a1"></i><i className="a2"></i><i className="a3"></i></div>;
 }
 
 /** Tabs whose panels are already on the page; switching just shows another panel. */
