@@ -69,6 +69,8 @@ export interface Owner {
   possession: ISODate; possessionKnown: boolean;
   /** New customers only (possessions recorded in the CRM): the first bill date, possession + graceDays. It sets the billing day. */
   firstBill?: ISODate | null;
+  /** Meter readings (Phase 3, Oakwood electricity): at possession and when the customer leaves. */
+  meterIn?: Reading | null; meterOut?: Reading | null;
   opening: number; openingLeft: number; credit: number; feeDue: number;
   exempt: boolean; exemptWhy: string | null; director: boolean;
   discount: Discount | null; abroad: boolean; invalidPhone: boolean; noPhone: boolean;
@@ -109,7 +111,11 @@ export interface Bill {
 export interface Charge {
   id: string; ownerId: string; project: string; period: string; kind: string; amount: number; units: number | null;
   note: string; by: string; d: ISODate; billId: string | null;
+  /** Electricity (Phase 3): the meter readings this bill is for. */
+  prevReading?: number | null; curReading?: number | null;
 }
+/** A meter reading on a date: at possession (move-in) and when the customer leaves. */
+export interface Reading { d: ISODate; reading: number }
 /** A maintenance notice sent by staff (water outage, electricity, lift…). */
 export interface Notice {
   id: string; project: string; d: ISODate; t: string; kind: string; title: string; text: string; audience: string;
@@ -141,6 +147,8 @@ export interface Payment {
   reversed?: { d: ISODate; t: string; by: string; reason: string } | null;
   /** 18 Nov 2026: who entered it, who approved it and when; a bank transfer's transaction ID. */
   enteredBy?: string | null; approvedBy?: string | null; approvedAt?: string | null; txn?: string | null;
+  /** What the payment is for: maintenance (default) or electricity (Oakwood: paid against electricity bills first). */
+  forWhat?: 'maintenance' | 'electricity' | null;
 }
 /** Cash a building manager hands over to the Accountant (or cash paid at the office), followed to the bank deposit. */
 export interface Handover {
@@ -155,7 +163,7 @@ export interface Handover {
 export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected' | 'cancelled'; msgId: string | null; doneOn: ISODate | null; media: string | null;
   kind?: 'transfer' | 'cash'; method?: string | null; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null;
   /** A bank transfer's transaction ID (method 'Bank transfer'). */
-  txn?: string | null }
+  txn?: string | null; forWhat?: 'maintenance' | 'electricity' | null }
 export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean }
 export interface Clearance { no: string; ownerId: string; project: string; d: ISODate; by: string }
 /** One flat's line on the office's yearly sheet: what it owed (arrears + the year's charges) and what was paid. */
@@ -208,7 +216,7 @@ export interface State {
  *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
  *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
  *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue';
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue' | 'leave';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'changes';
 export interface Approval {
   id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;

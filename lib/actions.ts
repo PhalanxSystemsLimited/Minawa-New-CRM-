@@ -39,7 +39,7 @@ export async function recordPaymentAction(fdata: FormData) {
     const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
     if (method === 'Cash' && !S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
     if (method === 'Bank transfer' && !txn) go(ownerPath(pid, oid) + '?m=recpay-bank', 'Enter the bank transaction ID');
-    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn), { send: false });
+    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null), { send: false });
     go(ownerPath(pid, oid), `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant approves it; the balance changes then.`);
   }
   if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');

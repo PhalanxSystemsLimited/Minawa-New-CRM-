@@ -18,6 +18,8 @@ export async function GET(req: Request) {
   const reps = states.map(s => monthReport(s, month)), row = (a: unknown[]) => a.map(cell).join(',');
   const lines = [row([`Monthly collection report ${month}`]), '', row(['Building', 'Billed (Rs)', 'Bills', 'Collected (Rs)', 'Payments', 'Collected / billed', 'Still owed today (Rs)', 'Apartments owing', 'Apartments'])];
   for (const x of reps) lines.push(row([x.pname, x.billed, x.nBills, x.collected, x.nPays, x.billed ? `${Math.round(x.collected / x.billed * 100)}%` : '', x.outstanding, x.owing, x.aptCount]));
+  if (reps.some(x => x.elec.billed || x.elec.unpaid)) { lines.push('', row(['Electricity']), row(['Building', 'Billed this month (Rs)', 'Bills', 'Collected this month (Rs)', 'Still unpaid (Rs)', 'Customers owing']));
+    for (const x of reps) if (x.elec.billed || x.elec.unpaid) lines.push(row([x.pname, x.elec.billed, x.elec.n, x.elec.collected, x.elec.unpaid, x.elec.owing])); }
   lines.push('', row(['By who took the cash']), row(['Building', 'Name', 'Payments', 'Amount (Rs)']));
   for (const x of reps) for (const c of x.byCollector) lines.push(row([x.pname, c.name, c.n, c.amount]));
   lines.push('', row(['Payments']), row(['Building', 'Date', 'Time', 'Apartment', 'Owner', 'Amount (Rs)', 'Taken by', 'Receipt', 'Voucher / ref']));

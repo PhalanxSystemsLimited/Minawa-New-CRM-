@@ -9,11 +9,11 @@ import { PLAN_LABEL } from './types';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
-  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf } from './engine';
+  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf, leaveFigures, finalizeLeave, unitOf } from './engine';
 import { fd, fm, rs, ord, addDays } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
-  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance' };
+  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance', leave: 'Customer left' };
 /** Changes for the whole project (not one owner). */
 export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announce', 'possession'];
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
@@ -67,6 +67,8 @@ function describeRaw(o: Owner | null, kind: ApprovalKind, c: Record<string, unkn
     case 'instalments': { const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0);
       return { summary: `Old arrears of ${rs(tot)} in ${plural(it.length, 'instalment')}: ${it.map(x => `${rs(num(x.amount))} by ${fd(x.due)}`).join(', ')}`,
         before: o ? (o.instalments ? `A plan of ${plural(o.instalments.items.length, 'instalment')} (${rs(o.instalments.total)})` : `${rs(o.openingLeft || 0)} old arrears, due in full`) : '' }; }
+    case 'leave': { const L = String(c.date), f = o ? leaveFigures(o, L) : null;
+      return { summary: `${o?.name} leaves ${o?.apt} on ${fd(L)}${c.reading != null && c.reading !== '' ? `, meter ${c.reading}` : ''}: all charges cleared${f && f.due < 0 ? ` (${rs(-f.due)} to refund)` : ''}; the apartment becomes vacant`, before: `In possession since ${o?.possessionKnown ? fd(o.possession) : 'before the office list'}` }; }
     case 'discontinue': return c.on
       ? { summary: `Discontinue maintenance for ${o?.apt}: ${rs(Math.max(0, o ? balance(o) : 0))} unpaid after the late warning`, before: o?.flagged ? 'Already discontinued' : 'Maintenance running' }
       : { summary: `Resume maintenance for ${o?.apt}`, before: o?.flagged ? `Discontinued${o.flaggedOn ? ` since ${fd(o.flaggedOn)}` : ''}` : 'Maintenance running' };
@@ -115,6 +117,7 @@ function noChange(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown
   if (kind === 'due') return (o.dueDay || null) === (num(c.dueDay) || null);
   if (kind === 'reverse') return !cur().payments.some(x => x.id === String(c.pid));
   if (kind === 'discontinue') return !!o.flagged === !!c.on;
+  if (kind === 'leave') return o.status === 'closed';
   if (kind === 'posdate') return o.possessionKnown && o.possession === String(c.possession);
   if (kind === 'discount') { const d = c as unknown as Disc, x = o.discount; return (d.kind === 'none' || !d.value) ? !x || !x.value : !!x && x.kind === d.kind && x.value === d.value && (x.until || null) === (d.until || null); }
   if (kind === 'generator') return !!o.generator === !!c.on;
@@ -123,6 +126,13 @@ function noChange(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown
   return false;
 }
 function check(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>) {
+  if (kind === 'leave' && o) {
+    const L = String(c.date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(L) || L > cur().today) throw new Error('Pick the day the customer left (today or earlier)');
+    if (o.possessionKnown && L < o.possession) throw new Error('The leaving date is before the possession date');
+    const f = leaveFigures(o, L);
+    if (f.due > 0) throw new Error(`Charges are not cleared. Please clear all charges first: ${rs(f.due)} still to pay.`);
+  }
   if (kind === 'discontinue' && c.on && o && balance(o) <= 0) throw new Error('Nothing is owed, so maintenance can\'t be discontinued');
   if (kind === 'reverse') { const p = cur().payments.find(x => x.id === String(c.pid)); if (!p || (o && p.ownerId !== o.id)) throw new Error('That payment was not found'); if (!String(c.reason || '').trim()) throw new Error('Write why this payment is wrong'); }
   if (isProjectKind(kind)) {
@@ -215,6 +225,10 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       const was = o.plan || 'monthly', plan = c.plan as Plan; o.plan = plan;
       log(d, t, 'admin', `${o.apt} billing plan changed by ${who}: ${PLAN_LABEL[was]} → ${PLAN_LABEL[plan]}`, o.id);
       return `Billing plan changed to ${PLAN_LABEL[plan].toLowerCase()}`;
+    }
+    case 'leave': {
+      const r = finalizeLeave(o!, String(c.date), c.reading != null && c.reading !== '' ? Number(c.reading) : null, cur().today, at(15), who);
+      return `${o!.apt} is vacant: all charges cleared, clearance ${r.clearance}${r.refund ? `; ${rs(r.refund)} advance to refund` : ''}`;
     }
     case 'discontinue': {
       const d = cur().today, t = at(15);
@@ -335,8 +349,12 @@ export function addPossession(c: Record<string, unknown>, who: string) {
   checkPossession(c);
   const S = cur(), apt = String(c.apt).toUpperCase(), phone = String(c.phone || ''), possession = String(c.possession);
   const plan = (['monthly', 'sixmonthly', 'annual', 'quarterly'].includes(String(c.plan)) ? String(c.plan) : 'monthly') as Plan;
-  const o = blankOwner({ id: 'O' + nid('o'), project: S.project, apt, block: String(c.block || '') || apt.split(/[-\s]/)[0], type: String(c.type), name: String(c.name), phone: phone ? normPhone(phone) : '', email: String(c.email || ''),
+  // A vacant apartment (its last customer left): the new customer takes over the same apartment record.
+  const prev = S.owners.filter(x => x.status === 'closed' && x.apt.toUpperCase() === apt).sort((a, b) => (b.closedOn || '').localeCompare(a.closedOn || ''))[0];
+  const rd = c.reading != null && String(c.reading) !== '' && Number.isFinite(Number(c.reading)) ? { d: possession, reading: Number(c.reading) } : null;
+  const o = blankOwner({ id: 'O' + nid('o'), project: S.project, apt: prev ? prev.apt : apt, block: String(c.block || '') || prev?.block || apt.split(/[-\s]/)[0], type: String(c.type), name: String(c.name), phone: phone ? normPhone(phone) : '', email: String(c.email || ''),
     possession, possessionKnown: true, firstBill: addDays(possession, S.settings.rules.graceDays ?? 25), plan, invalidPhone: !phone, noPhone: !phone,
+    ...(prev ? { unit: unitOf(prev), prevOwnerId: prev.id, floor: prev.floor } : {}), meterIn: rd,
     notes: [{ d: S.today, by: who, text: `Possession handed over on ${fd(possession)}.${c.note ? ' ' + String(c.note) : ''}` }] });
   S.owners.push(o);
   const next = nextBillFor(o);

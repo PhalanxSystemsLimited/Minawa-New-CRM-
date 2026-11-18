@@ -46,7 +46,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           return <tr key={b.id}><td><A href={`${base}?tab=bills&doc=bill:${b.id}`}>{periodLabel(b)}</A>{b.extras ? <div className="cell-sub">incl. {rs(b.extras)} {b.lines.filter(l => l.kind === 'utility').map(l => l.label.split(',')[0].toLowerCase()).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</div> : null}{b.fromCredit ? <div className="cell-sub">paid from credit</div> : null}{who(b.ownerId)}</td><td>{fds(b.dueDate)}</td><td className="r num">{rs(b.net)}{b.discount ? <div className="cell-sub">after {rs(b.discount)} discount</div> : null}</td><td className="r num">{u > 0 ? rs(u) : '–'}</td><td>{pill(s)}</td></tr>; })}
       </tbody></table></div>
       {o.feeDue > 0 ? <div className="callout warn" style={{ marginTop: 12 }}><div>Fine <b className="num">{rs(o.feeDue)}</b>: {feePct()}% of {S.settings.rules.fineArrears ? 'everything owed' : 'the unpaid bills'} while a bill is overdue.</div></div> : null}
-      <p className="muted" style={{ fontSize: 12, margin: '12px 0 0' }}>Tap a bill to see it. {closed || o.exempt ? 'Bills' : <>{o.apt}&apos;s bills go out on the {ord(anchorOf(o).day)}{anchorOf(o).day > 28 ? ' (or the month\'s last day)' : ''}</>}, due on the {ord(o.dueDay || S.settings.rules.dueDays)} of the next month. The day after the due date a fine of {feePct()}% of {S.settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} is added.</p>
+      <p className="muted" style={{ fontSize: 12, margin: '12px 0 0' }}>Tap a bill to see it. {closed ? 'No bills while the apartment is vacant.' : o.exempt ? 'Not billed.' : <>Due on the {ord(anchorOf(o).day)}{anchorOf(o).day > 28 ? ' (or the month\'s last day)' : ''}{o.possessionKnown ? ' (possession day)' : ' (no possession date on file)'}; each bill is made {S.settings.rules.billLead} days before. If still unpaid {S.settings.rules.warnAfter} days after the due date, a late warning goes out and the building manager may add a {feePct()}% fine.</>}</p>
     </> : <p className="empty">No bills yet.</p>;
     const paysTab = pays.length ? <div className="tbl-wrap"><table className="apay-tbl"><thead><tr><th>When</th><th className="r">Amount</th><th>Received</th><th className="r">Balance after</th><th>Receipt</th>{S.role !== 'manager' ? <th></th> : null}</tr></thead><tbody>
       {pays.map(p => <tr key={p.id}><td className="num" style={{ whiteSpace: 'nowrap' }}>{when(p.d, p.t)}{who(p.ownerId)}</td><td className="r num"><strong>{rs(p.amount)}</strong></td><td>{viaHtml(p)}</td><td className="r num">{p.balAfter < 0 ? <span className="neg">{rs(-p.balAfter)} cr</span> : rs(p.balAfter)}</td><td><A href={`${base}?tab=payments&doc=receipt:${p.id}`} className="rcpt">{p.receipt}</A></td>{S.role !== 'manager' ? <td className="r"><Go href={`${base}?tab=payments&m=reverse-${p.id}`} className="btn sm">{S.role === 'admin' ? 'Reverse' : 'Ask to reverse'}</Go></td> : null}</tr>)}
@@ -87,6 +87,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <details className="more"><summary className="btn">More ▾</summary><div className="menu">
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
             <Go href={m('note')}>Add note</Go>
+            {S.role !== 'accountant' ? <Go href={`${base}/leave`}>Customer left (hand back the keys)</Go> : null}
             {S.role !== 'accountant' ? o.flagged ? <Go href={m('discontinue')}>Resume maintenance{ask}</Go> : bal > 0 && billsOf(o).some(b => b.dueDate < S.today && b.net > b.paid) || (o.openingLeft > 0 && S.today > openingDue()) ? <Go href={m('discontinue')}>Discontinue maintenance{ask}</Go> : null : null}
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
             <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
@@ -139,6 +140,13 @@ export default async function Apartment({ params, searchParams }: { params: Prom
         {many ? <p className="cell-sub" style={{ margin: '-4px 0 10px' }}>Everything since the first owner; the owner at the time is shown under each line.</p> : null}
         {tab === 'bills' ? billsTab : tab === 'payments' ? paysTab : tab === 'history' ? historyTab : notesTab}
       </div>
+      {many || o.meterIn || o.meterOut ? <div className="card"><div className="card-row"><h3>Apartment history <small>who held {o.apt}, and when</small></h3></div>
+        <div className="tbl-wrap"><table><thead><tr><th>Customer</th><th>From</th><th>To</th><th>Meter in → out</th><th></th></tr></thead><tbody>
+          {[...accts].reverse().map(a => <tr key={a.id}><td><b>{a.name}</b>{a.status === 'active' ? <> <span className="tag good">Now</span></> : null}</td>
+            <td>{a.possessionKnown ? fd(a.possession) : 'Before the office list'}</td><td>{a.closedOn ? fd(a.closedOn) : '—'}</td>
+            <td className="num">{a.meterIn || a.meterOut ? `${a.meterIn?.reading ?? '—'} → ${a.meterOut?.reading ?? '—'}` : '—'}</td>
+            <td className="r">{a.status === 'closed' ? <Go href={`/p/${S.project}/apartments/${a.id}/leave`} className="btn sm">Clearance report</Go> : null}</td></tr>)}
+        </tbody></table></div></div> : null}
     </>;
   });
 }

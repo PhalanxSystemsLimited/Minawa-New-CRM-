@@ -91,6 +91,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
           <div><b>By day</b>{x.byDay.length ? <div className="tbl-wrap"><table><thead><tr><th>Day</th><th className="r">Payments</th><th className="r">Amount</th></tr></thead><tbody>
             {x.byDay.map(d => <tr key={d.d}><td>{fds(d.d)}</td><td className="r">{d.n}</td><td className="r num">{rs(d.amount)}</td></tr>)}</tbody></table></div> : <p className="empty">—</p>}</div>
         </div>
+        {x.elec.billed || x.elec.unpaid || x.elec.collected ? <div className="elec-row"><b>Electricity</b> · billed in {fm(month)}: <span className="num">{rs(x.elec.billed)}</span> ({x.elec.n} bill{x.elec.n === 1 ? '' : 's'}) · collected: <span className="num">{rs(x.elec.collected)}</span> · still unpaid: <span className="num">{rs(x.elec.unpaid)}</span> ({x.elec.owing} customer{x.elec.owing === 1 ? '' : 's'})</div> : null}
         <p className="cell-sub" style={{ marginTop: 8 }}>Today: {x.paidUp} of {x.aptCount} apartments paid up; {x.owing} owe {rs(x.outstanding)} in total.</p>
       </div>)}
     </div>

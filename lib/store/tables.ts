@@ -3,18 +3,18 @@
 export const TABLES = {
   owners: ['id', 'project', 'unit', 'apt', 'block', 'type', 'name', 'phone', 'email', 'possession', 'possessionKnown', 'opening', 'openingLeft', 'credit', 'feeDue',
     'exempt', 'exemptWhy', 'director', 'discount', 'abroad', 'invalidPhone', 'noPhone', 'rate', 'status', 'closedOn', 'flagged', 'flaggedOn', 'promiseUntil',
-    'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator', 'instalments', 'dueDay', 'firstBill'],
+    'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator', 'instalments', 'dueDay', 'firstBill', 'meterIn', 'meterOut'],
   bills: ['id', 'ownerId', 'project', 'period', 'periodEnd', 'months', 'billDate', 'dueDate', 'finalDate', 'amount', 'discount', 'extras', 'net', 'paid', 'fine', 'finePaid', 'fined', 'fromCredit',
     'prev', 'noticeSkipped', 'flagSkipped', 'reminders', 'lines', 'bd', 'covFrom', 'covTo'],
   entries: ['id', 'ownerId', 'project', 'd', 'kind', 'amount', 'desc', 'ref', 'pid'],
   messages: ['id', 'ownerId', 'project', 'd', 't', 'from', 'kind', 'title', 'text', 'tpl', 'vars', 'pdf', 'status', 'waId', 'error', 'manual', 'shot', 'sentAt'],
-  payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt', 'collectorId', 'collectorName', 'handoverId', 'reversed', 'enteredBy', 'approvedBy', 'approvedAt', 'txn'],
+  payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt', 'collectorId', 'collectorName', 'handoverId', 'reversed', 'enteredBy', 'approvedBy', 'approvedAt', 'txn', 'forWhat'],
   handovers: ['id', 'project', 'fromId', 'fromName', 'amount', 'paymentIds', 'd', 't', 'status', 'receivedBy', 'receivedD', 'note', 'reply', 'depositSlip', 'depositD', 'depositedBy'],
-  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'method', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply', 'txn'],
+  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'method', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply', 'txn', 'forWhat'],
   alerts: ['id', 'ownerId', 'project', 'd', 'text', 'done'],
   clearances: ['no', 'ownerId', 'project', 'd', 'by'],
   rates: ['id', 'project', 'type', 'from', 'amount'],
-  charges: ['id', 'ownerId', 'project', 'period', 'kind', 'amount', 'units', 'note', 'by', 'd', 'billId'],
+  charges: ['id', 'ownerId', 'project', 'period', 'kind', 'amount', 'units', 'note', 'by', 'd', 'billId', 'prevReading', 'curReading'],
   notices: ['id', 'project', 'd', 't', 'kind', 'title', 'text', 'audience', 'count', 'failed', 'by'],
   approvals: ['id', 'project', 'ownerId', 'kind', 'change', 'summary', 'before', 'note', 'byId', 'byName', 'd', 't', 'status', 'decidedById', 'decidedByName', 'decidedD', 'decidedT', 'reply']
 } as const;

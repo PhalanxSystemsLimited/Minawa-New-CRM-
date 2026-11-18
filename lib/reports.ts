@@ -35,6 +35,8 @@ export interface MonthReport {
   byCollector: { name: string; amount: number; n: number }[];
   byDay: { d: string; amount: number; n: number }[];
   outstanding: number; owing: number; aptCount: number; paidUp: number;
+  /** Electricity (Oakwood): billed this month, collected this month, still unpaid (all months), customers who owe it. */
+  elec: { billed: number; n: number; collected: number; unpaid: number; owing: number };
 }
 
 /** One building's month: what was billed, what came in (and who took it), and what is still owed today. */
@@ -48,10 +50,14 @@ export function monthReport(s: State, month: string): MonthReport {
       const d = days.get(p.d) || { d: p.d, amount: 0, n: 0 }; d.amount += p.amount; d.n++; days.set(p.d, d);
     }
     const act = apartments().filter(o => o.status === 'active' && !o.exempt), bals = act.map(o => balance(o));
+    const ub = s.bills.filter(b => !b.months), ubIds = new Set(ub.map(b => b.id));
+    const elec = { billed: ub.filter(b => b.billDate.slice(0, 7) === month).reduce((a, b) => a + b.net, 0), n: ub.filter(b => b.billDate.slice(0, 7) === month).length,
+      collected: pays.reduce((a, p) => a + (p.applied || []).filter(x => x.ref && ubIds.has(x.ref)).reduce((t, x) => t + x.amount, 0), 0),
+      unpaid: ub.reduce((a, b) => a + Math.max(0, b.net - b.paid), 0), owing: new Set(ub.filter(b => b.net - b.paid > 0).map(b => b.ownerId)).size };
     return { project: s.project, pname: s.proj.name, month,
       billed: bills.reduce((a, b) => a + b.net, 0), nBills: bills.length,
       collected: pays.reduce((a, p) => a + p.amount, 0), nPays: pays.length, reversed: 0,
       byCollector: [...coll.values()].sort((a, b) => b.amount - a.amount), byDay: [...days.values()].sort((a, b) => a.d.localeCompare(b.d)),
-      outstanding: bals.reduce((a, b) => a + Math.max(0, b), 0), owing: bals.filter(b => b > 0).length, aptCount: act.length, paidUp: bals.filter(b => b <= 0).length };
+      outstanding: bals.reduce((a, b) => a + Math.max(0, b), 0), owing: bals.filter(b => b > 0).length, aptCount: act.length, paidUp: bals.filter(b => b <= 0).length, elec };
   });
 }

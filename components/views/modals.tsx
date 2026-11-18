@@ -124,6 +124,10 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <label className="pay-via-o"><input type="radio" name="method" value="Cash" defaultChecked={via !== 'bank'} /> <span><b>Cash</b><small>given to you by hand</small></span></label>
         <label className="pay-via-o"><input type="radio" name="method" value="Bank transfer" defaultChecked={via === 'bank'} /> <span><b>Bank transfer</b><small>{b ? `into ${b.bank} A/C ${b.account}` : 'into Minawa\'s account'}</small></span></label>
       </fieldset>
+      {cur().settings.rules.utilities.includes('Electricity') ? <fieldset className="pay-via"><legend>Payment for</legend>
+        <label className="pay-via-o"><input type="radio" name="forWhat" value="maintenance" defaultChecked /> <span><b>Maintenance</b><small>bills and earlier dues</small></span></label>
+        <label className="pay-via-o"><input type="radio" name="forWhat" value="electricity" /> <span><b>Electricity</b><small>pays the electricity bills first</small></span></label>
+      </fieldset> : null}
       <div className="grid2" style={{ gap: 10 }}>
         <div className="form-row"><label htmlFor="rc-amt">Amount (Rs)</label><input id="rc-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
         <div className="form-row"><label htmlFor="rc-d">Paid on</label><input id="rc-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
@@ -299,6 +303,7 @@ export function PossessionModal() {
     <div className="grid2" style={{ gap: 10 }}>
       <div className="form-row"><label htmlFor="np-d">Possession date</label><input id="np-d" name="possession" type="date" required defaultValue={S.today} /></div>
       <div className="form-row"><label htmlFor="np-pl">Billing plan</label><select id="np-pl" name="plan" defaultValue="monthly">{NEW_PLANS.map(k => <option key={k} value={k}>{PLAN_LABEL[k]}</option>)}</select></div>
+      {cur().settings.rules.utilities.includes('Electricity') ? <div className="form-row"><label htmlFor="np-mr">Electricity meter reading at possession</label><input id="np-mr" name="reading" type="number" min="0" step="1" placeholder="e.g. 12450" /></div> : null}
     </div>
     <div className="form-row"><label htmlFor="np-x">Note (optional)</label><input id="np-x" name="note" type="text" placeholder="e.g. Keys and meter reading handed over" /></div>
     <div className="m-actions"><CloseBtn keys={['m']} /><Submit>{isAdmin() ? 'Record possession' : 'Send for approval'}</Submit></div></form></ModalShell>;

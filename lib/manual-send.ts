@@ -4,8 +4,8 @@
 // Everything here runs inside the engine (use(s, …)).
 import { bankOf } from './bank';
 import type { Message, Owner } from './types';
-import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer } from './engine';
-import { rs, fd, fill, addDays } from './fmt';
+import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer, utilKind } from './engine';
+import { rs, fd, fm, fill, addDays } from './fmt';
 import { intl } from './dispatch';
 import { docToken, type DocKind } from './doclink';
 
@@ -131,6 +131,14 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     return out('receipt', 'Payment received', text, { kind: 'receipt', id: p.id });
   }
   const b = (billId && S.bills.find(x => x.id === billId)) || f.bill;
+  if (type === 'bill' && b && !b.months) {
+    // An electricity (utility) bill (Phase 3): the readings, the amount and its own due date.
+    const k = utilKind(b), lines0 = b.lines.filter(l => l.kind === 'utility');
+    const text = lines(head(o, `⚡ ${k} bill · ${fm(b.period)}`, `Your ${k.toLowerCase()} bill for *${fm(b.period)}* is *${rs(b.net)}*, due by *${fd(b.dueDate)}*.`), details(o), '',
+      `*${k} bill*`, ...lines0.map(l => `• ${l.label.replace(`${k}, `, '')}: ${rs(l.amount)}`), RULE, bal > 0 ? `*Total to pay now: ${rs(bal)}*` : `*Paid from your advance credit${bal < 0 ? `; credit left ${rs(-bal)}` : ''}.*`,
+      bal > 0 ? payBlock() : null, foot());
+    return out('bill', `${k} bill · ${fm(b.period)}`, text, { kind: 'bill', id: b.id });
+  }
   if (type === 'bill' && b && bal <= 0) {
     const text = lines(head(o, `🧾 Maintenance bill · ${periodLabel(b)}`, `Your maintenance bill for *${periodLabel(b)}* has been paid from your advance credit. Nothing is due.`), details(o), '',
       '*Bill details*', `• ${periodLabel(b)}: ${rs(b.net)}`, RULE, `*Advance credit left: ${rs(-bal)}*`, foot());

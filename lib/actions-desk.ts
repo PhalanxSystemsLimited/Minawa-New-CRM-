@@ -16,31 +16,38 @@ const go = (path: string, toast?: string): never => redirect(path + (path.includ
 /* ---------- utility bills ---------- */
 /** Saves the month's grid: one amount (and optionally units) per flat. Billed rows are locked; 0 or empty clears. */
 export async function saveChargesAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity', due = S(fdata, 'due');
   const back = `/p/${pid}/utilities?period=${period}&kind=${encodeURIComponent(kind)}`;
   if (!/^\d{4}-\d{2}$/.test(period)) go(back, 'Pick the month');
-  const res = await mutate(pid, staff, s => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) go(back, 'Pick the due date for these bills');
+  const num = (k: string) => { const v = S(fdata, k).replace(/[,\s]/g, ''); return v === '' || !Number.isFinite(+v) ? null : Math.round(+v); };
+  let res = { added: 0, changed: 0, cleared: 0, billed: 0 };
+  try { res = await mutate(pid, staff, s => {
     let added = 0, changed = 0, cleared = 0;
-    for (const [k, v] of fdata.entries()) {
+    for (const [k] of fdata.entries()) {
       if (!k.startsWith('amt:')) continue;
       const oid = k.slice(4), o = ownerById(oid); if (!o) continue;
-      const raw = String(v).replace(/[,\s]/g, ''), amount = raw === '' ? 0 : Math.round(+raw);
-      const units = S(fdata, 'units:' + oid) ? Math.round(+S(fdata, 'units:' + oid)) : null;
-      if (!Number.isFinite(amount)) continue;
+      const amount = num(k) || 0, units = num('units:' + oid), prevReading = num('prev:' + oid), curReading = num('cur:' + oid);
+      if (prevReading != null && curReading != null && curReading < prevReading) throw new Error(`${o.apt}: the current reading is lower than the previous one`);
       const ex = s.charges.find(c => c.ownerId === oid && c.period === period && c.kind === kind && !c.billId);
       if (ex) {
-        if (ex.amount === amount && ex.units === units) continue;
+        if (ex.amount === amount && ex.units === units && (ex.curReading ?? null) === curReading) continue;
         if (!amount) cleared++; else changed++;
-        ex.amount = amount; ex.units = units; ex.by = staffName(staff); ex.d = s.today;
+        Object.assign(ex, { amount, units, prevReading, curReading, by: staffName(staff), d: s.today });
       } else if (amount) {
-        const c: Charge = { id: 'CH' + nid('ch'), ownerId: oid, project: pid, period, kind, amount, units, note: '', by: staffName(staff), d: s.today, billId: null };
+        const c: Charge = { id: 'CH' + nid('ch'), ownerId: oid, project: pid, period, kind, amount, units, note: '', by: staffName(staff), d: s.today, billId: null, prevReading, curReading };
         s.charges.push(c); added++;
       }
     }
-    if (added || changed || cleared) log(s.today, at(15), 'admin', `${kind} bills for ${fm(period)} saved by ${staffName(staff)}: ${added} added, ${changed} changed, ${cleared} cleared`);
-    return { added, changed, cleared };
-  }, { send: false });
-  go(back, `Saved: ${res.added} added, ${res.changed} changed${res.cleared ? `, ${res.cleared} cleared` : ''}. They go on the next bill.`);
+    // Phase 3: each flat's bill is made at once (its own bill, due on the date picked) and waits in the building
+    // manager's To do to be sent.
+    let billed = 0;
+    const owners = [...new Set(s.charges.filter(c => !c.billId && c.amount && c.kind === kind && c.period === period).map(c => c.ownerId))].map(ownerById).filter(o => o && o.status === 'active');
+    for (const o of owners) { const b = createBill(o, s.today, { utilitiesOnly: true, due }); if (b.net) { sendBill(o, b, s.today); billed++; } }
+    log(s.today, at(15), 'bill', `${kind} bills for ${fm(period)} entered by ${staffName(staff)}: ${added} added, ${changed} changed${cleared ? `, ${cleared} cleared` : ''}; ${billed} bill${billed === 1 ? '' : 's'} made, due ${fd(due)}`);
+    return { added, changed, cleared, billed };
+  }, { send: false }); } catch (e) { go(back, (e as Error).message); }
+  go(back, `${res.billed} ${kind.toLowerCase()} bill${res.billed === 1 ? '' : 's'} made, due ${fd(due)}. They are in your To do to send on WhatsApp.`);
 }
 
 /** CSV with Apartment, Amount (and optional Units) columns, for the selected month and kind. */
@@ -115,7 +122,7 @@ export async function sendNoticeAction(fdata: FormData) {
 export async function possessionAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/apartments`;
   const c = { apt: S(fdata, 'apt').toUpperCase(), block: S(fdata, 'block'), type: S(fdata, 'type'), name: S(fdata, 'name'), phone: S(fdata, 'phone'), email: S(fdata, 'email'),
-    possession: S(fdata, 'possession'), plan: S(fdata, 'plan') || 'monthly', note: S(fdata, 'note') };
+    possession: S(fdata, 'possession'), plan: S(fdata, 'plan') || 'monthly', note: S(fdata, 'note'), reading: S(fdata, 'reading') };
   if (!c.apt || !c.name || !/^\d{4}-\d{2}-\d{2}$/.test(c.possession) || !c.type) go(back + '?m=possession', 'Fill in the apartment, type, owner and possession date');
   if (c.phone && waDigits(c.phone).length < 10) go(back + '?m=possession', 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
   // An Admin records it at once. A building manager's (or accountant's) possession waits for an Admin's approval:
@@ -185,6 +192,18 @@ export async function discontinueAction(fdata: FormData) {
   if (staff.role !== 'admin' && !reason) go(`${back}?m=discontinue`, 'Write the reason for the Admin');
   let r = '';
   try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'discontinue', { on }, reason).text; }, { send: false }); }
+  catch (e) { go(back, (e as Error).message); }
+  go(back, r);
+}
+
+/** A customer leaves and hands back the keys (Phase 3): only once every charge up to the leaving date is paid. The
+ *  building manager asks; the Admin approves (an Admin's own is done at once). */
+export async function leaveAction(fdata: FormData) {
+  const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), date = S(fdata, 'date'), reading = S(fdata, 'reading'), reason = S(fdata, 'reason');
+  const back = `/p/${pid}/apartments/${oid}/leave?d=${encodeURIComponent(date)}`;
+  if (staff.role !== 'admin' && !reason) go(back, 'Write a note for the Admin (for example: keys handed back on the leaving date)');
+  let r = '';
+  try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'leave', { date, reading: reading === '' ? null : Math.round(+reading) }, reason || 'Keys handed back').text; }, { send: false }); }
   catch (e) { go(back, (e as Error).message); }
   go(back, r);
 }
