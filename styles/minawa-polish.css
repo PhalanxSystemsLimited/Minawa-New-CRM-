@@ -32,7 +32,6 @@
 :is(.ic-tile,.ph-ic,.kpi-ic,.bc,.dn,.sb-bar > span,.sb-i > i).t-teal,[data-tone=teal]{--ta:#0D9488;--tb:#2DD4BF;--ts:rgba(13,148,136,.13);--ti:#0F766E}
 :is(.ic-tile,.ph-ic,.kpi-ic,.bc,.dn,.sb-bar > span,.sb-i > i).t-slate,[data-tone=slate]{--ta:#475569;--tb:#94A3B8;--ts:rgba(71,85,105,.12);--ti:#475569}
 html[data-theme] :is(.ic-tile,.ph-ic,.kpi-ic,.bc,.dn,.sb-bar > span,.sb-i > i,[data-tone]){--ti:var(--tb)}
-html[data-theme] :is(.ic-tile,.kpi-ic){--ts:color-mix(in srgb,var(--ta) 24%,transparent)}
 
 /* ---------- icons: a touch crisper everywhere ---------- */
 .ico{flex:none;overflow:visible}
@@ -379,7 +378,7 @@ html[data-theme=frost] .tbl-wrap thead th{background:rgba(255,255,255,.14)!impor
 :root[data-theme=frost]{--muted:rgba(255,255,255,.9);--label:rgba(255,255,255,.92)}
 html[data-theme=frost] .lv-money :is(small,.s,.l),html[data-theme=frost] .lv-money-rt span,html[data-theme=frost] .lv-stack-k span,html[data-theme=frost] .lv-mini-cycle span,
 html[data-theme=frost] .lv-need-s,html[data-theme=frost] .cell-sub,html[data-theme=frost] .muted,html[data-theme=frost] .card h3 small,html[data-theme=frost] .bs-l,html[data-theme=frost] .bs-v small,
-html[data-theme=frost] .kpi > .l,html[data-theme=frost] .strip-t span{color:rgba(255,255,255,.9)!important}
+html[data-theme=frost] .strip-t span{color:rgba(255,255,255,.9)!important}
 html[data-theme=frost] .lv-kpi.hl :is(.l,.s){color:#FFE3D6!important}
 html[data-theme=frost] .side-i{color:rgba(255,255,255,.94)}html[data-theme=frost] .side-i .ico{color:rgba(255,255,255,.8)}html[data-theme=frost] .side-i.grp .ico:first-child{color:#FFB59B}
 html[data-theme=frost] main,html[data-theme=frost] .side{text-shadow:0 1px 2px rgba(10,18,16,.28)}
@@ -387,13 +386,10 @@ html[data-theme=frost] main :is(.btn,.tag,input,select,textarea,.dot-n,.side-b,.
 /* ---------- Dark and Frost: the new pieces ---------- */
 html[data-theme] .kpi > .v{color:#fff}
 html[data-theme=frost] .ph-ic{box-shadow:0 14px 26px -14px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.5)}
-html[data-theme=frost] .kpi-ic,html[data-theme=frost] .ic-tile{background:rgba(255,255,255,.18);color:#fff}
-html[data-theme=frost] h3[data-hic]:not([data-hic=""])::before{background:#fff}
-html[data-theme=frost] .lv-lbl::before{background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
 html[data-theme=frost] .il .il-a{fill:#FF9A75}html[data-theme=frost] .il .il-acc-l{stroke:#FF9A75}
 html[data-theme=frost] .bs-top{background:linear-gradient(160deg,rgba(255,255,255,.14),transparent 75%)}
 html[data-theme=frost] .bs-top .bs-name a:hover{color:#FFD0BD}
-html[data-theme=frost] .dn-bg{stroke:rgba(255,255,255,.22)}html[data-theme=frost] .dn-fg{stroke:#fff;filter:none}
+html[data-theme=frost] .dn-bg{stroke:rgba(255,255,255,.24)}html[data-theme=frost] .dn-fg{stroke:var(--tb)}
 html[data-theme=frost] .age > div,html[data-theme=frost] .sb-bar{background:rgba(255,255,255,.12)}
 html[data-theme=frost] p.empty::before{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35)}html[data-theme=frost] p.empty::after{background:#fff}
 html[data-theme=dark] .side-sub .side-p::before{background:#3A3D44}
@@ -446,3 +442,75 @@ html.vt-theme::view-transition-new(root){animation:vtGrow .7s var(--e-io) both;z
 html[data-theme=frost] .tbl-wrap td,html[data-theme=frost] .list .li .a{color:rgba(255,255,255,.96)}
 html[data-theme=frost] .tag.good{background:rgba(34,120,74,.5);color:#D9FBE5}html[data-theme=frost] .tag.warn{background:rgba(150,96,10,.5);color:#FFEFC2}
 html[data-theme=frost] .tag.bad{background:rgba(160,40,34,.5);color:#FFE1DE}html[data-theme=frost] .tag.info{background:rgba(37,84,170,.5);color:#DCE9FF}
+
+/* ================= Colour pass (update 103) =================
+   Every figure box, card and page heading carries its own colour by default (not only on hover), in all three themes,
+   so screens don't look alike and headings are easy to find. */
+.proj-head:has(> .ph-ic.t-rust),.card:has(> .card-row:first-child > h3[data-tone=rust]),.card:has(> h3[data-tone=rust]:first-child){--ta:#D95D39;--tb:#F39A6B;--ti:#C44E2C}
+.proj-head:has(> .ph-ic.t-green),.card:has(> .card-row:first-child > h3[data-tone=green]),.card:has(> h3[data-tone=green]:first-child){--ta:#16A34A;--tb:#4ADE80;--ti:#15803D}
+.proj-head:has(> .ph-ic.t-amber),.card:has(> .card-row:first-child > h3[data-tone=amber]),.card:has(> h3[data-tone=amber]:first-child){--ta:#E08A00;--tb:#FBBF24;--ti:#B45309}
+.proj-head:has(> .ph-ic.t-blue),.card:has(> .card-row:first-child > h3[data-tone=blue]),.card:has(> h3[data-tone=blue]:first-child){--ta:#2563EB;--tb:#60A5FA;--ti:#1D4ED8}
+.proj-head:has(> .ph-ic.t-violet),.card:has(> .card-row:first-child > h3[data-tone=violet]),.card:has(> h3[data-tone=violet]:first-child){--ta:#7C3AED;--tb:#A78BFA;--ti:#6D28D9}
+.proj-head:has(> .ph-ic.t-red),.card:has(> .card-row:first-child > h3[data-tone=red]),.card:has(> h3[data-tone=red]:first-child){--ta:#DC2626;--tb:#F87171;--ti:#B91C1C}
+.proj-head:has(> .ph-ic.t-teal),.card:has(> .card-row:first-child > h3[data-tone=teal]),.card:has(> h3[data-tone=teal]:first-child){--ta:#0D9488;--tb:#2DD4BF;--ti:#0F766E}
+.proj-head:has(> .ph-ic.t-slate),.card:has(> .card-row:first-child > h3[data-tone=slate]),.card:has(> h3[data-tone=slate]:first-child){--ta:#475569;--tb:#94A3B8;--ti:#475569}
+html[data-theme] :is(.proj-head:has(> .ph-ic),.card:has(> .card-row:first-child > h3[data-tone]),.card:has(> h3[data-tone]:first-child)){--ti:var(--tb)}
+
+/* figure boxes: a coloured icon tile, a coloured label and a coloured line, always */
+.kpi-ic,.ic-tile{background:linear-gradient(140deg,var(--ta),var(--tb));color:#fff;box-shadow:0 10px 18px -10px var(--ta),inset 0 1px 0 rgba(255,255,255,.4)}
+.kpi-ic .ico,.ic-tile .ico{filter:drop-shadow(0 1px 2px rgba(0,0,0,.22))}
+.kpi:has(> .kpi-ic) > .l{color:color-mix(in srgb,var(--kt) 82%,#0F172A)}
+html[data-theme=dark] .kpi:has(> .kpi-ic) > .l{color:color-mix(in srgb,var(--kt) 55%,#fff)}
+html[data-theme=frost] .kpi:has(> .kpi-ic) > .l{color:color-mix(in srgb,var(--kt) 34%,#fff)!important}
+.kpi:has(> .kpi-ic)::after{opacity:.75;transform:scaleX(.34);height:4px}
+.kpi:has(> .kpi-ic){background-image:radial-gradient(150px 110px at 100% 0,color-mix(in srgb,var(--kt) 11%,transparent),transparent 72%)}
+html[data-theme=frost] .kpi:has(> .kpi-ic){border-color:color-mix(in srgb,var(--kt) 40%,rgba(255,255,255,.4))!important}
+@keyframes kiWiggle{0%,100%{transform:none}25%{transform:rotate(-14deg) scale(1.18)}55%{transform:rotate(9deg) scale(1.1)}80%{transform:rotate(-4deg)}}
+@media (hover:hover){
+  .kpi:hover > .kpi-ic{transform:translateY(-2px) scale(1.12) rotate(-5deg);box-shadow:0 14px 22px -8px var(--ta),inset 0 1px 0 rgba(255,255,255,.5)}
+  .kpi:hover > .kpi-ic .ico{animation:kiWiggle .7s var(--e-out)}
+  .kpi:hover > .v{color:color-mix(in srgb,var(--kt) 55%,var(--px-ink))}
+  html[data-theme] .kpi:hover > .v{color:color-mix(in srgb,var(--kt) 35%,#fff)}
+}
+.kpi > .v{transition:color .3s}
+
+/* card headings: a coloured tile with the icon, coloured title words, and a coloured bar across the top of the card */
+h3[data-hic]:not([data-hic=""]){position:relative;padding-left:42px;min-height:32px;gap:10px;color:color-mix(in srgb,var(--ti) 70%,#0F172A)}
+html[data-theme=dark] main h3[data-hic]:not([data-hic=""]){color:color-mix(in srgb,var(--tb) 62%,#fff)}
+html[data-theme=frost] main h3[data-hic]:not([data-hic=""]){color:color-mix(in srgb,var(--tb) 42%,#fff)}
+h3[data-hic]:not([data-hic=""])::before{position:absolute;left:0;top:50%;margin-top:-16px;width:32px;height:32px;border-radius:10px;
+  background:linear-gradient(140deg,var(--ta),var(--tb));-webkit-mask:none;mask:none;box-shadow:0 8px 14px -8px var(--ta),inset 0 1px 0 rgba(255,255,255,.4)}
+h3[data-hic]:not([data-hic=""])::after{content:"";position:absolute;left:7px;top:50%;margin-top:-9px;width:18px;height:18px;background:#fff;
+  -webkit-mask:var(--hic) center/contain no-repeat;mask:var(--hic) center/contain no-repeat;transition:transform .5s var(--e-spring)}
+.card:hover > .card-row > h3[data-hic]::after,.card:hover > h3[data-hic]::after{transform:scale(1.14) rotate(-6deg)}
+.card:has(> .card-row:first-child > h3[data-tone]),.card:has(> h3[data-tone]:first-child){position:relative}
+.card:has(> .card-row:first-child > h3[data-tone])::before,.card:has(> h3[data-tone]:first-child)::before{content:"";position:absolute;inset:0 0 auto 0;height:70px;border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0;pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ta) 12%,transparent),transparent);box-shadow:inset 0 3px 0 0 color-mix(in srgb,var(--ta) 85%,transparent)}
+html[data-theme=dark] .card:has(> .card-row:first-child > h3[data-tone])::before,html[data-theme=dark] .card:has(> h3[data-tone]:first-child)::before{background:linear-gradient(180deg,color-mix(in srgb,var(--ta) 20%,transparent),transparent)}
+html[data-theme=frost] .card:has(> .card-row:first-child > h3[data-tone])::before,html[data-theme=frost] .card:has(> h3[data-tone]:first-child)::before{background:linear-gradient(180deg,color-mix(in srgb,var(--ta) 34%,transparent),transparent);box-shadow:inset 0 3px 0 0 var(--tb)}
+
+/* page heading: a title bar in the page's colour */
+.proj-head:has(> .ph-ic){padding:13px 20px 13px 13px;border-radius:22px;border:1px solid color-mix(in srgb,var(--ta) 24%,var(--px-line));
+  background:linear-gradient(100deg,color-mix(in srgb,var(--ta) 14%,#fff),#fff 64%);box-shadow:0 14px 30px -24px color-mix(in srgb,var(--ta) 70%,#0F172A),var(--shadow)}
+.proj-head:has(> .ph-ic) > .crumb-path,.proj-head:has(> .ph-ic) > .proj-head-r{align-self:center}
+.proj-head:has(> .ph-ic) .eyebrow-b{color:var(--ti)}
+.proj-head:has(> .ph-ic) .proj-title{color:color-mix(in srgb,var(--ti) 34%,#0F172A)}
+html[data-theme=dark] .proj-head:has(> .ph-ic){background:linear-gradient(100deg,color-mix(in srgb,var(--ta) 36%,#17181B),#17181B 66%);border-color:color-mix(in srgb,var(--ta) 40%,#2A2D33)}
+html[data-theme=dark] .proj-head:has(> .ph-ic) .proj-title{color:color-mix(in srgb,var(--tb) 26%,#fff)}
+html[data-theme=frost] .proj-head:has(> .ph-ic){background:linear-gradient(100deg,color-mix(in srgb,var(--ta) 52%,transparent),rgba(255,255,255,.1) 62%),rgba(66,80,77,.44);border-color:color-mix(in srgb,var(--tb) 45%,rgba(255,255,255,.4));
+  -webkit-backdrop-filter:blur(26px) saturate(1.15);backdrop-filter:blur(26px) saturate(1.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 22px 46px -26px rgba(8,16,14,.55)}
+html[data-theme=frost] .proj-head:has(> .ph-ic) .proj-title{color:#fff!important}
+html[data-theme=frost] .proj-head:has(> .ph-ic) .eyebrow-b{color:color-mix(in srgb,var(--tb) 40%,#fff)!important}
+html[data-theme=frost] .ph-ic{box-shadow:0 14px 26px -14px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.5),0 0 0 1px rgba(255,255,255,.3)}
+@media (max-width:767px){.proj-head:has(> .ph-ic){padding:10px 14px 10px 10px;border-radius:18px}}
+
+/* Frost: the small pieces get their colour back too */
+html[data-theme=frost] .lv-lbl::before{box-shadow:0 0 0 3px rgba(255,255,255,.3)}
+:root[data-theme=frost]{--il-s:rgba(255,255,255,.82);--il-s2:rgba(255,255,255,.55);--il-l:rgba(255,255,255,.95);--il-w:rgba(120,134,131,.7);--il-d:rgba(120,134,131,.6)}
+html[data-theme=frost] .il .il-a{fill:var(--rust)}html[data-theme=frost] .il .il-acc-l{stroke:var(--rust)}
+html[data-theme=frost] .age > div{background:rgba(255,255,255,.14)}
+/* the month box matches the other boxes in every theme */
+.form-row input[type=month]{width:158px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit;font-size:14px}
+html[data-theme=dark] .form-row input[type=month]{background:#141518;border-color:#2F3238;color:#E8EAED;color-scheme:dark}
+html[data-theme=frost] .form-row input[type=month],html[data-theme=frost] .form-row input[type=search]{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);color:#fff;color-scheme:dark}
+@media print{.card::before{display:none!important}.proj-head:has(> .ph-ic){background:none!important;border:0!important;box-shadow:none!important;padding:0!important}}
