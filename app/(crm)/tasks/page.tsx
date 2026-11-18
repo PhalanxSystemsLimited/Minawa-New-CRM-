@@ -1,6 +1,8 @@
 // To do, by role (Nov 2026). Building managers: their own work for their buildings. Accountants: money to check,
 // plus a read-only view of the building managers' lists. Admins: both lists, to monitor who is responsible and
 // what is late (they don't do these tasks themselves).
+// 18 Nov 2026: each list is its own page (tabs): the Accountant's own To do and the building managers' To do are
+// separate (?v=managers); the Admin's Team To do has Building managers and Accountants (?v=accountants).
 import { requireStaff, roleName } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { projects as listProjects, load } from '@/lib/ops';
@@ -36,7 +38,8 @@ function Table({ list, staff, today, showWho }: { list: Task[]; staff: Awaited<R
   </tbody></table></div>;
 }
 
-export default async function Tasks() {
+export default async function Tasks({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const v = (await searchParams).v || '';
   const me = await requireStaff(), store = await getStore(), staff = await store.listStaff(), today = todayPKT();
   const live = (await listProjects(me)).filter(p => p.live);
   const states = await Promise.all(live.map(p => load(p.id, me)));
@@ -45,16 +48,32 @@ export default async function Tasks() {
   const late = (l: Task[]) => l.filter(t => t.overdue).length;
   const head = (title: string, sub: string) => <><div className="proj-head"><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">{title}</div></div><div className="crumb-path">Dashboard<span>/</span>{title}</div></div><p className="muted" style={{ margin: 0 }}>{sub}</p></>;
 
-  if (me.role === 'admin') return <>
-    {head('Team To do', 'What the building managers and the accountants still have to do. You only watch these: each task is done by the person responsible.')}
-    <div className="card"><div className="card-row"><h3>Pending building manager tasks <small>{mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>
-    <div className="card"><div className="card-row"><h3>Pending accountant tasks <small>{acc.length} open{late(acc) ? ` · ${late(acc)} late` : ''}</small></h3></div><Table list={acc} staff={staff} today={today} showWho /></div>
-  </>;
+  const tabs = (list: [string, string, number, number][]) => <nav className="proj-tabs" aria-label="To do lists">{list.map(([k, l, n, lt]) =>
+    <Go key={k} href={k ? `/tasks?v=${k}` : '/tasks'} current={v === k}>{l}{n ? <> <span className={lt ? 'tab-b' : 'tab-new'} title={`${n} open${lt ? `, ${lt} late` : ''}`}>{n}</span></> : null}</Go>)}</nav>;
+
+  if (me.role === 'admin') {
+    const accView = v === 'accountants';
+    return <>
+      {head('Team To do', 'What the building managers and the accountants still have to do. You only watch these: each task is done by the person responsible.')}
+      {tabs([['', 'Building managers', mgr.length, late(mgr)], ['accountants', 'Accountants', acc.length, late(acc)]])}
+      {accView
+        ? <div className="card"><div className="card-row"><h3>Pending accountant tasks <small>{acc.length} open{late(acc) ? ` · ${late(acc)} late` : ''}</small></h3></div><Table list={acc} staff={staff} today={today} showWho /></div>
+        : <div className="card"><div className="card-row"><h3>Pending building manager tasks <small>{mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>}
+    </>;
+  }
 
   if (me.role === 'accountant') {
     const proofs = states.flatMap(s => use(s, () => s.proofs.filter(p => p.status === 'pending').map(p => ({ p, o: ownerById(p.ownerId), s }))));
+    const cashT = acc.filter(t => t.id.startsWith('cash')), myN = proofs.length + cashT.length;
+    const accTabs = tabs([['', 'Your To do', myN, late(acc)], ['managers', 'Building managers\' To do', mgr.length, late(mgr)]]);
+    if (v === 'managers') return <>
+      {head('Building managers\' To do', 'What the building managers still have to do in their buildings. You follow these up; each task is done by the building manager.')}
+      {accTabs}
+      <div className="card"><div className="card-row"><h3>Building managers&apos; To do <small>{mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>
+    </>;
     return <>
       {head('To do', 'Money to check: cash payments building managers entered. An owner\'s balance changes only once you confirm.')}
+      {accTabs}
       <div className="card"><div className="card-row"><h3>Payments to check <small>{proofs.length} waiting</small></h3></div>
         {proofs.length ? <div className="list">{proofs.map(({ p, o, s }) => <div className="li" key={p.id} id={`proof-${p.id}`}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {p.kind === 'cash' ? <span className="tag warn">Cash · building manager</span> : <span className="tag info">Bank screenshot</span>}</div>
             <div className="b">{o.name} · {s.proj.name} · {p.kind === 'cash' ? <>recorded by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · ref ${p.ref}` : ''}{p.note ? ` · ${p.note}` : ''}</> : `screenshot sent ${fd(p.d)}`}</div></div>
@@ -63,8 +82,7 @@ export default async function Tasks() {
             <form action={rejectAction} style={{ display: 'flex', gap: 6 }}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="back" value="/tasks" />{p.kind === 'cash' ? <input name="reply" type="text" placeholder="Why (for the manager)" aria-label="Why it isn't confirmed" style={{ width: 170 }} /> : null}<Submit className="btn sm">{p.kind === 'cash' ? 'Not received' : 'Can\'t find it'}</Submit></form>
           </div></div>)}</div> : <p className="empty">Nothing to check.</p>}
       </div>
-      {(() => { const cash = acc.filter(t => t.id.startsWith('cash')); return cash.length ? <div className="card"><div className="card-row"><h3>Cash to receive and deposit <small>{cash.length} open{late(cash) ? ` · ${late(cash)} late` : ''}</small></h3><Go href="/cash" className="btn sm">Open Cash</Go></div><Table list={cash} staff={staff} today={today} showWho={false} /></div> : null; })()}
-      <div className="card"><div className="card-row"><h3>Building managers&apos; To do <small>to follow up · {mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>
+      {(() => { const cash = cashT; return cash.length ? <div className="card"><div className="card-row"><h3>Cash to receive and deposit <small>{cash.length} open{late(cash) ? ` · ${late(cash)} late` : ''}</small></h3><Go href="/cash" className="btn sm">Open Cash</Go></div><Table list={cash} staff={staff} today={today} showWho={false} /></div> : null; })()}
     </>;
   }
 

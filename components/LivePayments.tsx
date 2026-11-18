@@ -7,15 +7,20 @@
 // notifications (lib/notify.ts): the ones this browser hasn't shown yet pop up in the corner, the bell rings, and while
 // the tab is in the background the tab title counts them and, if allowed, the computer shows a desktop alert.
 // If you are typing in a field at that moment, the refresh waits until you leave the field.
+// A notification that arrives while the window is hidden (another tab, minimised, or covered by another window) is
+// kept and slides in when you come back, so it is never missed. Each one slides in at the top right, shows a bar
+// counting down, stays while the mouse is over it, then slides out by itself.
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Note } from '@/lib/notify';
 
-const EVERY = 5000, HIDDEN_EVERY = 30000, SHOW_MS = 14000, MAX_SHOWN = 3;
+const EVERY = 5000, HIDDEN_EVERY = 30000, SHOW_MS = 9000, OUT_MS = 380, MAX_SHOWN = 3;
+type Toast = Note & { key: number; born: number; out?: number };
 
 export function LivePayments({ counts, me }: { counts: Record<string, number>; me: string }) {
   const router = useRouter(), last = useRef(counts), rev = useRef<number | null>(null), pending = useRef(false);
-  const [toasts, setToasts] = useState<(Note & { key: number })[]>([]), [more, setMore] = useState(0), [ask, setAsk] = useState(false);
+  const held = useRef<Note[]>([]), hover = useRef(false);
+  const [toasts, setToasts] = useState<Toast[]>([]), [more, setMore] = useState(0), [ask, setAsk] = useState(false);
   last.current = counts;
   useEffect(() => {
     let busy = false, unseen = 0, lastPoll = 0;
@@ -25,16 +30,21 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
     const readSeen = (): string[] | null => { try { const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; } catch { return null; } };
     const saveSeen = (ids: string[]) => { try { localStorage.setItem(KEY, JSON.stringify(ids.slice(-400))); } catch { /* private mode */ } };
     const ring = () => { const b = document.querySelector('.bell-btn'); if (!b) return; b.classList.remove('ringing'); void (b as HTMLElement).offsetWidth; b.classList.add('ringing'); setTimeout(() => b.classList.remove('ringing'), 1600); };
+    const show = (fresh: Note[]) => {
+      if (!fresh.length) return;
+      const now = Date.now();
+      setToasts(t => [...fresh.slice(0, MAX_SHOWN).map((n, i) => ({ ...n, key: now + i, born: now })), ...t.filter(x => !x.out)].slice(0, MAX_SHOWN));
+      setMore(m => fresh.length > MAX_SHOWN ? m + fresh.length - MAX_SHOWN : m);
+      ring();
+    };
     const announce = (notes: Note[]) => {
       const seen = readSeen();
       if (!seen) { saveSeen(notes.map(n => n.id)); return; }   // first time in this browser: start from now, no flood
       const fresh = notes.filter(n => !seen.includes(n.id));
       if (!fresh.length) return;
       saveSeen([...seen, ...fresh.map(n => n.id)]);
-      const now = Date.now();
-      setToasts(t => [...fresh.slice(0, MAX_SHOWN).map((n, i) => ({ ...n, key: now + i })), ...t].slice(0, MAX_SHOWN));
-      setMore(m => fresh.length > MAX_SHOWN ? m + fresh.length - MAX_SHOWN : m);
-      ring();
+      if (document.visibilityState === 'visible') show(fresh);
+      else held.current.push(...fresh);   // shown when the window is back in view
       if ('Notification' in window && Notification.permission === 'default') setAsk(true);
       if (document.visibilityState !== 'visible') {
         unseen += fresh.length; document.title = `(${unseen}) ${baseTitle}`;
@@ -60,24 +70,29 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
       busy = false;
     };
     const t = setInterval(() => tick(), EVERY), first = setTimeout(() => tick(true), 1200);
-    const vis = () => { if (document.visibilityState === 'visible') { unseen = 0; document.title = baseTitle; if (pending.current && !typing()) refresh(); tick(true); } };
+    const vis = () => { if (document.visibilityState === 'visible') { unseen = 0; document.title = baseTitle; const h = held.current.splice(0); if (h.length) show(h); if (pending.current && !typing()) refresh(); tick(true); } };
     const blur = () => { if (pending.current) setTimeout(() => { if (pending.current && !typing()) refresh(); }, 300); };
     document.addEventListener('visibilitychange', vis); window.addEventListener('focus', vis); document.addEventListener('focusout', blur);
     return () => { clearInterval(t); clearTimeout(first); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); document.removeEventListener('focusout', blur); };
   }, [router, me]);
-  // Each popup closes by itself after a while (or when clicked away).
+  // Each popup slides out by itself after SHOW_MS (not while the mouse is over the stack), or when closed.
   useEffect(() => {
     if (!toasts.length) { setMore(0); setAsk(false); return; }
-    const t = setTimeout(() => setToasts(x => x.filter(n => Date.now() - n.key < SHOW_MS)), 1000);
+    const t = setTimeout(() => {
+      const now = Date.now();
+      if (hover.current) { setToasts(x => x.map(n => n.out ? n : { ...n, born: n.born + 500 })); return; }
+      setToasts(x => x.filter(n => !n.out || now - n.out < OUT_MS).map(n => !n.out && now - n.born > SHOW_MS ? { ...n, out: now } : n));
+    }, 500);
     return () => clearTimeout(t);
   }, [toasts]);
   if (!toasts.length) return null;
-  const close = (key: number) => setToasts(x => x.filter(n => n.key !== key));
-  return <div className="ntf-stack" role="status" aria-live="polite">
-    {toasts.map(n => <div key={n.key} className={`ntf ntf-${n.tone}`}>
+  const close = (key: number) => setToasts(x => x.map(n => n.key === key && !n.out ? { ...n, out: Date.now() } : n));
+  return <div className="ntf-stack" role="status" aria-live="polite" onMouseEnter={() => { hover.current = true; }} onMouseLeave={() => { hover.current = false; }}>
+    {toasts.map(n => <div key={n.key} className={`ntf ntf-${n.tone}${n.out ? ' ntf-out' : ''}`} style={{ ['--ntf-life' as string]: `${SHOW_MS}ms` }}>
       <span className="ntf-dot" aria-hidden="true"></span>
       <a className="ntf-t" href={n.href} onClick={e => { e.preventDefault(); close(n.key); router.push(n.href); }}><b>{n.title}</b><span>{n.text}</span></a>
       <button type="button" className="ntf-x" aria-label="Close" onClick={() => close(n.key)}>×</button>
+      <span className="ntf-life" aria-hidden="true"></span>
     </div>)}
     {more ? <div className="ntf-more">+{more} more · <a href="/tasks" onClick={() => setMore(0)}>see your To do</a></div> : null}
     {ask ? <div className="ntf-more"><button type="button" className="link-btn" onClick={() => { setAsk(false); try { Notification.requestPermission(); } catch { /* old browser */ } }}>Turn on desktop alerts</button> so you hear about these when the CRM is in the background.</div> : null}

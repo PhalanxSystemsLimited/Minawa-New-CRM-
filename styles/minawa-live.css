@@ -791,3 +791,14 @@ button.lv-kpi{cursor:pointer}
 }
 .si-cash{--si-a:#FCD34D;--si-b:#B45309;--si-g:rgba(217,119,6,.7)}
 .si-rpt{--si-a:#93C5FD;--si-b:#1D4ED8;--si-g:rgba(37,99,235,.7)}
+/* Notifications, 18 Nov: slide in from the right, a thin bar counts down, pause on hover, slide out. */
+.ntf{position:relative;overflow:hidden;animation:ntfSlide .42s cubic-bezier(.2,.8,.2,1) both}
+.ntf.ntf-out{animation:ntfSlideOut .38s cubic-bezier(.4,0,1,1) both;pointer-events:none}
+.ntf-life{position:absolute;left:0;bottom:0;height:3px;width:100%;transform-origin:left;background:currentColor;opacity:.35;color:#3B82F6;animation:ntfLife var(--ntf-life,9000ms) linear both}
+.ntf-good .ntf-life{color:#16A34A}.ntf-warn .ntf-life{color:#F59E0B}.ntf-bad .ntf-life{color:#DC2626}
+.ntf-stack:hover .ntf-life{animation-play-state:paused}
+@keyframes ntfSlide{from{opacity:0;transform:translateX(110%)}to{opacity:1;transform:none}}
+@keyframes ntfSlideOut{from{opacity:1;transform:none;max-height:200px}to{opacity:0;transform:translateX(110%);max-height:0;margin-top:-10px;padding-top:0;padding-bottom:0}}
+@keyframes ntfLife{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media (max-width:767px){@keyframes ntfSlide{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}}
+@media (prefers-reduced-motion:reduce){.ntf,.ntf.ntf-out,.ntf-life{animation:none}}
