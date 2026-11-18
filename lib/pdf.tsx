@@ -76,7 +76,7 @@ function Doc({ d }: { d: DocData }) {
   const logo = fs.existsSync(pub('assets', 'minawa-logo.png')) ? pub('assets', 'minawa-logo.png') : null;
   return (
     <Document title={d.filename.replace(/\.pdf$/, '')} author="Minawa Group">
-      <Page size="A4" style={st.page}>
+      <Page size="A4" orientation={d.grids?.length ? 'landscape' : 'portrait'} style={st.page}>
         <View style={st.doc}>
           <View style={st.dh}>
             <View>{/* eslint-disable-next-line jsx-a11y/alt-text */}{logo ? <Image src={logo} style={st.logo} /> : <Text style={{ fontWeight: 700 }}>Minawa Group</Text>}<Text style={st.sub}>{d.subtitle}</Text></View>
@@ -98,6 +98,14 @@ function Doc({ d }: { d: DocData }) {
                   <View style={st.c1}><Text style={r.tot || r.bold ? { fontWeight: 700 } : {}}>{r.label}</Text>{r.sub ? <Text style={st.rowSub}>{r.sub}</Text> : null}</View>
                   <Text style={[st.c2, r.tot || r.bold ? { fontWeight: 700 } : {}]}>{r.amount}</Text>
                 </View>))}
+            </View>))}
+          {(d.grids || []).map((g, i) => (
+            <View key={'g' + i} style={st.table}>
+              <Text style={{ fontWeight: 700, fontSize: 10.5, marginBottom: 4, marginTop: 4 }}>{g.title}</Text>
+              <View style={st.th} fixed={false}>{g.cols.map((c, k) => <Text key={k} style={[st.thText, { letterSpacing: 0.2, flexGrow: g.widths?.[k] ?? 1, flexBasis: 0, textAlign: g.right?.includes(k) ? 'right' : 'left', paddingRight: 4 }]}>{c}</Text>)}</View>
+              {g.rows.length ? g.rows.map((r, j) => <View key={j} style={[st.tr, j === g.rows.length - 1 && g.total ? { borderTopWidth: 1, borderTopColor: INK } : {}]} wrap={false}>
+                {r.map((c, k) => <Text key={k} style={{ flexGrow: g.widths?.[k] ?? 1, flexBasis: 0, fontSize: 8, textAlign: g.right?.includes(k) ? 'right' : 'left', paddingRight: 4, fontWeight: j === g.rows.length - 1 && g.total ? 700 : 400 }}>{c}</Text>)}
+              </View>) : <Text style={st.rowSub}>{g.empty || 'None'}</Text>}
             </View>))}
           {d.howToPay ? <View><Text style={{ fontWeight: 700 }}>How to pay</Text>{d.howToPay.map((h, i) => <Text key={i}>{h}</Text>)}</View> : null}
           {d.fine ? <Text style={st.fine}>{d.fine}</Text> : null}

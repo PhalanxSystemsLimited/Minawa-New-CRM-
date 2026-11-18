@@ -358,3 +358,13 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .sc-fine .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .apply-to{margin-top:4px}
 .elec-row{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.08);font-size:13px}
+
+/* Dashboard: one card per building (Phase 4) */
+.bs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.bs-card{display:flex;flex-direction:column;gap:2px}
+.bs-r{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--line,#eee)}
+.bs-l{font-size:13px;color:var(--muted,#64748b)}
+.bs-v{font-weight:700;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.bs-v small{font-weight:400;font-size:11.5px;color:var(--muted,#64748b)}
+.bs-v.good{color:#15803D}.bs-v.warn{color:#B45309}.bs-v.bad{color:#B91C1C}
+.bs-acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}

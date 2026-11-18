@@ -4,7 +4,7 @@
 //    CRM asks "Did you send the message?" (WaReturnPrompt); the answer is recorded and the next owner comes up.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { prepareSendAction, recordSentAction, dropPendingAction, fineAction } from '@/lib/actions-send';
+import { prepareSendAction, recordSentAction, dropPendingAction, fineAction, releaseSendAction } from '@/lib/actions-send';
 import type { SendItem, SendType } from '@/lib/manual-send';
 import { Wa, Ic } from './icons';
 import { awaitReturn, clearAwait, type WaAnswer } from './WaReturnPrompt';
@@ -172,7 +172,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
       <div className="sc-via"><span className="cell-sub">Open chats in</span>
         <button type="button" className="chipbtn" aria-pressed={via === 'web'} onClick={() => setViaSave('web')}>WhatsApp Web</button>
         <button type="button" className="chipbtn" aria-pressed={via === 'app'} onClick={() => setViaSave('app')}>WhatsApp app</button>
-        <button type="button" className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { setStep('done'); router.refresh(); }}>Stop here</button></div>
+        <button type="button" className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { releaseSendAction({ pid, ownerIds: items.slice(i).map(x => x.ownerId) }).catch(() => {}); setStep('done'); router.refresh(); }}>Stop here</button></div>
     </div>
     <div className="card sc-side"><h3>Queue</h3>
       <ol className="sc-q">{items.map((x, k) => { const st = done[x.key];

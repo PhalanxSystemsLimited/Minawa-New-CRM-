@@ -30,6 +30,10 @@ export interface Store {
   saveSettings(s: ProjectSettings): Promise<void>;
   /** True at most once per `seconds` for this name, across all servers (e.g. how often the daily run is tried). */
   throttle(name: string, seconds: number): Promise<boolean>;
+  /** "Being done by" (Phase 4): takes `name` for `holder` for `seconds`. Returns null when taken (or already this
+   *  holder's), or the other holder still on it. */
+  claim(name: string, holder: string, seconds: number): Promise<string | null>;
+  release(name: string, holder: string): Promise<void>;
   /** Payments on or after a date (id, day and time only): for the "new payments" badges. */
   paymentsSince(project: string, since: string): Promise<{ id: string; d: string; t: string }[]>;
   /** A number that changes whenever anything is saved: open screens compare it to know when to refresh. */

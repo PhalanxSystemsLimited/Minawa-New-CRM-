@@ -74,7 +74,19 @@ export async function prepareSendAction(input: { pid: string; type: SendType; id
     }
     return { items, left };
   });
-  return { items: out.items, left: out.left, test: waTestNumber() || null };
+  // "Being done by" (Phase 4): with two building managers on one building, an owner someone else is sending to right
+  // now is left out for 10 minutes, so the same message never goes twice. The batch is held for this person meanwhile.
+  const store = await getStore(), holder = `${staff.id}|${staffName(staff)}`;
+  const taken = await Promise.all(out.items.map(it => store.claim(`claim:${input.pid}:send:${it.ownerId}`, holder, 600).catch(() => null)));
+  const items = out.items.filter((_, i) => !taken[i]), left = [...out.left];
+  out.items.forEach((it, i) => { if (taken[i]) left.push({ apt: it.apt, why: `Being sent by ${taken[i]!.split('|')[1] || 'someone else'} right now` }); });
+  return { items, left, test: waTestNumber() || null };
+}
+/** Lets go of the owners this person had open in Send on WhatsApp but didn't get to (Stop here). */
+export async function releaseSendAction(input: { pid: string; ownerIds: string[] }) {
+  const staff = await requireRole('manager'), store = await getStore(), holder = `${staff.id}|${staffName(staff)}`;
+  await Promise.all((input.ownerIds || []).slice(0, 500).map(id => store.release(`claim:${input.pid}:send:${id}`, holder).catch(() => {})));
+  return { ok: true };
 }
 
 /** The accountant has sent this message in WhatsApp: record it on the owner's history. */

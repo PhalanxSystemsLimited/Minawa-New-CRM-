@@ -41,7 +41,7 @@ export default async function Leave({ params, searchParams }: { params: Promise<
             <div className="kpi"><div className="l">Paid</div><div className="v num">{rs(paid)}</div><div className="cell-sub">{pays.length} payment{pays.length === 1 ? '' : 's'}</div></div>
             {o.meterIn || o.meterOut ? <div className="kpi"><div className="l">Meter</div><div className="v num">{o.meterIn?.reading ?? '—'} → {o.meterOut?.reading ?? '—'}</div><div className="cell-sub">at possession → at leaving</div></div> : null}
           </div>
-          <div className="card"><div className="card-row"><h3>Payments</h3><div className="no-print" style={{ display: 'flex', gap: 8 }}><a className="btn sm" href={`/api/export/leave?project=${pid}&oid=${o.id}`}>Download CSV</a><PrintBtn className="btn sm">Print</PrintBtn></div></div>{payTable}</div>
+          <div className="card"><div className="card-row"><h3>Payments</h3><div className="no-print" style={{ display: 'flex', gap: 8 }}><a className="btn sm" href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener">Payment history (PDF)</a><a className="btn sm" href={`/api/export/leave?project=${pid}&oid=${o.id}`}>Download CSV</a><PrintBtn className="btn sm">Print</PrintBtn></div></div>{payTable}</div>
         </div></>;
     }
 

@@ -91,6 +91,17 @@ export class LocalStore implements Store {
     if ((t.__minawaThrottle[name] || 0) > now) return false;
     t.__minawaThrottle[name] = now + seconds * 1000; return true;
   }
+  async claim(name: string, holder: string, seconds: number) {
+    const t = (g as unknown as { __minawaClaims?: Record<string, { holder: string; until: number }> }), now = Date.now();
+    t.__minawaClaims = t.__minawaClaims || {};
+    const c = t.__minawaClaims[name];
+    if (c && c.until > now && c.holder !== holder) return c.holder;
+    t.__minawaClaims[name] = { holder, until: now + seconds * 1000 }; return null;
+  }
+  async release(name: string, holder: string) {
+    const t = (g as unknown as { __minawaClaims?: Record<string, { holder: string; until: number }> });
+    if (t.__minawaClaims?.[name]?.holder === holder) delete t.__minawaClaims[name];
+  }
   async paymentsSince(project: string, since: string) {
     return (db().payments as { id: string; project: string; d: string; t: string; reversed?: unknown }[]).filter(p => p.project === project && p.d >= since && !p.reversed).map(p => ({ id: p.id, d: p.d, t: p.t }));
   }

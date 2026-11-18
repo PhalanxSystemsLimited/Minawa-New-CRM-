@@ -2,6 +2,7 @@
 import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
 import { duesList } from '@/lib/reports';
+import { buildingStats } from '@/lib/stats';
 import { use, projStats, sortedPayments, ownerById, upcoming, collections, nextBillOf } from '@/lib/engine';
 import { pendingCount } from '@/lib/manual-send';
 import { KIND_LABEL } from '@/lib/approvals';
@@ -147,6 +148,26 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
 
     <div className="lv-layout lv-dash">
     <div className="lv-main">
+    {(() => {
+      // Per building (Phase 4): the buildings this person looks after, the Admin every building.
+      const bs = states.map(s => buildingStats(s, staff));
+      if (!bs.length) return null;
+      const row = (l: string, v: string, sub?: string, tone?: string) => <div className="bs-r"><span className="bs-l">{l}</span><span className={`bs-v num${tone ? ' ' + tone : ''}`}>{v}{sub ? <small>{sub}</small> : null}</span></div>;
+      return <><Lbl>{staff.role === 'admin' ? 'Buildings this month' : 'Your buildings this month'}</Lbl>
+        <div className="bs-grid">{bs.map(b => <div className="card bs-card" key={b.pid}>
+          <div className="card-row"><h3><A href={`/p/${b.pid}`} className="link-btn">{b.name}</A> <small>{b.active} customers{b.vacant ? ` · ${b.vacant} vacant` : ''}</small></h3></div>
+          {row('Billed', rs(b.billed), `${b.nBills} bill${b.nBills === 1 ? '' : 's'}`)}
+          {row('Collected (approved)', rs(b.collected), b.nPays ? `cash ${short(b.cash)} · bank ${short(b.bank)}` : 'none yet', 'good')}
+          {b.nPending ? row('Waiting for approval', rs(b.pending), `${b.nPending} entr${b.nPending === 1 ? 'y' : 'ies'}`, 'warn') : null}
+          {row('Still to collect', rs(b.toCollect), `${b.owing} customer${b.owing === 1 ? '' : 's'}`)}
+          {row('Past due', rs(b.pastDue), `${b.nPastDue} customer${b.nPastDue === 1 ? '' : 's'}`, b.nPastDue ? 'bad' : '')}
+          {b.elec ? row('Electricity', `${rs(b.elec.collected)} of ${rs(b.elec.billed)}`, `unpaid ${short(b.elec.unpaid)}`) : null}
+          {b.gen ? row('Generator', rs(b.gen.billed), `${b.gen.flats} flat${b.gen.flats === 1 ? '' : 's'} on the list`) : null}
+          {b.noPos ? row('No possession date', String(b.noPos), 'due on the 1st', 'warn') : null}
+          {b.requests ? row(staff.role === 'admin' ? 'Requests to decide' : 'Your requests waiting', String(b.requests)) : null}
+          <div className="bs-acts"><A href={`/reports?r=month&p=${b.pid}`} className="btn sm">Monthly report</A><A href={`/reports?o=1&p=${b.pid}`} className="btn sm">Defaulters</A></div>
+        </div>)}</div></>;
+    })()}
     <Lbl>Money at a glance</Lbl>
     <section className="lv-money">
       <div className="lv-money-ring"><Ring pct={ringPct} label={y26 ? '2026 PAID' : `${monName.toUpperCase()} TARGET`} tone={ringPct >= 50 ? 'green' : 'amber'} />

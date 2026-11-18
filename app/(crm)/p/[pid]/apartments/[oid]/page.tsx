@@ -87,6 +87,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <details className="more"><summary className="btn">More ▾</summary><div className="menu">
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
             <Go href={m('note')}>Add note</Go>
+            <a href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener">Payment history (PDF)</a>
+            <a href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener">Apartment history (PDF)</a>
             {S.role !== 'accountant' ? <Go href={`${base}/leave`}>Customer left (hand back the keys)</Go> : null}
             {S.role !== 'accountant' ? o.flagged ? <Go href={m('discontinue')}>Resume maintenance{ask}</Go> : bal > 0 && billsOf(o).some(b => b.dueDate < S.today && b.net > b.paid) || (o.openingLeft > 0 && S.today > openingDue()) ? <Go href={m('discontinue')}>Discontinue maintenance{ask}</Go> : null : null}
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
@@ -140,13 +142,13 @@ export default async function Apartment({ params, searchParams }: { params: Prom
         {many ? <p className="cell-sub" style={{ margin: '-4px 0 10px' }}>Everything since the first owner; the owner at the time is shown under each line.</p> : null}
         {tab === 'bills' ? billsTab : tab === 'payments' ? paysTab : tab === 'history' ? historyTab : notesTab}
       </div>
-      {many || o.meterIn || o.meterOut ? <div className="card"><div className="card-row"><h3>Apartment history <small>who held {o.apt}, and when</small></h3></div>
+      <div className="card"><div className="card-row"><h3>Apartment history <small>who held {o.apt}, and when</small></h3><a className="btn sm" href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener">PDF</a></div>
         <div className="tbl-wrap"><table><thead><tr><th>Customer</th><th>From</th><th>To</th><th>Meter in → out</th><th></th></tr></thead><tbody>
           {[...accts].reverse().map(a => <tr key={a.id}><td><b>{a.name}</b>{a.status === 'active' ? <> <span className="tag good">Now</span></> : null}</td>
             <td>{a.possessionKnown ? fd(a.possession) : 'Before the office list'}</td><td>{a.closedOn ? fd(a.closedOn) : '—'}</td>
             <td className="num">{a.meterIn || a.meterOut ? `${a.meterIn?.reading ?? '—'} → ${a.meterOut?.reading ?? '—'}` : '—'}</td>
             <td className="r">{a.status === 'closed' ? <Go href={`/p/${S.project}/apartments/${a.id}/leave`} className="btn sm">Clearance report</Go> : null}</td></tr>)}
-        </tbody></table></div></div> : null}
+        </tbody></table></div></div>
     </>;
   });
 }

@@ -2,7 +2,7 @@
 import { currentStaff } from '@/lib/session';
 import { load } from '@/lib/ops';
 import { use, ownerById } from '@/lib/engine';
-import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
+import { billDoc, receiptDoc, statementDoc, clearanceDoc, historyDoc, aptHistoryDoc, type DocData } from '@/lib/docdata';
 import { renderPdf } from '@/lib/pdf';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +15,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ pid: strin
     if (kind === 'bill') { const b = s.bills.find(x => x.id === id); return b ? billDoc(b) : null; }
     if (kind === 'receipt') { const p = s.payments.find(x => x.id === id); return p ? receiptDoc(p) : null; }
     if (kind === 'statement') { const o = ownerById(id); return o ? statementDoc(o) : null; }
+    if (kind === 'history') { const o = ownerById(id); return o ? historyDoc(o) : null; }
+    if (kind === 'apthistory') { const o = ownerById(id); return o ? aptHistoryDoc(o) : null; }
     if (kind === 'clearance') { const c = s.clearances.find(x => x.no === id); return c ? clearanceDoc(ownerById(c.ownerId), c) : null; }
     return null;
   });

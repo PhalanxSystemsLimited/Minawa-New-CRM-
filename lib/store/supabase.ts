@@ -148,6 +148,14 @@ export class SupabaseStore implements Store {
     if (error) throw new Error(error.message);
     return !!data;   // not released: the lock expiring is the throttle
   }
+  async claim(name: string, holder: string, seconds: number) {
+    const { data, error } = await this.db.rpc('acquire_lock', { p_name: name, p_holder: holder, p_ttl: seconds });
+    if (error) throw new Error(error.message);
+    if (data) return null;
+    const { data: row } = await this.db.from('locks').select('holder').eq('name', name).limit(1);
+    return String(row?.[0]?.holder || 'someone');
+  }
+  async release(name: string, holder: string) { await this.db.rpc('release_lock', { p_name: name, p_holder: holder }); }
   async paymentsSince(project: string, since: string) {
     const { data, error } = await this.db.from('payments').select('id,d,t').eq('project', project).gte('d', since).is('reversed', null).limit(1000);
     if (error) throw new Error(error.message);
