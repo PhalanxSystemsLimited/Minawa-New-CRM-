@@ -326,3 +326,7 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .signin-forgot a:hover,.signin-sub a:hover{opacity:1}
 .menu .menu-link{display:block;padding:9px 12px;font-weight:500;font-size:13.5px;color:var(--fg);text-decoration:none}
 .menu .menu-link:hover{background:var(--hover,rgba(0,0,0,.05))}
+
+/* Reports: the report body keeps the page's spacing between the KPI boxes and the cards below. */
+.rpt{display:flex;flex-direction:column;gap:24px;min-width:0}
+@media (max-width:767px){.rpt{gap:16px}}
