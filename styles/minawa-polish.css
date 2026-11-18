@@ -446,15 +446,15 @@ html[data-theme=frost] .tag.bad{background:rgba(160,40,34,.5);color:#FFE1DE}html
 /* ================= Colour pass (update 103) =================
    Every figure box, card and page heading carries its own colour by default (not only on hover), in all three themes,
    so screens don't look alike and headings are easy to find. */
-.proj-head:has(> .ph-ic.t-rust),.card:has(> .card-row:first-child > h3[data-tone=rust]),.card:has(> h3[data-tone=rust]:first-child){--ta:#D95D39;--tb:#F39A6B;--ti:#C44E2C}
-.proj-head:has(> .ph-ic.t-green),.card:has(> .card-row:first-child > h3[data-tone=green]),.card:has(> h3[data-tone=green]:first-child){--ta:#16A34A;--tb:#4ADE80;--ti:#15803D}
-.proj-head:has(> .ph-ic.t-amber),.card:has(> .card-row:first-child > h3[data-tone=amber]),.card:has(> h3[data-tone=amber]:first-child){--ta:#E08A00;--tb:#FBBF24;--ti:#B45309}
-.proj-head:has(> .ph-ic.t-blue),.card:has(> .card-row:first-child > h3[data-tone=blue]),.card:has(> h3[data-tone=blue]:first-child){--ta:#2563EB;--tb:#60A5FA;--ti:#1D4ED8}
-.proj-head:has(> .ph-ic.t-violet),.card:has(> .card-row:first-child > h3[data-tone=violet]),.card:has(> h3[data-tone=violet]:first-child){--ta:#7C3AED;--tb:#A78BFA;--ti:#6D28D9}
-.proj-head:has(> .ph-ic.t-red),.card:has(> .card-row:first-child > h3[data-tone=red]),.card:has(> h3[data-tone=red]:first-child){--ta:#DC2626;--tb:#F87171;--ti:#B91C1C}
-.proj-head:has(> .ph-ic.t-teal),.card:has(> .card-row:first-child > h3[data-tone=teal]),.card:has(> h3[data-tone=teal]:first-child){--ta:#0D9488;--tb:#2DD4BF;--ti:#0F766E}
-.proj-head:has(> .ph-ic.t-slate),.card:has(> .card-row:first-child > h3[data-tone=slate]),.card:has(> h3[data-tone=slate]:first-child){--ta:#475569;--tb:#94A3B8;--ti:#475569}
-html[data-theme] :is(.proj-head:has(> .ph-ic),.card:has(> .card-row:first-child > h3[data-tone]),.card:has(> h3[data-tone]:first-child)){--ti:var(--tb)}
+.proj-head:has(> .ph-ic.t-rust),.card[data-bar="rust"]{--ta:#D95D39;--tb:#F39A6B;--ti:#C44E2C}
+.proj-head:has(> .ph-ic.t-green),.card[data-bar="green"]{--ta:#16A34A;--tb:#4ADE80;--ti:#15803D}
+.proj-head:has(> .ph-ic.t-amber),.card[data-bar="amber"]{--ta:#E08A00;--tb:#FBBF24;--ti:#B45309}
+.proj-head:has(> .ph-ic.t-blue),.card[data-bar="blue"]{--ta:#2563EB;--tb:#60A5FA;--ti:#1D4ED8}
+.proj-head:has(> .ph-ic.t-violet),.card[data-bar="violet"]{--ta:#7C3AED;--tb:#A78BFA;--ti:#6D28D9}
+.proj-head:has(> .ph-ic.t-red),.card[data-bar="red"]{--ta:#DC2626;--tb:#F87171;--ti:#B91C1C}
+.proj-head:has(> .ph-ic.t-teal),.card[data-bar="teal"]{--ta:#0D9488;--tb:#2DD4BF;--ti:#0F766E}
+.proj-head:has(> .ph-ic.t-slate),.card[data-bar="slate"]{--ta:#475569;--tb:#94A3B8;--ti:#475569}
+html[data-theme] :is(.proj-head:has(> .ph-ic),.card[data-bar]){--ti:var(--tb)}
 
 /* figure boxes: a coloured icon tile, a coloured label and a coloured line, always */
 .kpi-ic,.ic-tile{background:linear-gradient(140deg,var(--ta),var(--tb));color:#fff;box-shadow:0 10px 18px -10px var(--ta),inset 0 1px 0 rgba(255,255,255,.4)}
@@ -474,20 +474,24 @@ html[data-theme=frost] .kpi:has(> .kpi-ic){border-color:color-mix(in srgb,var(--
 }
 .kpi > .v{transition:color .3s}
 
-/* card headings: a coloured tile with the icon, coloured title words, and a coloured bar across the top of the card */
-h3[data-hic]:not([data-hic=""]){position:relative;padding-left:42px;min-height:32px;gap:10px;color:color-mix(in srgb,var(--ti) 70%,#0F172A)}
-html[data-theme=dark] main h3[data-hic]:not([data-hic=""]){color:color-mix(in srgb,var(--tb) 62%,#fff)}
-html[data-theme=frost] main h3[data-hic]:not([data-hic=""]){color:color-mix(in srgb,var(--tb) 42%,#fff)}
+/* card headings (option B, update 104): the whole title box is one even bar with a line under it (frosted in Frost),
+   a thin colour line on top, the coloured icon tile, and the title in strong black or white.
+   components/Live.tsx (sizeBars) marks the card with data-bar and measures the bar: --hb its height, --hg the space
+   above the title row, so it fits any card padding and a title that wraps. */
+h3[data-hic]:not([data-hic=""]){position:relative;padding-left:42px;min-height:32px;gap:10px;color:#0F172A}
+html[data-theme] main h3[data-hic]:not([data-hic=""]){color:#fff}
 h3[data-hic]:not([data-hic=""])::before{position:absolute;left:0;top:50%;margin-top:-16px;width:32px;height:32px;border-radius:10px;
   background:linear-gradient(140deg,var(--ta),var(--tb));-webkit-mask:none;mask:none;box-shadow:0 8px 14px -8px var(--ta),inset 0 1px 0 rgba(255,255,255,.4)}
 h3[data-hic]:not([data-hic=""])::after{content:"";position:absolute;left:7px;top:50%;margin-top:-9px;width:18px;height:18px;background:#fff;
   -webkit-mask:var(--hic) center/contain no-repeat;mask:var(--hic) center/contain no-repeat;transition:transform .5s var(--e-spring)}
-.card:hover > .card-row > h3[data-hic]::after,.card:hover > h3[data-hic]::after{transform:scale(1.14) rotate(-6deg)}
-.card:has(> .card-row:first-child > h3[data-tone]),.card:has(> h3[data-tone]:first-child){position:relative}
-.card:has(> .card-row:first-child > h3[data-tone])::before,.card:has(> h3[data-tone]:first-child)::before{content:"";position:absolute;inset:0 0 auto 0;height:70px;border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0;pointer-events:none;
-  background:linear-gradient(180deg,color-mix(in srgb,var(--ta) 12%,transparent),transparent);box-shadow:inset 0 3px 0 0 color-mix(in srgb,var(--ta) 85%,transparent)}
-html[data-theme=dark] .card:has(> .card-row:first-child > h3[data-tone])::before,html[data-theme=dark] .card:has(> h3[data-tone]:first-child)::before{background:linear-gradient(180deg,color-mix(in srgb,var(--ta) 20%,transparent),transparent)}
-html[data-theme=frost] .card:has(> .card-row:first-child > h3[data-tone])::before,html[data-theme=frost] .card:has(> h3[data-tone]:first-child)::before{background:linear-gradient(180deg,color-mix(in srgb,var(--ta) 34%,transparent),transparent);box-shadow:inset 0 3px 0 0 var(--tb)}
+.card:hover > .card-row > h3[data-hic]::after,.card:hover > h3[data-hic]::after,.card:hover > .card-h > h3[data-hic]::after{transform:scale(1.14) rotate(-6deg)}
+.card[data-bar]{position:relative;isolation:isolate}
+.card[data-bar]::before{content:"";position:absolute;z-index:-1;inset:0 0 auto 0;height:var(--hb,68px);border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0;pointer-events:none;
+  background:linear-gradient(90deg,var(--ta,var(--rust)),var(--tb,#F39A6B)) top/100% 3px no-repeat,#F7F6F2;border-bottom:1px solid #E6E4DD}
+html[data-theme=dark] .card[data-bar]::before{background:linear-gradient(90deg,var(--ta,var(--rust)),var(--tb,#F39A6B)) top/100% 3px no-repeat,#1F2126;border-bottom-color:#2F3238}
+html[data-theme=frost] .card[data-bar]::before{background:linear-gradient(90deg,var(--ta,var(--rust)),var(--tb,#F39A6B)) top/100% 3px no-repeat,rgba(34,46,43,.42);border-bottom-color:rgba(255,255,255,.26)}
+.card[data-bar] > [data-barrow]{margin-bottom:calc(var(--hg,22px) + 16px)}
+html[data-theme=frost] .card[data-bar] > [data-barrow] :is(small,.muted){color:rgba(255,255,255,.9)}
 
 /* page heading: a title bar in the page's colour */
 .proj-head:has(> .ph-ic){padding:13px 20px 13px 13px;border-radius:22px;border:1px solid color-mix(in srgb,var(--ta) 24%,var(--px-line));
@@ -513,4 +517,4 @@ html[data-theme=frost] .age > div{background:rgba(255,255,255,.14)}
 .form-row input[type=month]{width:158px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit;font-size:14px}
 html[data-theme=dark] .form-row input[type=month]{background:#141518;border-color:#2F3238;color:#E8EAED;color-scheme:dark}
 html[data-theme=frost] .form-row input[type=month],html[data-theme=frost] .form-row input[type=search]{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);color:#fff;color-scheme:dark}
-@media print{.card::before{display:none!important}.proj-head:has(> .ph-ic){background:none!important;border:0!important;box-shadow:none!important;padding:0!important}}
+@media print{.card[data-bar]::before{display:none!important}.card[data-bar] > [data-barrow]{margin-bottom:14px}.proj-head:has(> .ph-ic){background:none!important;border:0!important;box-shadow:none!important;padding:0!important}}

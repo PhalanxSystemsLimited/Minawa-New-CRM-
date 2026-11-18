@@ -85,7 +85,7 @@ function tagHeads(root: ParentNode) {
 /** Card headings get an icon that fits what the card is about (an attribute, like the table headings above). The first
  *  match wins, so the more specific words come first. */
 const CARD_ICONS: [RegExp, string, string][] = [
-  [/reject|problem|not cleared|blocked/, 'ban', 'red'], [/past (their )?due|overdue|defaulter|late|who owes|still unpaid|owes/, 'alert', 'red'],
+  [/reject|problem|not cleared|blocked/, 'ban', 'red'], [/what is owed|owed|owing/, 'coins', 'rust'], [/past (their )?due|overdue|defaulter|late|who owes|still unpaid|owes/, 'alert', 'red'],
   [/approv|request|change/, 'shieldok', 'amber'], [/to do|task|pending/, 'clip', 'rust'], [/possession|keys?\b/, 'key', 'violet'],
   [/reconcil|hand-?over|handed|deposit/, 'swap', 'violet'], [/receipt|voucher|statement|certificate|document/, 'receipt', 'blue'],
   [/electric|meter|units|utility/, 'bolt', 'amber'], [/generator/, 'fuel', 'teal'], [/whatsapp|message|send|sent|announce|notice/, 'send', 'green'],
@@ -100,7 +100,27 @@ function tagCards(root: ParentNode) {
     if (h.querySelector('.ico,.ic-tile,svg') || h.closest('.bs-card,.doc')) { h.setAttribute('data-hic', ''); return; }
     const own = Array.from(h.childNodes).filter(n => n.nodeType === 3 || (n as HTMLElement).tagName !== 'SMALL').map(n => n.textContent || '').join(' ').trim().toLowerCase();
     const hit = own ? CARD_ICONS.find(([re]) => re.test(own)) : null;
-    h.setAttribute('data-hic', hit ? hit[1] : ''); if (hit) h.setAttribute('data-tone', hit[2]);
+    // Every card title gets an icon: a plain one when no word matches.
+    h.setAttribute('data-hic', hit ? hit[1] : own ? 'layers' : ''); if (hit || own) h.setAttribute('data-tone', hit ? hit[2] : 'slate');
+  });
+}
+
+/** The bar behind a card's title (when the title row is the first thing shown in the card): marks the card with its
+ *  colour and measures the bar, so it fits any padding and a title that wraps. --hb is the bar's height; --hg the
+ *  space above the title row. */
+function sizeBars(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>('.card > .card-row > h3[data-tone], .card > .card-h > h3[data-tone], .card > h3[data-tone]').forEach(h => {
+    const row = h.parentElement!.classList.contains('card') ? h : h.parentElement!, card = row.parentElement as HTMLElement;
+    if (card.classList.contains('bs-card') || !row.offsetHeight) return;
+    const first = Array.from(card.children).find(c => (c as HTMLElement).offsetHeight > 0 && c.tagName !== 'INPUT');
+    if (first !== row) return;
+    const tone = h.getAttribute('data-tone') || 'slate';
+    if (card.getAttribute('data-bar') !== tone) card.setAttribute('data-bar', tone);
+    if (!row.hasAttribute('data-barrow')) row.setAttribute('data-barrow', '');
+    // A title row with its own padding (card without padding) starts at the top: the bar is the row itself.
+    const top = row.offsetTop, own = top < 4, hb = `${own ? row.offsetHeight : top * 2 + row.offsetHeight}px`, hg = `${own ? -16 : top}px`;
+    if (card.style.getPropertyValue('--hb') !== hb) card.style.setProperty('--hb', hb);
+    if (card.style.getPropertyValue('--hg') !== hg) card.style.setProperty('--hg', hg);
   });
 }
 
@@ -156,17 +176,17 @@ export function LiveEffects() {
     const sh = document.querySelector<HTMLElement>('.shell');
     if (sh && sh.scrollHeight > sh.clientHeight && getComputedStyle(sh).overflowY !== 'visible') sh.scrollTop = 0;
     const main = document.getElementById('main') || document.body;
-    tagFigures(main); tagCards(main);
+    tagFigures(main); tagCards(main); sizeBars(main);
     let stopCount = countUp(main); tagHeads(main);
     const stopReveal = reveal(main);
-    const mo = new MutationObserver(() => { tagFigures(main); tagCards(main); stopCount(); stopCount = countUp(main); tagHeads(main); });
+    const mo = new MutationObserver(() => { tagFigures(main); tagCards(main); sizeBars(main); stopCount(); stopCount = countUp(main); tagHeads(main); });
     mo.observe(main, { childList: true, subtree: true });
     const stopInk = reduced() ? () => {} : tabInk();
     try { if (!document.querySelector('.proj-tabs')) sessionStorage.removeItem('minawa.tabInk'); } catch { /* ignore */ }
     // Figures that would leave their boxes are scaled to fit: now, once the count-ups have finished, and whenever the
     // page is resized or zoomed.
     let ft: ReturnType<typeof setTimeout> | undefined;
-    const fit = () => { clearTimeout(ft); ft = setTimeout(() => requestAnimationFrame(() => fitText(main)), 80); };
+    const fit = () => { clearTimeout(ft); ft = setTimeout(() => requestAnimationFrame(() => { fitText(main); sizeBars(main); }), 80); };
     fit(); const late = setTimeout(fit, 1700);
     const ro = new ResizeObserver(fit); ro.observe(main);
     const mo2 = new MutationObserver(fit); mo2.observe(main, { childList: true, subtree: true, characterData: true });
