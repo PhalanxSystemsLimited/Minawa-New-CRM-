@@ -7,6 +7,8 @@ import { GoSelect, Go, LiveSearch } from '@/components/client';
 import { PhoneMore } from '@/components/Mobile';
 import { initialsOf, WaAnswerBadges } from '@/components/views/activity';
 import { fd, rs, todayPKT, addDays, dow, t12 } from '@/lib/fmt';
+import { KIc, Empty } from '@/components/views/art';
+import { Ic } from '@/components/icons';
 
 const PERIODS: [string, string][] = [['today', 'Today'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['all', 'All time']];
 
@@ -28,12 +30,12 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
   let day = '';
   return <>
     <div className="page-head"><div><p>Every message sent by hand on WhatsApp, as confirmed with <b>Did you send the message?</b> on returning to the CRM: who sent it, to which owner and number, when, and what it said.{admin ? '' : ' You see the messages you sent.'}</p></div>
-      <a className="btn" href={`/api/export/whatsapp?${qs}`}>Download CSV</a></div>
+      <a className="btn" href={`/api/export/whatsapp?${qs}`}><Ic n="download" s={15} /> Download CSV</a></div>
     {err ? <div className="callout bad" style={{ marginBottom: 14 }}><div>The WhatsApp log can&apos;t be read yet ({err}). Run <b>supabase/migrations/0005_whatsapp_log_and_sheets.sql</b> in Supabase.</div></div> : null}
     <div className="kpis wl-kpis">
-      <div className="kpi"><div className="l">Sent</div><div className="v num">{sent.length}</div><div className="cell-sub">{owners} owner{owners === 1 ? '' : 's'}</div></div>
-      <div className="kpi"><div className="l">Opened, not sent</div><div className="v num">{notSent}</div></div>
-      <div className="kpi"><div className="l">{admin ? 'Staff' : 'Period'}</div><div className="v num">{admin ? people : PERIODS.find(p => p[0] === per)![1]}</div></div>
+      <div className="kpi"><KIc n="send" tone="green" /><div className="l">Sent</div><div className="v num">{sent.length}</div><div className="cell-sub">{owners} owner{owners === 1 ? '' : 's'}</div></div>
+      <div className="kpi"><KIc n="x" tone="red" /><div className="l">Opened, not sent</div><div className="v num">{notSent}</div></div>
+      <div className="kpi"><KIc n="users" tone="blue" /><div className="l">{admin ? 'Staff' : 'Period'}</div><div className="v num">{admin ? people : PERIODS.find(p => p[0] === per)![1]}</div></div>
     </div>
     <div className="card"><div className="toolbar" style={{ marginBottom: 14 }}>
       <LiveSearch name="q" placeholder="Apartment, owner, number or message" defaultValue={sp.q || ''} />
@@ -42,7 +44,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
       <GoSelect name="a" value={ans} ariaLabel="Answer" style={{ width: 'auto' }} options={[['', 'Sent and not sent'], ['sent', 'Sent'], ['not_sent', 'Opened, not sent']]} />
       <GoSelect name="per" value={per} ariaLabel="When" style={{ width: 'auto' }} options={PERIODS} />
     </div>
-      {!list.length ? <p className="empty">No WhatsApp messages {ans === 'not_sent' ? 'left unsent' : 'sent'} {per === 'today' ? 'today' : per === 'all' ? 'yet' : `in the last ${per} days`}.</p> :
+      {!list.length ? <Empty kind="send" title={`No WhatsApp messages ${ans === 'not_sent' ? 'left unsent' : 'sent'} ${per === 'today' ? 'today' : per === 'all' ? 'yet' : `in the last ${per} days`}`} /> :
         <div className="tbl-wrap"><table className="wl-table"><thead><tr><th>Time</th><th>Sent by</th><th>To</th><th>Message</th><th className="r">Balance then</th><th>Answer</th></tr></thead><tbody>
           {list.map(e => { const h = e.d !== day ? (day = e.d, <tr key={e.id + 'h'} className="wl-day"><td colSpan={6}>{dow(e.d)} {fd(e.d)}</td></tr>) : null;
             return [h, <tr key={e.id}>

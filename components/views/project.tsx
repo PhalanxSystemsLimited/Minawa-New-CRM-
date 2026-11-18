@@ -14,6 +14,7 @@ import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { Go, A } from '../client';
 import { TabScroller } from '../Mobile';
 import { DocModal, OwnerModal, SendPickModal, TargetModal, PossessionModal } from './modals';
+import { PageIc } from '@/components/views/art';
 
 export type Tab = 'dashboard' | 'owners' | 'payments' | 'utilities' | 'notices' | 'generator' | 'send' | 'follow' | 'messages' | 'settings';
 const TABS: [Tab, string, string][] = [['dashboard', 'Overview', ''], ['owners', 'Apartments', '/apartments'], ['payments', 'Payments', '/payments'], ['utilities', 'Utility bills', '/utilities'], ['generator', 'Generator charges', '/generator'], ['send', 'Send on WhatsApp', '/send'], ['follow', 'To do', '/todo'], ['messages', 'Messages', '/messages'], ['settings', 'Settings', '/settings']];
@@ -30,7 +31,7 @@ export function projHead(tab: Tab, ownerTitle?: string) {
   const S = cur(), p = S.proj, n = projectTasks(S).filter(t => t.role === 'manager').length, w = pendingCount(), np = newPayments().length;
   const t = ownerTitle || TITLES[tab] || 'Overview';
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
+    <div className="proj-head"><PageIc n="building" tone="rust" /><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
     <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && k === 'settings') && !((k === 'utilities' || k === 'send' || k === 'generator') && S.role !== 'manager') && !(k === 'follow' && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.length) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
       <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}</nav></TabScroller>
@@ -60,7 +61,7 @@ export async function projectPage(pid: string, sp: Record<string, string | undef
 
 function notSetUp(pid: string, name: string, place: string, kind: string, admin: boolean) {
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">Maintenance · {place}</div><div className="proj-title">{name}</div></div><div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{name}</div></div>
+    <div className="proj-head"><PageIc n="building" tone="rust" /><div><div className="eyebrow-b">Maintenance · {place}</div><div className="proj-title">{name}</div></div><div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{name}</div></div>
     <div className="card allclear"><div className="big">Maintenance isn&apos;t set up here yet</div>
       <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 520 }}>{name} ({kind.toLowerCase()}, {place}) joins once its owners, rates and opening balances are imported, the same way as Country Club. Billing and WhatsApp then work here too.</p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>

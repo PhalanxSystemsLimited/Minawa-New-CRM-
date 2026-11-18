@@ -7,6 +7,7 @@ import { projectPage, projHead } from '@/components/views/project';
 
 import { redirect } from 'next/navigation';
 import { requireStaff } from '@/lib/session';
+import { KIc } from '@/components/views/art';
 export const dynamic = 'force-dynamic';
 
 export default async function GeneratorPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
@@ -32,10 +33,10 @@ export default async function GeneratorPage({ params, searchParams }: { params: 
       {projHead('generator')}
       <div className="page-head"><div><h2>Generator charges</h2><p>Flats with a generator connection pay <b>{genCard ? rs(genCard.gen) : ''}</b> a month; the others pay <b>{genCard ? rs(genCard.base) : ''}</b>. Tick flats to add them to the list or take them off. A change counts from the flat&apos;s next bill: bills already made, and what owners already owe, don&apos;t change.{isAdmin() ? '' : ' Your changes wait for an admin\'s approval before they apply.'}</p></div></div>
       <div className="kpis gen-kpis">
-        <div className="kpi"><div className="l">With generator</div><div className="v num">{on}</div><div className="cell-sub">{genCard ? rs(genCard.gen) : ''} a month each</div></div>
-        <div className="kpi"><div className="l">Without generator</div><div className="v num">{off}</div><div className="cell-sub">{genCard ? rs(genCard.base) : ''} a month each</div></div>
-        <div className="kpi"><div className="l">Own agreed rate</div><div className="v num">{own.length}</div><div className="cell-sub">{[...new Set(own.map(o => rs(o.rate!)))].join(', ') || 'none'}; not changed by the list</div></div>
-        <div className="kpi"><div className="l">Monthly maintenance</div><div className="v num">{rs(monthly)}</div><div className="cell-sub">{hold ? `${hold} flat${hold === 1 ? '' : 's'} on hold not billed` : 'all flats'}{nextBill && nextP ? ` · next bills on ${fd(nextBill)}, for ${fm(nextP)}` : ''}</div></div>
+        <div className="kpi"><KIc n="fuel" tone="teal" /><div className="l">With generator</div><div className="v num">{on}</div><div className="cell-sub">{genCard ? rs(genCard.gen) : ''} a month each</div></div>
+        <div className="kpi"><KIc n="ban" tone="slate" /><div className="l">Without generator</div><div className="v num">{off}</div><div className="cell-sub">{genCard ? rs(genCard.base) : ''} a month each</div></div>
+        <div className="kpi"><KIc n="percent" tone="violet" /><div className="l">Own agreed rate</div><div className="v num">{own.length}</div><div className="cell-sub">{[...new Set(own.map(o => rs(o.rate!)))].join(', ') || 'none'}; not changed by the list</div></div>
+        <div className="kpi"><KIc n="coins" tone="rust" /><div className="l">Monthly maintenance</div><div className="v num">{rs(monthly)}</div><div className="cell-sub">{hold ? `${hold} flat${hold === 1 ? '' : 's'} on hold not billed` : 'all flats'}{nextBill && nextP ? ` · next bills on ${fd(nextBill)}, for ${fm(nextP)}` : ''}</div></div>
       </div>
       <GeneratorList pid={pid} rows={rows} blocks={blocks} genFee={genCard ? rs(genCard.gen) : ''} baseFee={genCard ? rs(genCard.base) : ''} admin={isAdmin()} />
       <p className="cell-sub" style={{ marginTop: 10 }}>The two amounts are rate cards ({cards.map(c => `${c.type} ${rs(c.base)}, ${genType(c.type)} ${rs(c.gen)}`).join('; ')}). An admin can change them in Settings › Monthly fees, from a chosen date.</p>

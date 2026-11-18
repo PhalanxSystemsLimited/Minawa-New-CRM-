@@ -7,6 +7,7 @@ import { Go, A, LiveSearch } from '@/components/client';
 import { projectPage, projHead, newPayments, payKey, paySeenCookie } from '@/components/views/project';
 import { PayRows, MarkPaymentsSeen } from '@/components/PayRows';
 import { when, viaHtml, ownerHref } from '@/components/views/bits';
+import { Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,7 @@ export default async function Payments({ params, searchParams }: { params: Promi
         <LiveSearch name="q" id="paySearch" placeholder="Search owner, apartment, receipt or reference" ariaLabel="Search payments" defaultValue={sp.q || ''} />
         {pers.map(([k, l]) => <Go key={k} href={qs({ per: k })} className="chipbtn" pressed={per === k} replace>{l}</Go>)}
       </div><div id="payTable">
-        {!rows.length ? <p className="empty">No payments match. Try another period or method.</p> :
+        {!rows.length ? <Empty kind="pay" title="No payments match">Try another period or method.</Empty> :
           <div className="tbl-wrap"><table className="pay-table"><thead><tr><th style={{ width: 28 }}></th><th>When</th><th>Apartment</th><th className="r">Amount</th><th>Received</th><th>Receipt</th></tr></thead>
             <PayRows cols={5} rows={rows.map(p => { const o = ownerById(p.ownerId), isNew = fresh.has(p.id);
               const item = (l: string, v: React.ReactNode) => v === null || v === '' || v === undefined ? null : <div className="pd-i"><div className="l">{l}</div><div className="v">{v}</div></div>;

@@ -7,6 +7,7 @@ import { Go } from '@/components/client';
 import { waTestNumber } from '@/lib/whatsapp';
 import { WaLogBody } from '@/components/views/walog';
 import { Wa } from '@/components/icons';
+import { PageIc } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export default async function WhatsApp({ searchParams }: { searchParams: Promise
   const sp = await searchParams, view = sp.view === 'projects' ? 'projects' : 'log';
   const staff = await requireStaff();
   const head = <>
-    <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">WhatsApp</div></div><div className="crumb-path">Dashboard<span>/</span>WhatsApp</div></div>
+    <div className="proj-head"><PageIc n="send" tone="green" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">WhatsApp</div></div><div className="crumb-path">Dashboard<span>/</span>WhatsApp</div></div>
     <div className="ptabs" role="tablist">
       <Go href="/whatsapp" current={view === 'log' ? 'true' : 'false'} replace>Who sent what</Go>
       <Go href="/whatsapp?view=projects" current={view === 'projects' ? 'true' : 'false'} replace>By project</Go>

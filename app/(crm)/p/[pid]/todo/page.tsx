@@ -9,6 +9,7 @@ import { projectPage, projHead } from '@/components/views/project';
 import { ownerHref } from '@/components/views/bits';
 import { verifyAction, rejectAction, alertDoneAction } from '@/lib/actions';
 import { Wa } from '@/components/icons';
+import { Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
     const held = acts ? S.payments.filter(p => p.collectorId === S.staffId && !p.handoverId && !p.reversed) : [], heldAmt = held.reduce((a, p) => a + p.amount, 0);
     const hid = (id: string) => <><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={id} /></>;
     const head = <div className="page-head"><div><h2>To do</h2><p>{acts ? 'What needs a person. The CRM makes bills, reminders and notices at 11:00 AM; they wait here for you to send one by one on WhatsApp.' : `${mgrs.length ? `Sent by ${mgrs.join(', ')} (building manager).` : 'No building manager is assigned to this building yet: the Admin assigns one in Staff & connections.'} You can follow it here; the sending is theirs.`}</p></div></div>;
-    if (!tsN && !pr.length && !fl.length && !al.length && !held.length) return <>{projHead('follow')}{head}<div className="card allclear"><div style={{ fontSize: 34 }}>✓</div><div className="big">All clear</div><p className="muted" style={{ margin: 0 }}>Nothing needs you right now.</p></div></>;
+    if (!tsN && !pr.length && !fl.length && !al.length && !held.length) return <>{projHead('follow')}{head}<Empty card kind="done" title="All clear">Nothing needs you right now.</Empty></>;
     return <>
       {projHead('follow')}{head}
       {held.length ? <div className="card"><div className="card-row"><h3>Cash to hand over <small>{rs(heldAmt)} · {held.length} confirmed payment{held.length === 1 ? '' : 's'}</small></h3><Go href="/cash" className="btn sm primary">Hand over to the Accountant</Go></div>

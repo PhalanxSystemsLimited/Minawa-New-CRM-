@@ -7,6 +7,8 @@ import '../styles/minawa-live.css';
 import '../styles/minawa-mobile.css';
 import '../styles/minawa-themes-auto.css';
 import '../styles/minawa-themes.css';
+import '../styles/minawa-icons.css';
+import '../styles/minawa-polish.css';
 import { Toasts, Behaviour } from '@/components/client';
 
 export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png', apple: '/icons/apple-touch-icon.png' },

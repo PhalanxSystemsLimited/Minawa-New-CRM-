@@ -6,6 +6,7 @@ import { PLAN_LABEL } from '@/lib/types';
 import { Go, GoRow, LiveSearch } from '@/components/client';
 import { projectPage, projHead } from '@/components/views/project';
 import { pill, ownerSince, ownerHref } from '@/components/views/bits';
+import { Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export default async function Apartments({ params, searchParams }: { params: Pro
         <LiveSearch name="q" id="search" placeholder="Search apartment or owner" ariaLabel="Search apartments" defaultValue={sp.q || ''} />
         {f.map(([key, l, n]) => <Go key={key} href={qs({ f: key })} className="chipbtn" pressed={filter === key} replace>{l} <span className="n">{n}</span></Go>)}
       </div><div id="ownersTable">
-        {!rows.length ? <p className="empty">No apartments match. Clear the search or pick another filter.</p> :
+        {!rows.length ? <Empty kind="search" title="No apartments match">Clear the search or pick another filter.</Empty> :
           <div className="tbl-wrap"><table className="sortable"><thead><tr>{sortTh('apt', 'Apartment')}{sortTh('owner', 'Owner')}{sortTh('bal', 'Balance', 'r')}{sortTh('status', 'Status')}</tr></thead><tbody>
             {rows.map(o => { const bal = balance(o), earlier = accountsOf(o).length - 1;
               return <GoRow key={o.id} href={ownerHref(o)} className={`click st-${ownerStatus(o)}`}><td><div className="cell-main apt-t">{o.apt}</div><div className="cell-sub">Block {o.block} · {o.type}{o.plan && o.plan !== 'monthly' ? ` · ${PLAN_LABEL[o.plan].toLowerCase()}` : ''}</div></td>

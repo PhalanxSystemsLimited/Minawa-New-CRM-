@@ -12,6 +12,7 @@ import { handOverAction, receiveHandoverAction, returnHandoverAction, depositAct
 import { Submit } from '@/components/client';
 import { fd, fds, rs, todayPKT, t12, diff } from '@/lib/fmt';
 import type { Handover } from '@/lib/types';
+import { PageIc, KIc, Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,17 +35,17 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
   const deposited30 = now.history.filter(x => x.h.depositD && diff(today, x.h.depositD) <= 30);
 
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Cash</div></div><div className="crumb-path">Dashboard<span>/</span>Cash</div></div>
+    <div className="proj-head"><PageIc n="wallet" tone="green" /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Cash</div></div><div className="crumb-path">Dashboard<span>/</span>Cash</div></div>
     <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken until the Accountant approves it. Give the cash to the Accountant with your entries: when he approves them, it is with him.'
       : acc ? 'Approving building managers\' cash entries (To do) means you have the cash. Record the bank deposit here when it goes into the bank.'
       : 'Where the cash is: with the building managers, with the Accountant, or in the bank. You only watch here.'}</p>
 
-    <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-      <div className="kpi"><div className="l">{mgr ? 'Cash with you' : 'With building managers'}</div><div className="v num">{rs(sum(myHand) + sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">entered, not approved yet</div></div>
-      <div className="kpi"><div className="l">Waiting for approval</div><div className="v num">{rs(sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">{myPending.length} entr{myPending.length === 1 ? 'y' : 'ies'}</div></div>
-      <div className="kpi"><div className="l">Handed over, to count</div><div className="v num">{rs(sum(toReceive.map(x => x.h)))}</div><div className="cell-sub">{toReceive.length} hand-over{toReceive.length === 1 ? '' : 's'}</div></div>
-      {mgr ? null : <div className="kpi"><div className="l">With the Accountant</div><div className="v num">{rs(sum(now.toDeposit.map(x => x.h)))}</div><div className="cell-sub">received, not in the bank yet</div></div>}
-      {mgr ? null : <div className="kpi"><div className="l">Deposited</div><div className="v num">{rs(sum(deposited30.map(x => x.h)))}</div><div className="cell-sub">last 30 days</div></div>}
+    <div className={mgr ? 'kpis' : 'kpis flow'} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+      <div className="kpi"><KIc n="building" tone="rust" /><div className="l">{mgr ? 'Cash with you' : 'With building managers'}</div><div className="v num">{rs(sum(myHand) + sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">entered, not approved yet</div></div>
+      <div className="kpi"><KIc n="hourglass" tone="amber" /><div className="l">Waiting for approval</div><div className="v num">{rs(sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">{myPending.length} entr{myPending.length === 1 ? 'y' : 'ies'}</div></div>
+      <div className="kpi"><KIc n="swap" tone="violet" /><div className="l">Handed over, to count</div><div className="v num">{rs(sum(toReceive.map(x => x.h)))}</div><div className="cell-sub">{toReceive.length} hand-over{toReceive.length === 1 ? '' : 's'}</div></div>
+      {mgr ? null : <div className="kpi"><KIc n="user" tone="teal" /><div className="l">With the Accountant</div><div className="v num">{rs(sum(now.toDeposit.map(x => x.h)))}</div><div className="cell-sub">received, not in the bank yet</div></div>}
+      {mgr ? null : <div className="kpi"><KIc n="bank" tone="blue" /><div className="l">Deposited</div><div className="v num">{rs(sum(deposited30.map(x => x.h)))}</div><div className="cell-sub">last 30 days</div></div>}
     </div>
 
     {mgr ? <div className="card"><div className="card-row"><h3>Cash with you <small>until the Accountant approves it</small></h3></div>
@@ -81,13 +82,13 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
           <Submit className="btn primary">Record bank deposit</Submit></div>
       </form> : <div className="tbl-wrap"><table><thead><tr><th>Hand-over</th><th>Building</th><th>From</th><th>Received by</th><th className="r">Amount</th></tr></thead><tbody>
           {now.toDeposit.map(({ h, pname }) => <tr key={h.id}><td>{h.id}</td><td>{pname}</td><td>{h.fromName}</td><td>{h.receivedBy} · {h.receivedD ? fds(h.receivedD) : ''}</td><td className="r num">{rs(h.amount)}</td></tr>)}
-        </tbody></table></div>) : <p className="empty">All received cash is in the bank.</p>}
+        </tbody></table></div>) : <Empty kind="cash" small title="All received cash is in the bank" />}
     </div> : null}
 
     {!mgr ? <div className="card"><div className="card-row"><h3>Cash still with building managers <small>confirmed, not handed over</small></h3></div>
       {now.withStaff.length ? <div className="tbl-wrap"><table><thead><tr><th>Building manager</th><th>Building</th><th>Payments</th><th>Oldest</th><th className="r">Amount</th></tr></thead><tbody>
         {now.withStaff.map(w => <tr key={w.project + w.collectorId}><td><b>{w.name}</b></td><td>{w.pname}</td><td>{w.n}</td><td>{fds(w.oldest)}{diff(today, w.oldest) > 2 ? <> <span className="tag warn">{diff(today, w.oldest)} days</span></> : null}</td><td className="r num">{rs(w.amount)}</td></tr>)}
-      </tbody></table></div> : <p className="empty">No cash is waiting with the building managers.</p>}
+      </tbody></table></div> : <Empty kind="done" small title="No cash is waiting with the building managers" />}
       {now.unconfirmed.length ? <p className="cell-sub" style={{ marginTop: 8 }}>Also {rs(sum(now.unconfirmed.map(u => u.pr)))} entered by building managers and not confirmed yet ({now.unconfirmed.length}): see To do.</p> : null}
     </div> : null}
 
@@ -101,7 +102,7 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
       {rec.rows.length ? <div className="tbl-wrap"><table><thead><tr><th>Building</th><th>Who took the cash</th><th className="r">In hand at start</th><th className="r">Taken</th><th className="r">Handed over</th><th className="r">In hand at end</th></tr></thead><tbody>
         {rec.rows.map(r => <tr key={r.project + r.collectorId}><td>{r.pname}</td><td><b>{r.name}</b></td><td className="r num">{rs(r.open)}</td><td className="r num">{rs(r.collected)}{r.nCollected ? <div className="cell-sub">{r.nCollected} payment{r.nCollected === 1 ? '' : 's'}</div> : null}</td><td className="r num">{rs(r.handed)}</td><td className="r num"><b>{rs(r.close)}</b></td></tr>)}
         <tr><td colSpan={2}><b>Total</b></td><td className="r num">{rs(rec.rows.reduce((a, r) => a + r.open, 0))}</td><td className="r num">{rs(rec.rows.reduce((a, r) => a + r.collected, 0))}</td><td className="r num">{rs(rec.rows.reduce((a, r) => a + r.handed, 0))}</td><td className="r num"><b>{rs(rec.rows.reduce((a, r) => a + r.close, 0))}</b></td></tr>
-      </tbody></table></div> : <p className="empty">No cash moved on this day.</p>}
+      </tbody></table></div> : <Empty kind="cal" small title="No cash moved on this day" />}
       {!mgr ? <div className="grid2" style={{ marginTop: 12 }}>
         <div><b>Received by the Accountant</b> · {rs(sum(rec.received.map(x => x.h)))}{rec.received.length ? <ul className="cell-sub">{rec.received.map(({ h, pname }) => <li key={h.id}>{h.id} · {h.fromName} · {pname} · {rs(h.amount)}</li>)}</ul> : <div className="cell-sub">Nothing</div>}</div>
         <div><b>Deposited in the bank</b> · {rs(sum(rec.deposited.map(x => x.h)))}{rec.deposited.length ? <ul className="cell-sub">{rec.deposited.map(({ h, pname }) => <li key={h.id}>{h.id} · {pname} · slip {h.depositSlip} · {rs(h.amount)}</li>)}</ul> : <div className="cell-sub">Nothing</div>}</div>

@@ -1,6 +1,7 @@
 // What staff did, from the activity log: the admin's view of each accountant's (and admin's) actions.
 import type { LogEntry, Project, Staff } from '@/lib/types';
 import { dow, fd, fds, addDays, todayPKT, t12 } from '@/lib/fmt';
+import { Empty } from '@/components/views/art';
 
 export const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]!.toUpperCase()).join('') || '?';
 export const roleTag = (r: string) => r === 'admin' ? <span className="tag info">Admin</span> : r === 'manager' ? <span className="tag warn">Building manager</span> : <span className="tag">Accountant</span>;
@@ -65,7 +66,7 @@ export function lastSeen(d: string, t: string) {
 
 /** Day-grouped list: time, who (initials chip and name), what kind, the project, and what they did. */
 export function ActivityList({ list, staff, projects, showProject = true, empty = 'Nothing yet.' }: { list: LogEntry[]; staff: Staff[]; projects: Project[]; showProject?: boolean; empty?: string }) {
-  if (!list.length) return <p className="empty">{empty}</p>;
+  if (!list.length) return <Empty kind="inbox" small>{empty}</Empty>;
   let day = '';
   return <div className="d-body log-page">{list.map(e => {
     const h = e.d !== day ? (day = e.d, <div className="ev-day">{dow(e.d)} {fd(e.d)}</div>) : null;

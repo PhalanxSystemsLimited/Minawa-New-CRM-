@@ -10,6 +10,7 @@ import { pill, when, viaHtml, waBtn, ownerSince } from '@/components/views/bits'
 import { restoreAction } from '@/lib/actions';
 import { pendingFor } from '@/lib/approvals';
 import { ApprovalItem } from '@/components/views/approvals';
+import { Ic } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,7 +143,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
         {many ? <p className="cell-sub" style={{ margin: '-4px 0 10px' }}>Everything since the first owner; the owner at the time is shown under each line.</p> : null}
         {tab === 'bills' ? billsTab : tab === 'payments' ? paysTab : tab === 'history' ? historyTab : notesTab}
       </div>
-      <div className="card"><div className="card-row"><h3>Apartment history <small>who held {o.apt}, and when</small></h3><a className="btn sm" href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener">PDF</a></div>
+      <div className="card"><div className="card-row"><h3>Apartment history <small>who held {o.apt}, and when</small></h3><a className="btn sm" href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener"><Ic n="file" s={15} /> PDF</a></div>
         <div className="tbl-wrap"><table><thead><tr><th>Customer</th><th>From</th><th>To</th><th>Meter in → out</th><th></th></tr></thead><tbody>
           {[...accts].reverse().map(a => <tr key={a.id}><td><b>{a.name}</b>{a.status === 'active' ? <> <span className="tag good">Now</span></> : null}</td>
             <td>{a.possessionKnown ? fd(a.possession) : 'Before the office list'}</td><td>{a.closedOn ? fd(a.closedOn) : '—'}</td>

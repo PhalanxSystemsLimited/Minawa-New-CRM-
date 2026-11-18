@@ -21,10 +21,12 @@ function countUp(root: ParentNode) {
     const final = node.nodeValue || '', m = final.match(/^(\D*)([\d,]+)(.*)$/s);
     if (!m) return;
     const [, pre, , post] = m, t0 = performance.now(), ms = 900 + Math.min(600, String(to).length * 60);
+    let wrote: string | null = null;
     const step = (t: number) => {
-      if (el.dataset.count !== key || node.parentNode !== el) return;
-      const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3);
-      node.nodeValue = k < 1 ? `${pre}${Math.round(to * e).toLocaleString('en-US')}${post}` : final;
+      // Stop if React has changed the number meanwhile (its attribute, or the text itself).
+      if (el.dataset.count !== key || node.parentNode !== el || (wrote !== null && node.nodeValue !== wrote)) return;
+      const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 4);
+      node.nodeValue = wrote = k < 1 ? `${pre}${Math.round(to * e).toLocaleString('en-US')}${post}` : final;
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -80,6 +82,52 @@ function tagHeads(root: ParentNode) {
   });
 }
 
+/** Card headings get an icon that fits what the card is about (an attribute, like the table headings above). The first
+ *  match wins, so the more specific words come first. */
+const CARD_ICONS: [RegExp, string, string][] = [
+  [/reject|problem|not cleared|blocked/, 'ban', 'red'], [/past (their )?due|overdue|defaulter|late|who owes|still unpaid|owes/, 'alert', 'red'],
+  [/approv|request|change/, 'shieldok', 'amber'], [/to do|task|pending/, 'clip', 'rust'], [/possession|keys?\b/, 'key', 'violet'],
+  [/reconcil|hand-?over|handed|deposit/, 'swap', 'violet'], [/receipt|voucher|statement|certificate|document/, 'receipt', 'blue'],
+  [/electric|meter|units|utility/, 'bolt', 'amber'], [/generator/, 'fuel', 'teal'], [/whatsapp|message|send|sent|announce|notice/, 'send', 'green'],
+  [/history|activity|log|what happened|happened/, 'history', 'violet'], [/coming up|schedule|calendar|cycle|billing|next/, 'cal', 'blue'],
+  [/collect|received|payment|paid|cash|money/, 'cash', 'green'], [/staff|team|login|people|who\b|manager|accountant/, 'users', 'blue'], [/bank|account/, 'bank', 'blue'],
+  [/fine|discount|rate|fee|%/, 'percent', 'violet'], [/bill|charge|dues|figures|maintenance by|total/, 'file', 'blue'],
+  [/report|month|by day|by building|projects?|side by side/, 'chart', 'blue'], [/building|apartment|flat|customer|owner|contact|profile/, 'door', 'rust'],
+  [/setting|rule|set up|import|connection/, 'gear', 'slate'], [/note/, 'edit', 'slate'],
+];
+function tagCards(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>('.card-row > h3:not([data-hic]), .card > h3:not([data-hic]), .card-h > h3:not([data-hic])').forEach(h => {
+    if (h.querySelector('.ico,.ic-tile,svg') || h.closest('.bs-card,.doc')) { h.setAttribute('data-hic', ''); return; }
+    const own = Array.from(h.childNodes).filter(n => n.nodeType === 3 || (n as HTMLElement).tagName !== 'SMALL').map(n => n.textContent || '').join(' ').trim().toLowerCase();
+    const hit = own ? CARD_ICONS.find(([re]) => re.test(own)) : null;
+    h.setAttribute('data-hic', hit ? hit[1] : ''); if (hit) h.setAttribute('data-tone', hit[2]);
+  });
+}
+
+/** Plain figures in the figure boxes count up like the dashboard's (the server's text stays the final text). */
+function tagFigures(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>('.kpi > .v:not([data-count]):not([data-nocount])').forEach(v => {
+    const t = v.childNodes.length === 1 && v.firstChild?.nodeType === 3 ? (v.textContent || '').trim() : '';
+    const m = t.match(/^(?:Rs\s?)?([\d,]+)$/);
+    if (m && +m[1].replace(/,/g, '') > 0) v.setAttribute('data-count', m[1].replace(/,/g, '')); else v.setAttribute('data-nocount', '');
+  });
+}
+
+/** Blocks further down the page fade up as they scroll into view (the ones on screen at the start rise in as before). */
+function reveal(main: HTMLElement) {
+  if (reduced() || !('IntersectionObserver' in window)) return () => {};
+  // The page's own blocks, and the blocks inside the dashboard's columns and the report pages (which are one tall block).
+  const vh = window.innerHeight, blocks = [...Array.from(main.children), ...Array.from(main.querySelectorAll(':scope > .lv-layout > * > *, :scope > .rpt > *'))];
+  const wait = blocks.filter(el => el.id !== 'modal' && !el.classList.contains('wa-ask') && !el.querySelector(':scope > .px-wait') && el.getBoundingClientRect().top > vh * 1.05) as HTMLElement[];
+  if (!wait.length) return () => {};
+  const show = (el: Element) => { el.classList.remove('px-wait'); el.classList.add('px-in'); };
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); show(e.target); } }), { rootMargin: '0px 0px -6% 0px' });
+  wait.forEach(el => { el.classList.add('px-wait'); io.observe(el); });
+  const all = () => wait.forEach(show);   // printing, or anything that needs the whole page
+  window.addEventListener('beforeprint', all);
+  return () => { io.disconnect(); window.removeEventListener('beforeprint', all); wait.forEach(el => el.classList.remove('px-wait')); };
+}
+
 const LIT = '.card,.pcard,.lv-need,.lv-kpi,.lv-lane,.kpi,.apv,.hs';
 const TILT = '.lv-tilt'; // nothing tilts now: a 3D tilt made the browser blur the icons inside
 
@@ -108,8 +156,10 @@ export function LiveEffects() {
     const sh = document.querySelector<HTMLElement>('.shell');
     if (sh && sh.scrollHeight > sh.clientHeight && getComputedStyle(sh).overflowY !== 'visible') sh.scrollTop = 0;
     const main = document.getElementById('main') || document.body;
+    tagFigures(main); tagCards(main);
     let stopCount = countUp(main); tagHeads(main);
-    const mo = new MutationObserver(() => { stopCount(); stopCount = countUp(main); tagHeads(main); });
+    const stopReveal = reveal(main);
+    const mo = new MutationObserver(() => { tagFigures(main); tagCards(main); stopCount(); stopCount = countUp(main); tagHeads(main); });
     mo.observe(main, { childList: true, subtree: true });
     const stopInk = reduced() ? () => {} : tabInk();
     try { if (!document.querySelector('.proj-tabs')) sessionStorage.removeItem('minawa.tabInk'); } catch { /* ignore */ }
@@ -121,7 +171,7 @@ export function LiveEffects() {
     const ro = new ResizeObserver(fit); ro.observe(main);
     const mo2 = new MutationObserver(fit); mo2.observe(main, { childList: true, subtree: true, characterData: true });
     window.addEventListener('resize', fit);
-    return () => { mo.disconnect(); stopCount(); stopInk(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
+    return () => { mo.disconnect(); stopCount(); stopInk(); stopReveal(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
   }, [path]);
   // Once: pointer light, tilt and button ripple (delegated, so it works for every page).
   useEffect(() => {
@@ -156,7 +206,7 @@ export function LiveEffects() {
     document.addEventListener('pointerdown', ripple, { passive: true });
     return () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerleave', leave); document.removeEventListener('pointerdown', ripple); };
   }, []);
-  return <div className="lv-aurora" aria-hidden="true"><i className="a1"></i><i className="a2"></i><i className="a3"></i></div>;
+  return <div className="lv-aurora" aria-hidden="true"><i className="a1"></i><i className="a2"></i><i className="a3"></i><b className="bg-grid"></b><b className="bg-sky"></b></div>;
 }
 
 /** Tabs whose panels are already on the page; switching just shows another panel. */

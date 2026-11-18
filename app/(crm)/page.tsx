@@ -12,7 +12,8 @@ import { projectTasks, myTasks } from '@/lib/tasks';
 import { NeedTile, Ring, Spark, Kpi, CalBadge, Lbl, Num, initials, Stack } from '@/components/views/live';
 import { LiveTabs } from '@/components/Live';
 import { MONL, fm, fd, fds, dow, dowl, rs, todayPKT, addDays, diff, nowPKT, ord, hour12, short } from '@/lib/fmt';
-import { Ic } from '@/components/icons';
+import { Ic, IcTile } from '@/components/icons';
+import { Empty, BuildingArt } from '@/components/views/art';
 import { Go, A, GoRow } from '@/components/client';
 import { viaHtml, when, ownerHref } from '@/components/views/bits';
 import { DocModal } from '@/components/views/modals';
@@ -96,42 +97,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const upTone = (k: string) => k === 'flag' || k === 'fine' ? 'red' : k === 'remind' ? 'amber' : k === 'bill' ? 'blue' : 'green';
   const upKind = (k: string) => k === 'bill' ? 'Bill' : k === 'remind' ? 'Reminder' : k === 'fine' ? 'Late warning' : k === 'flag' ? 'Discontinued' : 'Alert';
 
-  const payFeed = recent.length ? <div className="lv-feed">{recent.map(r => r.feed)}</div> : <p className="empty">No payments yet.</p>;
+  const payFeed = recent.length ? <div className="lv-feed">{recent.map(r => r.feed)}</div> : <Empty kind="pay" small title="No payments yet">Payments show here as they are entered and approved.</Empty>;
   const waFeed = wa.length ? <div className="lv-feed">{wa.slice(0, 6).map(e => <div className="lv-fi" key={e.id}>
     <span className={`lv-av a-${e.answer === 'sent' ? 'green' : 'amber'}`}>{initials(e.staffName)}</span>
     <div className="lv-fi-t"><A href={`/p/${e.project}/apartments/${e.ownerId}`} className="apt-a">{e.apt} · {e.ownerName}</A><small>{e.title} · by {e.staffName} · {lastSeen(e.d, e.t)}</small></div>
     <span className="lv-fi-r">{e.answer === 'sent' ? <span className="tag good">Sent</span> : <span className="tag warn">Not sent</span>}</span></div>)}</div>
-    : <p className="empty">Nothing this month. Messages sent from Send on WhatsApp show here with who sent them and when.</p>;
+    : <Empty kind="send" small title="Nothing sent this month">Messages sent from Send on WhatsApp show here with who sent them and when.</Empty>;
 
-  return <>
-    <div className="lv-greet"><div><div className="eyebrow-b">{dowl(today)}, {fd(today)}</div><div className="proj-title">{hello}, <span className="lv-name">{staff.name || roleName(staff)}</span></div></div>
-      <div className="lv-greet-r"><span className="hchip lv-chip"><span className="live"></span>Live in {live.length} of {projs.length} projects</span><a className="btn" href="/api/export/payments?per=all"><Ic n="download" s={16} /> Export all payments</a></div></div>
-
-    <Lbl>Needs you today</Lbl>
-    <div className="lv-needs">
-      {staff.role === 'admin' ? <>
-        <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label="changes to approve" href="/approvals" pulse sub={apvWait.length ? apvKinds : 'Nothing waiting for you'} />
-        <NeedTile title="Building managers" icon="alert" tone="red" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · ${sendN} owner${sendN === 1 ? '' : 's'} to message` : 'All clear'} />
-        <NeedTile title="Accountants" icon="phone" tone="green" n={accT.length} label={accT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={accT.length ? `${lateN(accT)} late · bank transfers to check` : 'All clear'} />
-      </> : staff.role === 'accountant' ? <>
-        <NeedTile title="To do" icon="alert" tone="red" n={accT.length} label={accT.length === 1 ? 'payment to check' : 'payments to check'} href="/tasks" pulse sub={accT.length ? `${lateN(accT)} late` : 'All clear'} />
-        <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
-        <NeedTile title="Building managers" icon="phone" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
-      </> : <>
-        <NeedTile title="To do" icon="alert" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? `${lateN(myT)} late` : 'All clear'} />
-        <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
-        <NeedTile title="Approvals" icon="shield" tone="amber" n={apvWait.length} label="of your requests waiting" href="/approvals" sub={apvWait.length ? apvKinds : 'Nothing waiting'} />
-      </>}
-      <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
-    </div>
-    {(() => {
-      // Customers with no possession date (due on the 1st until one is added), for the person's buildings.
-      const per = states.map(s => ({ p: s.proj, n: s.owners.filter(o => o.status === 'active' && !o.possessionKnown).length })).filter(x => x.n), n = per.reduce((a, x) => a + x.n, 0);
-      if (!n) return null;
-      return <div className="card nopos-card"><div className="card-row"><h3>{n} customer{n === 1 ? '' : 's'} with no possession date <small>due on the 1st until a date is added</small></h3><A href="/possession" className="btn sm primary">Add possession dates</A></div>
-        <p className="cell-sub" style={{ margin: 0 }}>{per.map(x => `${x.p.name}: ${x.n}`).join(' · ')}{staff.role === 'admin' ? '' : ' · your dates go to the Admin for approval'}</p></div>;
-    })()}
-    {(() => {
+  // Past due: first for a building manager (it is his work), after the money and the buildings for the others.
+  const pastDue = (() => {
       // Past due (Phase 2): customers whose bill (or old arrears) is past its due date, worst first. The building manager
       // can send a reminder straight away; others open the customer.
       const late = duesList(states, true).slice(0, 8), all = duesList(states, true).length;
@@ -144,30 +118,40 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               <td style={{ whiteSpace: 'nowrap' }}>{x.oldestDue ? fds(x.oldestDue) : '—'}<div className="cell-sub">{x.daysOver} day{x.daysOver === 1 ? '' : 's'} late{x.status === 'flagged' ? ' · discontinued' : ''}</div></td>
               <td className="r">{staff.role === 'manager' && x.phone ? <A href={`/p/${x.project}/send?type=reminder&ids=${x.ownerId}&go=1`} className="btn sm wa">Send reminder</A> : <A href={`/p/${x.project}/apartments/${x.ownerId}`} className="btn sm">Open</A>}</td></tr>)}
           </tbody></table></div></div></>;
-    })()}
+    })();
 
+  return <>
+    <div className="lv-greet"><div><div className="eyebrow-b">{dowl(today)}, {fd(today)}</div><div className="proj-title">{hello}, <span className="lv-name">{staff.name || roleName(staff)}</span></div></div>
+      <div className="lv-greet-r"><span className="hchip lv-chip"><span className="live"></span>Live in {live.length} of {projs.length} projects</span><a className="btn" href="/api/export/payments?per=all"><Ic n="download" s={16} /> Export all payments</a></div></div>
+
+    <Lbl>Needs you today</Lbl>
+    <div className="lv-needs">
+      {staff.role === 'admin' ? <>
+        <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="changes to approve" href="/approvals" pulse sub={apvWait.length ? apvKinds : 'Nothing waiting for you'} />
+        <NeedTile title="Building managers" icon="building" tone="red" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · ${sendN} owner${sendN === 1 ? '' : 's'} to message` : 'All clear'} />
+        <NeedTile title="Accountants" icon="coins" tone="green" n={accT.length} label={accT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={accT.length ? `${lateN(accT)} late · bank transfers to check` : 'All clear'} />
+      </> : staff.role === 'accountant' ? <>
+        <NeedTile title="To do" icon="clip" tone="red" n={accT.length} label={accT.length === 1 ? 'payment to check' : 'payments to check'} href="/tasks" pulse sub={accT.length ? `${lateN(accT)} late` : 'All clear'} />
+        <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
+        <NeedTile title="Building managers" icon="building" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
+      </> : <>
+        <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? `${lateN(myT)} late` : 'All clear'} />
+        <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
+        <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your requests waiting" href="/approvals" sub={apvWait.length ? apvKinds : 'Nothing waiting'} />
+      </>}
+      <NeedTile title="Payments" icon="cash" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
+    </div>
+    {(() => {
+      // Customers with no possession date (due on the 1st until one is added), for the person's buildings: a slim notice.
+      const per = states.map(s => ({ p: s.proj, n: s.owners.filter(o => o.status === 'active' && !o.possessionKnown).length })).filter(x => x.n), n = per.reduce((a, x) => a + x.n, 0);
+      if (!n) return null;
+      return <div className="strip nopos-card" data-tone="violet"><IcTile n="key" tone="violet" />
+        <div className="strip-t"><b>{n} customer{n === 1 ? '' : 's'} with no possession date</b><span>Due on the 1st until a date is added · {per.map(x => `${x.p.name}: ${x.n}`).join(' · ')}{staff.role === 'admin' ? '' : ' · your dates go to the Admin for approval'}</span></div>
+        <A href="/possession" className="btn sm primary"><Ic n="plus" s={14} /> Add possession dates</A></div>;
+    })()}
+    {staff.role === 'manager' ? pastDue : null}
     <div className="lv-layout lv-dash">
     <div className="lv-main">
-    {(() => {
-      // Per building (Phase 4): the buildings this person looks after, the Admin every building.
-      const bs = states.map(s => buildingStats(s, staff));
-      if (!bs.length) return null;
-      const row = (l: string, v: string, sub?: string, tone?: string) => <div className="bs-r"><span className="bs-l">{l}</span><span className={`bs-v num${tone ? ' ' + tone : ''}`}>{v}{sub ? <small>{sub}</small> : null}</span></div>;
-      return <><Lbl>{staff.role === 'admin' ? 'Buildings this month' : 'Your buildings this month'}</Lbl>
-        <div className="bs-grid">{bs.map(b => <div className="card bs-card" key={b.pid}>
-          <div className="card-row"><h3><A href={`/p/${b.pid}`} className="link-btn">{b.name}</A> <small>{b.active} customers{b.vacant ? ` · ${b.vacant} vacant` : ''}</small></h3></div>
-          {row('Billed', rs(b.billed), `${b.nBills} bill${b.nBills === 1 ? '' : 's'}`)}
-          {row('Collected (approved)', rs(b.collected), b.nPays ? `cash ${short(b.cash)} · bank ${short(b.bank)}` : 'none yet', 'good')}
-          {b.nPending ? row('Waiting for approval', rs(b.pending), `${b.nPending} entr${b.nPending === 1 ? 'y' : 'ies'}`, 'warn') : null}
-          {row('Still to collect', rs(b.toCollect), `${b.owing} customer${b.owing === 1 ? '' : 's'}`)}
-          {row('Past due', rs(b.pastDue), `${b.nPastDue} customer${b.nPastDue === 1 ? '' : 's'}`, b.nPastDue ? 'bad' : '')}
-          {b.elec ? row('Electricity', `${rs(b.elec.collected)} of ${rs(b.elec.billed)}`, `unpaid ${short(b.elec.unpaid)}`) : null}
-          {b.gen ? row('Generator', rs(b.gen.billed), `${b.gen.flats} flat${b.gen.flats === 1 ? '' : 's'} on the list`) : null}
-          {b.noPos ? row('No possession date', String(b.noPos), 'due on the 1st', 'warn') : null}
-          {b.requests ? row(staff.role === 'admin' ? 'Requests to decide' : 'Your requests waiting', String(b.requests)) : null}
-          <div className="bs-acts"><A href={`/reports?r=month&p=${b.pid}`} className="btn sm">Monthly report</A><A href={`/reports?o=1&p=${b.pid}`} className="btn sm">Defaulters</A></div>
-        </div>)}</div></>;
-    })()}
     <Lbl>Money at a glance</Lbl>
     <section className="lv-money">
       <div className="lv-money-ring"><Ring pct={ringPct} label={y26 ? '2026 PAID' : `${monName.toUpperCase()} TARGET`} tone={ringPct >= 50 ? 'green' : 'amber'} />
@@ -185,6 +169,31 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         {r0 ? <div className="lv-mini-cycle" title="Each customer is billed on their own billing date; due on the 15th of the next month"><span><b>Own</b>Bill date</span>{r0.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(dueDay)}</b>Due</span></div> : null}</div>
     </section>
 
+    {(() => {
+      // Per building (Phase 4): the buildings this person looks after, the Admin every building.
+      const bs = states.map(s => buildingStats(s, staff));
+      if (!bs.length) return null;
+      const row = (l: string, v: string, sub?: string, tone?: string) => <div className="bs-r"><span className="bs-l">{l}</span><span className={`bs-v num${tone ? ' ' + tone : ''}`}>{v}{sub ? <small>{sub}</small> : null}</span></div>;
+      return <><Lbl>{staff.role === 'admin' ? 'Buildings this month' : 'Your buildings this month'}</Lbl>
+        <div className="bs-grid">{bs.map(b => <div className="card bs-card" key={b.pid}>
+          <div className="bs-top"><BuildingArt seed={b.pid} />
+            <div className="bs-name"><A href={`/p/${b.pid}`}>{b.name}</A><small>{b.active} customers{b.vacant ? ` · ${b.vacant} vacant` : ''}</small></div></div>
+          {(() => { const pc = b.billed ? Math.min(100, Math.round(100 * b.collected / b.billed)) : 0; return <div className="bs-prog" title="Collected (approved) this month, of what was billed this month">
+            <div className="bs-prog-h"><span>Collected of billed</span><b className="num">{b.billed ? `${pc}%` : '—'}</b></div>
+            <div className={`bs-bar ${pc >= 50 ? 'g' : 'a'}`}><span style={{ width: `${pc}%` }}></span></div></div>; })()}
+          {row('Billed', rs(b.billed), `${b.nBills} bill${b.nBills === 1 ? '' : 's'}`)}
+          {row('Collected (approved)', rs(b.collected), b.nPays ? `cash ${short(b.cash)} · bank ${short(b.bank)}` : 'none yet', 'good')}
+          {b.nPending ? row('Waiting for approval', rs(b.pending), `${b.nPending} entr${b.nPending === 1 ? 'y' : 'ies'}`, 'warn') : null}
+          {row('Still to collect', rs(b.toCollect), `${b.owing} customer${b.owing === 1 ? '' : 's'}`)}
+          {row('Past due', rs(b.pastDue), `${b.nPastDue} customer${b.nPastDue === 1 ? '' : 's'}`, b.nPastDue ? 'bad' : '')}
+          {b.elec ? row('Electricity', `${rs(b.elec.collected)} of ${rs(b.elec.billed)}`, `unpaid ${short(b.elec.unpaid)}`) : null}
+          {b.gen ? row('Generator', rs(b.gen.billed), `${b.gen.flats} flat${b.gen.flats === 1 ? '' : 's'} on the list`) : null}
+          {b.noPos ? row('No possession date', String(b.noPos), 'due on the 1st', 'warn') : null}
+          {b.requests ? row(staff.role === 'admin' ? 'Requests to decide' : 'Your requests waiting', String(b.requests)) : null}
+          <div className="bs-acts"><A href={`/reports?r=month&p=${b.pid}`} className="btn sm"><Ic n="chart" s={14} /> Monthly report</A><A href={`/reports?o=1&p=${b.pid}`} className="btn sm"><Ic n="alert" s={14} /> Defaulters</A></div>
+        </div>)}</div></>;
+    })()}
+    {staff.role !== 'manager' ? pastDue : null}
     {!admin && apvRejected.length ? <div className="card apv-card"><div className="card-row"><h3>Rejected by an admin <small>{apvRejected.length} in the last 30 days, with the admin&apos;s note</small></h3><Go href="/approvals?s=done" className="btn sm">See all</Go></div>
       <div className="apv-list">{apvRejected.slice(0, 5).map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin={false} meId={staff.id} back="/" />)}</div></div> : null}
 
@@ -208,7 +217,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <div className="card lv-upc"><div className="card-row"><h3>Coming up</h3><span className="muted" style={{ fontSize: 12.5 }}>automatic · 14 days</span></div>
         {up.length ? <div className="lv-tl">{up.map((x, i) => <div className={`lv-ti t-${upTone(x.e.kind)}`} key={i}><div className="d">{dow(x.d)} {fd(x.d)} · {upKind(x.e.kind)}</div>
           <div className="lv-ti-r"><div><b>{x.e.text}</b><small>{x.pname}</small></div><Go href={ownerHref(x.e.o)} className="btn sm go" ariaLabel={`View ${x.e.o.name}`}>View</Go></div></div>)}</div>
-          : <p className="empty">Nothing scheduled in the next 14 days.</p>}</div>
+          : <Empty kind="cal" small title="Nothing scheduled">No bills or warnings in the next 14 days.</Empty>}</div>
     </div>
 
     <aside className="lv-side">

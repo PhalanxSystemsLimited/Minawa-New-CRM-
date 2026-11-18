@@ -7,6 +7,7 @@ import { Submit, Go, ModalShell, CloseBtn, PasswordInput } from '@/components/cl
 import { ActivityList, lastSeen, roleTag } from '@/components/views/activity';
 import { projects as listProjects } from '@/lib/ops';
 import { waTestNumber } from '@/lib/whatsapp';
+import { PageIc } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add'];
   const row = (name: string, ok: boolean, what: string, tag?: string) => <div className="li"><div className="t"><div className="a">{name}</div><div className="b">{what}</div></div>{ok ? <span className={`tag ${tag === 'warn' ? 'warn' : 'good'}`}>{tag && tag !== 'warn' ? tag : 'On'}</span> : <span className="tag bad">Not set up</span>}</div>;
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
+    <div className="proj-head"><PageIc n="users" tone="blue" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
     <div className="card"><div className="card-row"><h3>Staff <small>who can sign in</small></h3><Go href="/admin?add=1" className="btn primary sm">+ Add someone</Go></div>
       <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>

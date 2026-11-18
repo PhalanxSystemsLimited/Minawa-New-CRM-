@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Note } from '@/lib/notify';
+import { ringBell } from './Shell';
 
 const EVERY = 5000, HIDDEN_EVERY = 30000, SHOW_MS = 9000, OUT_MS = 380, MAX_SHOWN = 3;
 type Toast = Note & { key: number; born: number; out?: number };
@@ -31,12 +32,15 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
     const chime = () => {
       try { if (localStorage.getItem('minawa.sound') === 'off') return; } catch { /* private mode: play */ }
       if (!ctx || ctx.state !== 'running') return;
+      // A small bell: two strikes ("ding-dong"), each a fundamental with two bell overtones that die away.
       const t0 = ctx.currentTime + 0.02;
-      for (const [f, at, len] of [[880, 0, 0.32], [1318.5, 0.11, 0.42]] as const) {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
-        g.gain.setValueAtTime(0.0001, t0 + at); g.gain.exponentialRampToValueAtTime(0.16, t0 + at + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + len);
-        o.start(t0 + at); o.stop(t0 + at + len + 0.02);
+      for (const [f, at] of [[1046.5, 0], [784, 0.28]] as const) {
+        for (const [mult, vol, len] of [[1, 0.16, 1.1], [2.76, 0.05, 0.55], [5.4, 0.02, 0.3]] as const) {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f * mult; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0.0001, t0 + at); g.gain.exponentialRampToValueAtTime(vol, t0 + at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + len);
+          o.start(t0 + at); o.stop(t0 + at + len + 0.02);
+        }
       }
     };
     window.addEventListener('pointerdown', unlock); window.addEventListener('keydown', unlock);
@@ -45,7 +49,7 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
     const refresh = () => { if (typing()) { pending.current = true; return; } pending.current = false; router.refresh(); };
     const readSeen = (): string[] | null => { try { const v = localStorage.getItem(KEY); return v ? JSON.parse(v) : null; } catch { return null; } };
     const saveSeen = (ids: string[]) => { try { localStorage.setItem(KEY, JSON.stringify(ids.slice(-400))); } catch { /* private mode */ } };
-    const ring = () => { const b = document.querySelector('.bell-btn'); if (!b) return; b.classList.remove('ringing'); void (b as HTMLElement).offsetWidth; b.classList.add('ringing'); setTimeout(() => b.classList.remove('ringing'), 1600); };
+    const ring = () => ringBell();
     const show = (fresh: Note[]) => {
       if (!fresh.length) return;
       chime();

@@ -6,6 +6,7 @@ import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
 import { GoSelect, Go } from '@/components/client';
 import { ActivityList, initialsOf, lastSeen, roleTag } from '@/components/views/activity';
+import { PageIc } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 const GROUPS: Record<string, string[] | null> = { all: null, money: ['payment', 'webhook', 'link'], msg: ['bill', 'message', 'whatsapp'], fine: ['fine', 'flag', 'alert'], change: ['admin', 'job', 'approval'], signin: ['signin', 'signout'] };
@@ -35,7 +36,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
   const people = [...visiblePeople].sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
   const lastOf = person ? list.find(e => e.staffId === person.id) : null;
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Activity</div></div><div className="crumb-path">Dashboard<span>/</span>Activity</div></div>
+    <div className="proj-head"><PageIc n="history" tone="violet" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Activity</div></div><div className="crumb-path">Dashboard<span>/</span>Activity</div></div>
     {person ? <div className="card act-person"><span className={`act-av lg${person.role === 'admin' ? ' admin' : ''}`} aria-hidden="true">{initialsOf(person.name)}</span>
       <div><div className="pc-name">{person.name}</div><div className="cell-sub">{person.email}</div></div>{roleTag(person.role)}{person.active ? <span className="tag good">Can sign in</span> : <span className="tag bad">Turned off</span>}
       <div className="act-person-r"><div className="cell-sub">Last active</div><b>{lastOf ? lastSeen(lastOf.d, lastOf.t) : 'Not yet'}</b></div>

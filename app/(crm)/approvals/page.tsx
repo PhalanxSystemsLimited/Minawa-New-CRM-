@@ -6,6 +6,7 @@ import { use, ownerById } from '@/lib/engine';
 import { Go } from '@/components/client';
 import { ApprovalItem, type ApprovalView } from '@/components/views/approvals';
 import { addDays, todayPKT } from '@/lib/fmt';
+import { PageIc, KIc, Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,15 +24,15 @@ export default async function Approvals({ searchParams }: { searchParams: Promis
   const n = (st: string) => recent.filter(v => v.a.status === st).length;
   const list = show === 'done' ? done.slice(0, 100) : waiting;
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Approvals</div></div><div className="crumb-path">Dashboard<span>/</span>Approvals</div></div>
+    <div className="proj-head"><PageIc n="shieldok" tone="amber" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Approvals</div></div><div className="crumb-path">Dashboard<span>/</span>Approvals</div></div>
     <div className="page-head"><div><p>{admin
       ? <>When an accountant or a building manager changes what an owner is charged (a discount, generator charges, the billing plan, the flat&apos;s monthly fee, an adjustment, an instalment plan or a due date) or records a new possession, it waits here. It applies only when an admin approves it. Admins can also send a request back with a note on what to change. Changes made by admins apply straight away.</>
       : <>Changes you ask for (a discount, generator charges, the billing plan, an adjustment, an instalment plan, a due date or a new possession) wait for an admin&apos;s approval. If the Admin asks for changes, the request shows under Decided with the Admin&apos;s note; send a corrected one from the apartment page.</>}</p></div></div>
     <div className="kpis apv-kpis">
-      <div className="kpi"><div className="l">Waiting</div><div className="v num">{waiting.length}</div><div className="cell-sub">{admin ? 'for your approval' : 'for an admin'}</div></div>
-      <div className="kpi"><div className="l">Approved</div><div className="v num">{n('approved')}</div><div className="cell-sub">last 30 days</div></div>
-      <div className="kpi"><div className="l">Rejected</div><div className="v num">{n('rejected')}</div><div className="cell-sub">last 30 days</div></div>
-      {n('changes') ? <div className="kpi"><div className="l">Changes asked</div><div className="v num">{n('changes')}</div><div className="cell-sub">last 30 days · see Decided</div></div> : null}
+      <div className="kpi"><KIc n="hourglass" tone="amber" /><div className="l">Waiting</div><div className="v num">{waiting.length}</div><div className="cell-sub">{admin ? 'for your approval' : 'for an admin'}</div></div>
+      <div className="kpi"><KIc n="okc" tone="green" /><div className="l">Approved</div><div className="v num">{n('approved')}</div><div className="cell-sub">last 30 days</div></div>
+      <div className="kpi"><KIc n="ban" tone="red" /><div className="l">Rejected</div><div className="v num">{n('rejected')}</div><div className="cell-sub">last 30 days</div></div>
+      {n('changes') ? <div className="kpi"><KIc n="edit" tone="blue" /><div className="l">Changes asked</div><div className="v num">{n('changes')}</div><div className="cell-sub">last 30 days · see Decided</div></div> : null}
     </div>
     <div className="card">
       <div className="ptabs" role="tablist" style={{ marginBottom: 14 }}>
@@ -39,7 +40,7 @@ export default async function Approvals({ searchParams }: { searchParams: Promis
         <Go href="/approvals?s=done" current={show === 'done' ? 'true' : 'false'} replace>Decided</Go>
       </div>
       {list.length ? <div className="apv-list">{list.map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin={admin} meId={me.id} back={back} />)}</div>
-        : <p className="empty">{show === 'done' ? 'Nothing decided yet.' : admin ? 'Nothing is waiting for your approval.' : 'None of your changes are waiting.'}</p>}
+        : <Empty kind={show === 'done' ? 'inbox' : 'done'} title={show === 'done' ? 'Nothing decided yet' : admin ? 'Nothing is waiting for your approval' : 'None of your changes are waiting'} />}
     </div>
   </>;
 }

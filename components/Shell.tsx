@@ -17,7 +17,7 @@ export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects
       <div className="side-brand"><span className="side-logo"><img src="/assets/minawa-mark.png" alt="" /></span><div><div className="sb1">Minawa Group</div><div className="sb2">ERP · Phase 1</div></div></div>
       <nav className="side-nav" id="nav" aria-label="Sections">
         <div className="side-h">Main</div>
-        <Go href="/" className="side-i" current={home}><Ic n="home" /><span className="side-l">Dashboard</span></Go>
+        <Go href="/" className="side-i" current={home}><Ic n="dash" /><span className="side-l">Dashboard</span></Go>
         <div className="side-h">Modules</div>
         <button className={'side-i grp' + (pid ? ' in' : '')} aria-expanded={open} aria-controls="navMaint" onClick={() => setOpen(!open)}><Ic n="tool" /><span className="side-l">Maintenance</span><span className="chev" aria-hidden="true"><Ic n="chev" s={16} /></span></button>
         <div className="side-sub" id="navMaint" hidden={!open}>
@@ -28,16 +28,16 @@ export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects
         </div>
         <div className="side-h">System</div>
         <Go href="/whatsapp" className="side-i si si-wa" current={path.startsWith('/whatsapp') || path.startsWith('/messages')}><span className="si-ic" aria-hidden="true"><Wa /></span><span className="side-l">WhatsApp</span></Go>
-        <Go href="/approvals" className="side-i si si-apv" current={path.startsWith('/approvals')}><span className="si-ic" aria-hidden="true"><Ic n="check" /></span><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
-        {(() => { const n = admin ? 0 : projects.reduce((a, p) => a + (p.todo || 0), 0); return <Go href="/tasks" className="side-i si si-todo" current={path.startsWith('/tasks')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">{admin ? 'Team To do' : 'To do'}</span>{n ? <span className="side-b" title={`${n} task${n === 1 ? '' : 's'} for you`}>{n}</span> : null}</Go>; })()}
-        {role !== 'manager' ? <Go href="/received" className="side-i si si-rcv" current={path.startsWith('/received')}><span className="si-ic" aria-hidden="true"><Ic n="wallet" /></span><span className="side-l">Received payments</span></Go> : null}
-        {(() => { const n = projects.reduce((a, p) => a + (p.nopos || 0), 0); return <Go href="/possession" className="side-i si si-pos" current={path.startsWith('/possession')}><span className="si-ic" aria-hidden="true"><Ic n="building" /></span><span className="side-l">Possession dates</span>{n ? <span className="side-b" title={`${n} customer${n === 1 ? '' : 's'} with no possession date`}>{n}</span> : null}</Go>; })()}
+        <Go href="/approvals" className="side-i si si-apv" current={path.startsWith('/approvals')}><span className="si-ic" aria-hidden="true"><Ic n="shieldok" /></span><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
+        {(() => { const n = admin ? 0 : projects.reduce((a, p) => a + (p.todo || 0), 0); return <Go href="/tasks" className="side-i si si-todo" current={path.startsWith('/tasks')}><span className="si-ic" aria-hidden="true"><Ic n="clip" /></span><span className="side-l">{admin ? 'Team To do' : 'To do'}</span>{n ? <span className="side-b" title={`${n} task${n === 1 ? '' : 's'} for you`}>{n}</span> : null}</Go>; })()}
+        {role !== 'manager' ? <Go href="/received" className="side-i si si-rcv" current={path.startsWith('/received')}><span className="si-ic" aria-hidden="true"><Ic n="receipt" /></span><span className="side-l">Received payments</span></Go> : null}
+        {(() => { const n = projects.reduce((a, p) => a + (p.nopos || 0), 0); return <Go href="/possession" className="side-i si si-pos" current={path.startsWith('/possession')}><span className="si-ic" aria-hidden="true"><Ic n="key" /></span><span className="side-l">Possession dates</span>{n ? <span className="side-b" title={`${n} customer${n === 1 ? '' : 's'} with no possession date`}>{n}</span> : null}</Go>; })()}
         <Go href="/cash" className="side-i si si-cash" current={path.startsWith('/cash')}><span className="si-ic" aria-hidden="true"><Ic n="wallet" /></span><span className="side-l">Cash</span></Go>
-        <Go href="/reports" className="side-i si si-rpt" current={path.startsWith('/reports')}><span className="si-ic" aria-hidden="true"><Ic n="trend" /></span><span className="side-l">Reports</span></Go>
-        <Go href="/log" className="side-i si si-log" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">Activity</span></Go>
-        {admin ? <Go href="/admin" className="side-i si si-adm" current={path === '/admin'}><span className="si-ic" aria-hidden="true"><Ic n="shield" /></span><span className="side-l">Staff & connections</span></Go> : null}
+        <Go href="/reports" className="side-i si si-rpt" current={path.startsWith('/reports')}><span className="si-ic" aria-hidden="true"><Ic n="chart" /></span><span className="side-l">Reports</span></Go>
+        <Go href="/log" className="side-i si si-log" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><span className="si-ic" aria-hidden="true"><Ic n="history" /></span><span className="side-l">Activity</span></Go>
+        {admin ? <Go href="/admin" className="side-i si si-adm" current={path === '/admin'}><span className="si-ic" aria-hidden="true"><Ic n="users" /></span><span className="side-l">Staff & connections</span></Go> : null}
       </nav>
-      {me ? <div className="side-me"><span className="me-av">{me.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><div className="side-me-t"><b>{me.name}</b><span>{me.role}</span></div><form action={me.signOut}><button type="submit" className="btn sm">Sign out</button></form></div> : null}
+      {me ? <div className="side-me"><span className="me-av">{me.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span><div className="side-me-t"><b>{me.name}</b><span>{me.role}</span></div><form action={me.signOut}><button type="submit" className="btn sm" title="Sign out"><Ic n="logout" s={14} /> Sign out</button></form></div> : null}
       <div className="side-foot">Phase 1 · Maintenance dues</div>
     </aside>
   );
@@ -47,6 +47,15 @@ export function Topbar({ todo, firstTodo, bell, roleLabel, initials, name, defau
   const path = usePathname(), sp = useSearchParams();
   const pid = path.startsWith('/p/') ? path.split('/')[2] : defaultPid;
   const onApts = path === `/p/${pid}/apartments`;
+  // The bell rings when the number waiting goes up: while the page is open, and since this browser last looked.
+  const prev = useRef<number | null>(null);
+  useEffect(() => {
+    let was = prev.current;
+    if (was === null) { try { const v = sessionStorage.getItem('minawa.bell'); was = v === null ? todo : +v; } catch { was = todo; } }
+    prev.current = todo;
+    try { sessionStorage.setItem('minawa.bell', String(todo)); } catch { /* private mode */ }
+    if (todo > was) { const t = setTimeout(() => ringBell(), 500); return () => clearTimeout(t); }
+  }, [todo]);
   return (
     <div className="top-in" id="topbar">
       <button className="icon-btn only-m" data-a="side-open" aria-label="Open menu"><Ic n="menu" /></button>
@@ -55,12 +64,27 @@ export function Topbar({ todo, firstTodo, bell, roleLabel, initials, name, defau
       <span className="top-sp"></span>
       <ThemeSwitch />
       <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} role={roleLabel} />
-      <Go href={bell?.href || (firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`)} className="icon-btn bell-btn" title={bell?.label || 'To do'} ariaLabel={`${bell?.label || 'To do'}${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
+      <Go href={bell?.href || (firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`)} className={'icon-btn bell-btn' + (todo ? ' has' : '')} title={bell?.label || 'To do'} ariaLabel={`${bell?.label || 'To do'}${todo ? `, ${todo} waiting` : ''}`}><Bell />{todo ? <span className="dot-n" key={todo}>{todo}</span> : null}</Go>
       <details className="more me-menu"><summary className="me"><span className="me-av">{initials}</span><div className="me-t"><div className="me-n">{roleLabel}</div><div className="me-r">Minawa Group</div></div></summary>
         <div className="menu menu-r"><div className="menu-who"><b>{name}</b><span>{roleLabel}</span></div><SoundToggle /><form action={signOut}><button type="submit">Sign out</button></form></div>
       </details>
     </div>
   );
+}
+
+/** The bell: the body swings, the clapper swings the other way, and two sound waves spread out while it rings. */
+function Bell() {
+  return <svg className="ico bell" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path className="bl-w bl-w1" d="M3.2 9.500a9.500 9.500 0 0 1 2.400-5.200" /><path className="bl-w bl-w2" d="M20.800 9.500a9.500 9.500 0 0 0-2.400-5.200" />
+    <g className="bl-body"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /></g>
+    <path className="bl-clap" d="M10.300 21a1.940 1.940 0 0 0 3.400 0" />
+  </svg>;
+}
+/** Rings the bell in the top bar (LivePayments calls this when a notification arrives). */
+export function ringBell() {
+  const b = document.querySelector<HTMLElement>('.bell-btn'); if (!b) return;
+  b.classList.remove('ringing'); void b.offsetWidth; b.classList.add('ringing');
+  setTimeout(() => b.classList.remove('ringing'), 2600);
 }
 
 /** Quick actions. Inside a project they act on that project. Elsewhere (Dashboard, WhatsApp, Approvals, Activity) each
@@ -117,16 +141,22 @@ export function ThemeSwitch() {
     if (cur === 'light') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = cur;
     setT(cur);
   }, []);
-  const pick = (k: Theme) => {
+  const pick = (k: Theme, e?: React.MouseEvent) => {
     const next = k === t ? THEMES[(THEMES.findIndex(x => x[0] === t) + 1) % THEMES.length][0] : k;
     setT(next);
     const h = document.documentElement;
-    h.classList.add('theme-swap'); setTimeout(() => h.classList.remove('theme-swap'), 450);
-    if (next === 'light') delete h.dataset.theme; else h.dataset.theme = next;
+    const apply = () => { if (next === 'light') delete h.dataset.theme; else h.dataset.theme = next; };
+    const vt = (document as unknown as { startViewTransition?: (f: () => void) => { finished: Promise<void> } }).startViewTransition;
+    if (vt && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const r = (e?.currentTarget as HTMLElement | undefined)?.getBoundingClientRect();
+      h.style.setProperty('--vt-x', `${r ? r.left + r.width / 2 : innerWidth - 300}px`); h.style.setProperty('--vt-y', `${r ? r.top + r.height / 2 : 50}px`);
+      h.classList.add('vt-theme');
+      vt.call(document, apply).finished.finally(() => h.classList.remove('vt-theme'));
+    } else { h.classList.add('theme-swap'); setTimeout(() => h.classList.remove('theme-swap'), 450); apply(); }
     document.cookie = `minawa-theme=${next};path=/;max-age=31536000;samesite=lax`;
   };
   return <div className="thm" role="group" aria-label="Theme">
-    {THEMES.map(([k, label, ic]) => <button key={k} type="button" className={`thm-b thm-${k}${t === k ? ' on' : ''}`} aria-pressed={t === k} title={`${label} theme`} aria-label={`${label} theme`} onClick={() => pick(k)}>{ic}<span>{label}</span></button>)}
+    {THEMES.map(([k, label, ic]) => <button key={k} type="button" className={`thm-b thm-${k}${t === k ? ' on' : ''}`} aria-pressed={t === k} title={`${label} theme`} aria-label={`${label} theme`} onClick={e => pick(k, e)}>{ic}<span>{label}</span></button>)}
   </div>;
 }
 

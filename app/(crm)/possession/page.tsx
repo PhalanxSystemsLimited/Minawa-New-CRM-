@@ -7,6 +7,8 @@ import { use, apartments, aptOrder, balance } from '@/lib/engine';
 import { possessionDatesAction } from '@/lib/actions-possession';
 import { Go, Submit } from '@/components/client';
 import { rs, todayPKT } from '@/lib/fmt';
+import { PageIc, KIc, Empty } from '@/components/views/art';
+import { Ic } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,17 +24,17 @@ export default async function Possession({ searchParams }: { searchParams: Promi
   const per = new Map<string, number>(); for (const x of rows) per.set(x.pname, (per.get(x.pname) || 0) + 1);
   const back = `/possession?${new URLSearchParams(Object.entries({ p: pid, q: sp.q || '' }).filter(([, v]) => v))}`;
   return <>
-    <div className="proj-head"><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Possession dates</div></div><div className="crumb-path">Dashboard<span>/</span>Possession dates</div></div>
+    <div className="proj-head"><PageIc n="key" tone="violet" /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Possession dates</div></div><div className="crumb-path">Dashboard<span>/</span>Possession dates</div></div>
     <p className="muted" style={{ margin: 0 }}>Customers with no possession date are due on the 1st of each month. Add the date from the office records: from the next bill they are due on their possession day.{admin ? '' : ' Your dates go to the Admin for approval.'}</p>
     <form method="get" className="card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
       <div className="form-row" style={{ margin: 0 }}><label htmlFor="ps-p">Building</label><select id="ps-p" name="p" defaultValue={pid}><option value="">All your buildings</option>{all.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
       <div className="form-row" style={{ margin: 0 }}><label htmlFor="ps-q">Apartment or name</label><input id="ps-q" name="q" type="search" defaultValue={sp.q || ''} placeholder="e.g. 16B or Aslam" /></div>
       <button type="submit" className="btn">Show</button><span style={{ flex: 1 }} />
-      <a className="btn" href={`/api/export/possession${pid ? `?project=${pid}` : ''}`}>Download CSV</a>
+      <a className="btn" href={`/api/export/possession${pid ? `?project=${pid}` : ''}`}><Ic n="download" s={15} /> Download CSV</a>
     </form>
     <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-      <div className="kpi"><div className="l">No possession date</div><div className="v num">{rows.length}</div><div className="cell-sub">due on the 1st for now</div></div>
-      {[...per].map(([n, c]) => <div className="kpi" key={n}><div className="l">{n}</div><div className="v num">{c}</div><div className="cell-sub">customer{c === 1 ? '' : 's'}</div></div>)}
+      <div className="kpi"><KIc n="key" tone="violet" /><div className="l">No possession date</div><div className="v num">{rows.length}</div><div className="cell-sub">due on the 1st for now</div></div>
+      {[...per].map(([n, c]) => <div className="kpi" key={n}><KIc n="building" tone="rust" /><div className="l">{n}</div><div className="v num">{c}</div><div className="cell-sub">customer{c === 1 ? '' : 's'}</div></div>)}
     </div>
     {rows.length ? <form action={possessionDatesAction} className="card"><input type="hidden" name="back" value={back} />
       <div className="card-row"><h3>Add possession dates <small>fill in the ones you have, then save once</small></h3></div>
@@ -46,6 +48,6 @@ export default async function Possession({ searchParams }: { searchParams: Promi
       </tbody></table></div>
       {admin ? null : <div className="form-row" style={{ marginTop: 12 }}><label htmlFor="ps-w">Where the dates come from (for the Admin) <span className="req">(required)</span></label><input id="ps-w" name="why" type="text" required placeholder="e.g. Office possession register, 2019–2026" /></div>}
       <div className="m-actions" style={{ marginTop: 12 }}><span className="muted" style={{ fontSize: 12, marginRight: 'auto', alignSelf: 'center' }}>Bills already made stay as they are; no day is billed twice.</span><Submit>{admin ? 'Save possession dates' : 'Send for approval'}</Submit></div>
-    </form> : <div className="card allclear"><div className="big">Every customer has a possession date</div><p className="muted">{q || pid ? 'Nothing matches these filters.' : 'All customers are due on their possession day.'}</p></div>}
+    </form> : <Empty card kind={q || pid ? 'search' : 'done'} title="Every customer has a possession date">{q || pid ? 'Nothing matches these filters.' : 'All customers are due on their possession day.'}</Empty>}
   </>;
 }

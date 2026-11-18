@@ -9,6 +9,8 @@ import { leaveAction } from '@/lib/actions-desk';
 import { projectPage, projHead } from '@/components/views/project';
 import { Go, Submit, PrintBtn } from '@/components/client';
 import { fd, fds, rs } from '@/lib/fmt';
+import { KIc } from '@/components/views/art';
+import { Ic } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,12 +38,12 @@ export default async function Leave({ params, searchParams }: { params: Promise<
           <div className="print-only"><h2 style={{ margin: '0 0 4px' }}>All charges cleared · {o.apt}, {S.proj.name}</h2><p className="muted">{o.name} · printed {fd(S.today)}</p></div>
           <div className="callout good"><div><b>{o.name} left {o.apt} on {o.closedOn ? fd(o.closedOn) : '—'} with all charges cleared.</b> {c ? `Dues Clearance certificate ${c.no}.` : ''} {balance(o) < 0 ? `${rs(-balance(o))} advance to refund.` : ''} The apartment is vacant and isn&apos;t billed until the next possession.</div></div>
           <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-            <div className="kpi"><div className="l">Possession</div><div className="v">{o.possessionKnown ? fds(o.possession) : '—'}</div><div className="cell-sub">to {o.closedOn ? fd(o.closedOn) : '—'}</div></div>
-            <div className="kpi"><div className="l">Billed in the CRM</div><div className="v num">{rs(billed)}</div><div className="cell-sub">{bills.length} bill{bills.length === 1 ? '' : 's'}</div></div>
-            <div className="kpi"><div className="l">Paid</div><div className="v num">{rs(paid)}</div><div className="cell-sub">{pays.length} payment{pays.length === 1 ? '' : 's'}</div></div>
-            {o.meterIn || o.meterOut ? <div className="kpi"><div className="l">Meter</div><div className="v num">{o.meterIn?.reading ?? '—'} → {o.meterOut?.reading ?? '—'}</div><div className="cell-sub">at possession → at leaving</div></div> : null}
+            <div className="kpi"><KIc n="key" tone="violet" /><div className="l">Possession</div><div className="v">{o.possessionKnown ? fds(o.possession) : '—'}</div><div className="cell-sub">to {o.closedOn ? fd(o.closedOn) : '—'}</div></div>
+            <div className="kpi"><KIc n="file" tone="blue" /><div className="l">Billed in the CRM</div><div className="v num">{rs(billed)}</div><div className="cell-sub">{bills.length} bill{bills.length === 1 ? '' : 's'}</div></div>
+            <div className="kpi"><KIc n="cash" tone="green" /><div className="l">Paid</div><div className="v num">{rs(paid)}</div><div className="cell-sub">{pays.length} payment{pays.length === 1 ? '' : 's'}</div></div>
+            {o.meterIn || o.meterOut ? <div className="kpi"><KIc n="bolt" tone="amber" /><div className="l">Meter</div><div className="v num">{o.meterIn?.reading ?? '—'} → {o.meterOut?.reading ?? '—'}</div><div className="cell-sub">at possession → at leaving</div></div> : null}
           </div>
-          <div className="card"><div className="card-row"><h3>Payments</h3><div className="no-print" style={{ display: 'flex', gap: 8 }}><a className="btn sm" href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener">Payment history (PDF)</a><a className="btn sm" href={`/api/export/leave?project=${pid}&oid=${o.id}`}>Download CSV</a><PrintBtn className="btn sm">Print</PrintBtn></div></div>{payTable}</div>
+          <div className="card"><div className="card-row"><h3>Payments</h3><div className="no-print" style={{ display: 'flex', gap: 8 }}><a className="btn sm" href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener"><Ic n="file" s={15} /> Payment history (PDF)</a><a className="btn sm" href={`/api/export/leave?project=${pid}&oid=${o.id}`}><Ic n="download" s={15} /> Download CSV</a><PrintBtn className="btn sm"><Ic n="print" s={15} /> Print</PrintBtn></div></div>{payTable}</div>
         </div></>;
     }
 
@@ -55,7 +57,7 @@ export default async function Leave({ params, searchParams }: { params: Promise<
       </form>
       <div className="rpt">
         <div className="print-only"><h2 style={{ margin: '0 0 4px' }}>Charges before leaving · {o.apt}, {S.proj.name}</h2><p className="muted">{o.name} · leaving {fd(L)} · printed {fd(S.today)}</p></div>
-        <div className="card"><div className="card-row"><h3>Final figures up to {fd(L)}</h3><div className="no-print" style={{ display: 'flex', gap: 8 }}><a className="btn sm" href={`/api/export/leave?project=${pid}&oid=${o.id}&d=${L}`}>Download CSV</a><PrintBtn className="btn sm">Print</PrintBtn></div></div>
+        <div className="card"><div className="card-row"><h3>Final figures up to {fd(L)}</h3><div className="no-print" style={{ display: 'flex', gap: 8 }}><a className="btn sm" href={`/api/export/leave?project=${pid}&oid=${o.id}&d=${L}`}><Ic n="download" s={15} /> Download CSV</a><PrintBtn className="btn sm"><Ic n="print" s={15} /> Print</PrintBtn></div></div>
           <div className="tbl-wrap"><table><tbody>
             <tr><td>Balance now (bills, earlier dues and fines, less payments)</td><td className="r num">{rs(f.balance)}</td></tr>
             {f.unbilled ? <tr><td>Maintenance from {f.uFrom ? fds(f.uFrom) : ''} to {f.uTo ? fds(f.uTo) : ''} not billed yet</td><td className="r num">+ {rs(f.unbilled)}</td></tr> : null}
