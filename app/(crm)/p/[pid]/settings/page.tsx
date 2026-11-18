@@ -8,7 +8,8 @@ import { projectPage, projHead } from '@/components/views/project';
 import { TargetOpts } from '@/components/views/modals';
 import { ApprovalItem } from '@/components/views/approvals';
 import { pendingProject } from '@/lib/approvals';
-import { ratesAction, rulesAction, fineAction } from '@/lib/actions';
+import { ratesAction, rulesAction, fineAction, projectBankAction } from '@/lib/actions';
+import { bankOf } from '@/lib/bank';
 import { waTestNumber } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
@@ -74,9 +75,22 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <div className="card"><h3>WhatsApp and payments <small>{S.proj.name}</small></h3>
           <div className="list">
             <div className="li"><div className="t"><div className="a"><Wa inl /> WhatsApp</div><div className="b">Sent by hand from Send on WhatsApp{waTestNumber() ? ` · testing: chats open with +${waTestNumber()}` : ''}</div></div><span className={`tag ${waTestNumber() ? 'warn' : 'good'}`}>{waTestNumber() ? 'Testing' : 'By hand'}</span></div>
-            <div className="li"><div className="t"><div className="a">Payments</div><div className="b">Cash only: the building manager enters the cash he receives, and the Accountant confirms it</div></div><span className="tag good">By hand</span></div>
+            <div className="li"><div className="t"><div className="a">Payments</div><div className="b">By hand: the building manager enters cash or a bank transfer (with its transaction ID), and the Accountant approves it</div></div><span className="tag good">By hand</span></div>
           </div>
           {ad ? <p className="cell-sub" style={{ margin: '10px 0 0' }}>Keys are set on the server. See <Go href="/admin" className="link-btn">Staff &amp; connections</Go> for what each one does.</p> : null}</div>
+        {(() => { const b = bankOf(S.proj.bank); return <div className="card" id="bank"><h3>Bank account for transfers <small>printed on vouchers and in WhatsApp messages</small></h3>
+          {ad ? <form action={projectBankAction} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{hid}
+            <div className="form-row"><label htmlFor="bk-t">Account title</label><input id="bk-t" name="title" defaultValue={b?.title || ''} placeholder="Minawa Group (Pvt) Ltd – Maintenance" /></div>
+            <div className="grid2" style={{ gap: 10 }}>
+              <div className="form-row"><label htmlFor="bk-b">Bank name</label><input id="bk-b" name="bank" defaultValue={b?.bank || ''} placeholder="e.g. Meezan Bank, Bhurban branch" /></div>
+              <div className="form-row"><label htmlFor="bk-a">Account number or IBAN</label><input id="bk-a" name="account" defaultValue={b?.account || ''} placeholder="PK00 XXXX 0000 0000 0000 0000" /></div>
+            </div>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}><input type="checkbox" name="all" value="1" /> Use this account for every building</label>
+            <div><Submit>Save bank account</Submit></div>
+            <p className="cell-sub" style={{ margin: 0 }}>Leave the account number empty to remove it: messages and vouchers then ask for cash only.</p>
+          </form> : b ? <div className="list"><div className="li"><div className="t"><div className="a">{b.title}</div><div className="b">{b.bank} · A/C {b.account}</div></div></div></div>
+            : <p className="empty">No bank account set: customers are asked to pay in cash. The Admin sets it here.</p>}
+        </div>; })()}
       </div>
       <details className="card rules-card"><summary>How the system works</summary><ul className="rules">
         {r.startOn ? <li>Go-live on {fd(r.startOn)}: every customer with a balance gets a statement for it, due on the {ord(r.dueDays)} of the next month. Monthly charges start in {fm(S.goLive.slice(0, 7))}; the months before are in the opening balances.</li> : null}
@@ -84,7 +98,7 @@ export default async function Settings({ params, searchParams }: { params: Promi
         <li>Bills repeat on that date at {hour12(r.sendHour)}: every month, every 3 months (quarterly) or every 12 months (annual); in a shorter month on its last day. A monthly bill is for that month (a new customer&apos;s for the month before, the first one from the possession date); quarterly and annual bills cover the next 3 or 12 months. Electricity and other utility bills entered by the accountant go on the next bill. The bill is the first reminder.</li>
         <li>Every bill is due on the {ord(r.dueDays)} of the month after it (5 Dec → {ord(r.dueDays)} Jan); a customer can have their own due day once the Admin approves it. {r.remindOn.length ? `Reminders go out on the ${r.remindOn.map(ord).join(' and ')} of the due month while the bill is unpaid.` : ''} The day after the due date the fine ({r.feePct}% of the unpaid bills{r.fineArrears ? ' and old arrears' : ''}, changed with an admin's approval) is added and a final notice goes out.</li>
         <li>{r.flagDays} days after the due date, flats still unpaid are flagged for disconnection. Paying in full clears the flag.</li>
-        <li>Payments are in cash only. The building manager takes the cash against the bill voucher, keeps its office copy and enters the payment with the receipt number; the owner&apos;s balance changes once the Accountant confirms it, and the receipt goes to the building manager&apos;s To do to send on WhatsApp. The Accountant can also record cash paid at the office. Every message tells the owner to pay in cash to the building manager.</li>
+        <li>Customers pay in cash to the building manager against the bill voucher, or by bank transfer into Minawa&apos;s account above. The building manager enters each payment (receipt number for cash, transaction ID for a transfer); the owner&apos;s balance changes once the Accountant confirms it, and the receipt goes to the building manager&apos;s To do to send on WhatsApp. The Accountant can also record cash paid at the office. Every message tells the owner to pay in cash to the building manager.</li>
         <li>A payment covers dues and the late fee in proportion, so the fee stays {r.feePct}% of what is still owed; dues are paid oldest first. Extra money becomes advance credit for the next bills.</li>
         <li>A promise to pay pauses notices until the promised date; if it passes unpaid, the accountant is alerted.</li>
         <li>Directors&apos; apartments are exempt. Discounts can be a percentage or fixed, with an optional end date.</li>

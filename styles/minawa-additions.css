@@ -330,3 +330,24 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 /* Reports: the report body keeps the page's spacing between the KPI boxes and the cards below. */
 .rpt{display:flex;flex-direction:column;gap:24px;min-width:0}
 @media (max-width:767px){.rpt{gap:16px}}
+
+/* Payment entry: Cash or Bank transfer (18 Nov 2026) */
+.pay-via{border:0;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pay-via legend{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--label,#64748b);margin-bottom:6px;padding:0}
+.pay-via-o{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line,#E5E1D8);border-radius:12px;cursor:pointer;background:var(--surface,#fff);transition:border-color .2s,box-shadow .2s}
+.pay-via-o:has(input:checked){border-color:var(--accent,#C2410C);box-shadow:0 0 0 3px rgba(194,65,12,.12)}
+.pay-via-o input{margin-top:3px}
+.pay-via-o span{display:flex;flex-direction:column;gap:2px}.pay-via-o small{color:var(--muted,#64748b);font-size:12px}
+@media (max-width:520px){.pay-via{grid-template-columns:1fr}}
+
+/* Entries to approve: select all + running total (18 Nov 2026) */
+.bulk-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;margin:0 0 8px;border:1px solid var(--line,#E5E1D8);border-radius:12px;background:var(--surface,#fff)}
+.bulk-all{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.bulk-sum{font-weight:400;color:var(--muted,#64748b);font-size:13px}
+.bulk-row{display:flex;align-items:center;gap:12px}
+.bulk-row > input[type=checkbox]{width:18px;height:18px;flex:none}
+.bulk-row .t{flex:1;min-width:0}
+.bulk-row.on{background:rgba(194,65,12,.06);border-radius:10px}
+.chipbtn.on{background:var(--ink,#161B1F);color:#fff;border-color:transparent}
+@media (max-width:767px){.bulk-row{flex-wrap:wrap}.bulk-row .t{flex-basis:calc(100% - 40px)}}
+.signin-help{margin:16px 0 0;font-size:12.5px;line-height:1.5;opacity:.8;text-align:center}

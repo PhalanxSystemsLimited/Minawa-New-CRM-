@@ -47,7 +47,7 @@ export function dayCash(states: State[], d: string): DayCash {
       if (h.status === 'received' && h.receivedD === d) out.received.push({ h, pname: s.proj.name });
       if (h.depositD === d) out.deposited.push({ h, pname: s.proj.name });
     }
-    for (const pr of s.proofs) if (pr.kind === 'cash' && pr.status === 'pending' && pr.d <= d) out.pending.push({ pr, pname: s.proj.name, apt: ownerById(pr.ownerId)?.apt || '' });
+    for (const pr of s.proofs) if (pr.kind === 'cash' && (pr.method || 'Cash') === 'Cash' && pr.status === 'pending' && pr.d <= d) out.pending.push({ pr, pname: s.proj.name, apt: ownerById(pr.ownerId)?.apt || '' });
   });
   out.rows.sort((a, b) => a.pname.localeCompare(b.pname) || a.name.localeCompare(b.name));
   return out;
@@ -68,7 +68,7 @@ export function cashNow(states: State[]) {
       if (h.status === 'received' && !h.depositSlip) toDeposit.push({ h, pname: s.proj.name });
       history.push({ h, pname: s.proj.name });
     }
-    for (const pr of s.proofs) if (pr.kind === 'cash' && pr.status === 'pending') unconfirmed.push({ pr, pname: s.proj.name, apt: ownerById(pr.ownerId)?.apt || '' });
+    for (const pr of s.proofs) if (pr.kind === 'cash' && (pr.method || 'Cash') === 'Cash' && pr.status === 'pending') unconfirmed.push({ pr, pname: s.proj.name, apt: ownerById(pr.ownerId)?.apt || '' });
   });
   const by = (a: { h: Handover }, b: { h: Handover }) => `${b.h.d} ${b.h.t}`.localeCompare(`${a.h.d} ${a.h.t}`);
   history.sort(by); toReceive.sort(by); toDeposit.sort(by);

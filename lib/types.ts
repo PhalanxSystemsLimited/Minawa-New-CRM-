@@ -129,6 +129,8 @@ export interface Payment {
   handoverId?: string | null;
   /** A wrong payment taken back: when, by whom and why. Reversed payments stay in the database for the record. */
   reversed?: { d: ISODate; t: string; by: string; reason: string } | null;
+  /** 18 Nov 2026: who entered it, who approved it and when; a bank transfer's transaction ID. */
+  enteredBy?: string | null; approvedBy?: string | null; approvedAt?: string | null; txn?: string | null;
 }
 /** Cash a building manager hands over to the Accountant (or cash paid at the office), followed to the bank deposit. */
 export interface Handover {
@@ -141,7 +143,9 @@ export interface Handover {
 /** Money waiting for an accountant to check: a bank-transfer screenshot an owner sent (`transfer`), or cash a building
  *  manager recorded (`cash`: the balance changes only once the accountant confirms it). */
 export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected' | 'cancelled'; msgId: string | null; doneOn: ISODate | null; media: string | null;
-  kind?: 'transfer' | 'cash'; method?: string | null; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null }
+  kind?: 'transfer' | 'cash'; method?: string | null; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null;
+  /** A bank transfer's transaction ID (method 'Bank transfer'). */
+  txn?: string | null }
 export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean }
 export interface Clearance { no: string; ownerId: string; project: string; d: ISODate; by: string }
 /** One flat's line on the office's yearly sheet: what it owed (arrears + the year's charges) and what was paid. */

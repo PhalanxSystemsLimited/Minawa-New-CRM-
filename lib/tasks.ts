@@ -81,7 +81,7 @@ export function responsible(t: Task, staff: Staff[]) {
   if (t.forName) return t.forName;
   const names = t.role === 'manager'
     ? staff.filter(x => x.active && x.role === 'manager' && (x.projects || []).includes(t.project)).map(x => x.name)
-    : staff.filter(x => x.active && x.role === 'accountant').map(x => x.name);
+    : staff.filter(x => x.active && x.role === 'accountant' && (!(x.projects || []).length || (x.projects || []).includes(t.project))).map(x => x.name);
   return names.length ? names.join(', ') : t.role === 'manager' ? 'No building manager yet' : 'No accountant yet';
 }
 

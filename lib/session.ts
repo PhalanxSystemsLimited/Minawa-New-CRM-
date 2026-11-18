@@ -46,8 +46,9 @@ export async function requireAdmin(): Promise<Staff> {
 }
 export const ROLE_NAMES: Record<Staff['role'], string> = { admin: 'Admin', accountant: 'Accountant', manager: 'Building manager' };
 export const roleName = (s: Staff) => ROLE_NAMES[s.role] || 'Accountant';
-/** Which buildings someone may open: Admins and Accountants all of them, a Building manager only those assigned. */
-export const canOpen = (s: Staff | null | undefined, pid: string) => !s || s.role !== 'manager' || (s.projects || []).includes(pid);
+/** Which buildings someone may open: Admins all of them; a Building manager only those assigned; an Accountant those
+ *  assigned, or all of them while the Admin has ticked none (18 Nov 2026). */
+export const canOpen = (s: Staff | null | undefined, pid: string) => !s || s.role === 'admin' || (s.projects || []).includes(pid) || (s.role === 'accountant' && !(s.projects || []).length);
 export async function requireRole(...roles: Staff['role'][]): Promise<Staff> {
   const s = await requireStaff();
   if (!roles.includes(s.role)) redirect('/?flash=' + encodeURIComponent('That page isn\'t part of your role.'));

@@ -8,6 +8,7 @@ import { MobileBar, MobileTables } from '@/components/Mobile';
 import { LiveEffects } from '@/components/Live';
 import { WaReturnPrompt } from '@/components/WaReturnPrompt';
 import { LivePayments } from '@/components/LivePayments';
+import { NavProgress } from '@/components/NavProgress';
 import { cookies } from 'next/headers';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { addDays, todayPKT } from '@/lib/fmt';
@@ -51,6 +52,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
       <Suspense><MobileBar projects={nav} defaultPid={defaultPid} manager={staff.role === 'manager'} /></Suspense>
       <MobileTables />
       <WaReturnPrompt />
+      <Suspense><NavProgress /></Suspense>
       <LivePayments me={staff.id} counts={Object.fromEntries(nav.filter(p => p.live).map(p => [p.id, p.pays || 0]))} />
     </>
   );

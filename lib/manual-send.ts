@@ -2,6 +2,7 @@
 // and how to pay, opens the owner's chat in WhatsApp Web with the text ready, and records it once the accountant has sent it.
 // Bills, fines and balances still update automatically; the sending is always by hand.
 // Everything here runs inside the engine (use(s, …)).
+import { bankOf } from './bank';
 import type { Message, Owner } from './types';
 import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct } from './engine';
 import { rs, fd, fill, addDays } from './fmt';
@@ -85,9 +86,13 @@ function duesList(o: Owner, total: number) {
   return lines('', '*Your dues*', ...bd.rows.map(r => `• ${r.label}: ${rs(r.amount)}${r.sub ? ` _(${r.sub})_` : ''}`),
     bd.fee ? `• Late fine (${feePct()}%): ${rs(bd.fee)}` : null, RULE, `*Total to pay: ${rs(total)}*`);
 }
-/** How to pay: in cash to the building manager, against a receipt (payments are in cash only). */
+/** How to pay: in cash to the building manager against a receipt, or by bank transfer to Minawa's account (when the
+ *  Admin has set it in Settings); the owner gives the transaction ID to the building manager, who enters it. */
 function payBlock() {
-  return lines('', '💵 *How to pay*', '• In cash to your building manager. Please bring this bill voucher and take a receipt.', '• Only cash is accepted; please do not pay by bank transfer or cheque.');
+  const b = bankOf(cur().proj.bank);
+  return lines('', '💵 *How to pay*', '• In cash to your building manager. Please bring this bill voucher and take a receipt.',
+    b ? `• Or by bank transfer to *${b.title}*, ${b.bank}, A/C *${b.account}*. Please send the transaction ID to your building manager.` : null,
+    b ? '• Only to this account: please do not pay into anyone\'s personal account.' : null);
 }
 const foot = () => lines('', 'For any questions, just reply to this message.', '', 'Thank you,', '*Minawa Group*', '_Maintenance Department_');
 

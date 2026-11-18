@@ -10,6 +10,9 @@
 // A notification that arrives while the window is hidden (another tab, minimised, or covered by another window) is
 // kept and slides in when you come back, so it is never missed. Each one slides in at the top right, shows a bar
 // counting down, stays while the mouse is over it, then slides out by itself.
+// 18 Nov 2026: a short two-note chime plays when notifications arrive (once per batch). Browsers only allow sound
+// after the person has clicked or typed on the page once, so until then the pop-up shows silently. The account menu
+// has a Sound on/off switch (remembered in this browser: localStorage 'minawa.sound').
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Note } from '@/lib/notify';
@@ -23,7 +26,20 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
   const [toasts, setToasts] = useState<Toast[]>([]), [more, setMore] = useState(0), [ask, setAsk] = useState(false);
   last.current = counts;
   useEffect(() => {
-    let busy = false, unseen = 0, lastPoll = 0;
+    let busy = false, unseen = 0, lastPoll = 0, ctx: AudioContext | null = null;
+    const unlock = () => { try { if (!ctx) { const A = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext; if (A) ctx = new A(); } if (ctx && ctx.state === 'suspended') void ctx.resume(); } catch { /* no audio here */ } };
+    const chime = () => {
+      try { if (localStorage.getItem('minawa.sound') === 'off') return; } catch { /* private mode: play */ }
+      if (!ctx || ctx.state !== 'running') return;
+      const t0 = ctx.currentTime + 0.02;
+      for (const [f, at, len] of [[880, 0, 0.32], [1318.5, 0.11, 0.42]] as const) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, t0 + at); g.gain.exponentialRampToValueAtTime(0.16, t0 + at + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + len);
+        o.start(t0 + at); o.stop(t0 + at + len + 0.02);
+      }
+    };
+    window.addEventListener('pointerdown', unlock); window.addEventListener('keydown', unlock);
     const KEY = `minawa.notes.${me}`, baseTitle = document.title.replace(/^\(\d+\) /, '');
     const typing = () => { const a = document.activeElement as HTMLElement | null; return !!a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit'].includes((a as HTMLInputElement).type)) || a.isContentEditable); };
     const refresh = () => { if (typing()) { pending.current = true; return; } pending.current = false; router.refresh(); };
@@ -32,6 +48,7 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
     const ring = () => { const b = document.querySelector('.bell-btn'); if (!b) return; b.classList.remove('ringing'); void (b as HTMLElement).offsetWidth; b.classList.add('ringing'); setTimeout(() => b.classList.remove('ringing'), 1600); };
     const show = (fresh: Note[]) => {
       if (!fresh.length) return;
+      chime();
       const now = Date.now();
       setToasts(t => [...fresh.slice(0, MAX_SHOWN).map((n, i) => ({ ...n, key: now + i, born: now })), ...t.filter(x => !x.out)].slice(0, MAX_SHOWN));
       setMore(m => fresh.length > MAX_SHOWN ? m + fresh.length - MAX_SHOWN : m);
@@ -73,7 +90,7 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
     const vis = () => { if (document.visibilityState === 'visible') { unseen = 0; document.title = baseTitle; const h = held.current.splice(0); if (h.length) show(h); if (pending.current && !typing()) refresh(); tick(true); } };
     const blur = () => { if (pending.current) setTimeout(() => { if (pending.current && !typing()) refresh(); }, 300); };
     document.addEventListener('visibilitychange', vis); window.addEventListener('focus', vis); document.addEventListener('focusout', blur);
-    return () => { clearInterval(t); clearTimeout(first); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); document.removeEventListener('focusout', blur); };
+    return () => { window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); try { void ctx?.close(); } catch { /* closed */ } clearInterval(t); clearTimeout(first); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); document.removeEventListener('focusout', blur); };
   }, [router, me]);
   // Each popup slides out by itself after SHOW_MS (not while the mouse is over the stack), or when closed.
   useEffect(() => {

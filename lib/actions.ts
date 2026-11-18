@@ -1,6 +1,7 @@
 'use server';
 // Everything staff can do. Each action checks who is signed in, changes the project inside the lock
 // (lib/ops.mutate), lets the dispatcher send what was queued, then returns to the page with a message.
+import { bankJoin } from './bank';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Owner, State, Staff } from './types';
@@ -35,10 +36,11 @@ export async function recordPaymentAction(fdata: FormData) {
   // only once confirmed.
   if (staff.role === 'manager') {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
-    const method = 'Cash';
-    if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
-    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method), { send: false });
-    go(ownerPath(pid, oid), `${method} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant confirms it; the balance changes then.`);
+    const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
+    if (method === 'Cash' && !S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
+    if (method === 'Bank transfer' && !txn) go(ownerPath(pid, oid) + '?m=recpay-bank', 'Enter the bank transaction ID');
+    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn), { send: false });
+    go(ownerPath(pid, oid), `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant approves it; the balance changes then.`);
   }
   if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
   const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
@@ -215,10 +217,14 @@ export async function announceAction(fdata: FormData) {
 }
 export async function projectBankAction(fdata: FormData) {
   const staff = await requireAdmin();
-  const pid = S(fdata, 'pid'), store = await getStore();
-  const p = (await store.listProjects()).find(x => x.id === pid);
-  if (p) { p.bank = S(fdata, 'bank'); await store.saveProject(p); await staffLog(staff, `Bank details for ${p.name} changed by ${staffName(staff)}`, { project: pid }); }
-  go(`/p/${pid}/settings`, 'Bank details saved');
+  const pid = S(fdata, 'pid'), store = await getStore(), all = S(fdata, 'all') === '1';
+  const b = { title: S(fdata, 'title'), bank: S(fdata, 'bank'), account: S(fdata, 'account') };
+  const value = b.account ? bankJoin(b) : '';
+  for (const p of await store.listProjects()) if (p.id === pid || (all && p.live)) {
+    p.bank = value; await store.saveProject(p);
+    await staffLog(staff, `Bank account for ${p.name} ${value ? `set to ${b.bank} A/C ${b.account}` : 'removed'} by ${staffName(staff)}`, { project: p.id });
+  }
+  go(`/p/${pid}/settings`, value ? `Bank account saved${all ? ' for every building' : ''}` : 'Bank account removed');
 }
 
 /* ---------- staff (admins) ---------- */
@@ -227,10 +233,21 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const roleLabel = (r: string) => r === 'admin' ? 'Admin' : r === 'manager' ? 'Building manager' : 'Accountant';
 const roleOf = (v: string): Staff['role'] => v === 'admin' ? 'admin' : v === 'manager' ? 'manager' : 'accountant';
 /** The buildings ticked on the staff form (only kept for Building managers). */
-const buildingsOf = (f: FormData, role: string) => role === 'manager' ? f.getAll('projects').map(String).filter(Boolean) : [];
+const buildingsOf = (f: FormData, role: string) => role === 'manager' || role === 'accountant' ? f.getAll('projects').map(String).filter(Boolean) : [];
 async function authAdmin() {
   const { createClient } = await import('@supabase/supabase-js');
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } }).auth.admin;
+}
+
+/** Ends every Supabase sign-in session of a staff member (migration 0015's end_user_sessions; service role only). */
+async function endSessions(id: string) {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await db.rpc('end_user_sessions', { p_user: id });
+    if (error) { console.error('end sessions', error.message); return false; }
+    return true;
+  } catch (e) { console.error('end sessions', (e as Error).message); return false; }
 }
 
 /** Edit someone's name, email, role, access or password. Every change is in the activity log (never the password itself). */
@@ -249,7 +266,7 @@ export async function staffAction(fdata: FormData) {
   if (name !== st!.name) ch.push(`name ${st!.name} → ${name}`);
   if (email !== st!.email) ch.push(`email ${st!.email} → ${email}`);
   if (role !== st!.role) ch.push(`role ${roleLabel(st!.role)} → ${roleLabel(role)}`);
-  if (role === 'manager' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ') || 'none'}`);
+  if (role !== 'admin' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ') || (role === 'accountant' ? 'all' : 'none')}`);
   if (role === 'manager' && !projects.length) go(back, 'Tick at least one building for a building manager');
   if (active !== st!.active) ch.push(active ? 'can sign in again' : 'sign-in turned off');
   if (password) ch.push('password changed');
@@ -259,7 +276,10 @@ export async function staffAction(fdata: FormData) {
     if (error) go(back, `Couldn't update the login: ${error.message}`);
   } else if (password) go(back, 'Local mode has one shared password (LOCAL_PASSWORD). Connect Supabase to give each person their own.');
   await store.saveStaff({ ...st!, name, email, role, active, projects });
-  await staffLog(me, `${name}'s account changed by ${staffName(me)}: ${ch.join('; ')}`);
+  // A new password or login, or sign-in turned off: sign them out on every device at once (18 Nov 2026).
+  let ended = false;
+  if (store.kind === 'supabase' && (password || email !== st!.email || (!active && st!.active)) && st!.id !== me.id) ended = await endSessions(st!.id);
+  await staffLog(me, `${name}'s account changed by ${staffName(me)}: ${ch.join('; ')}${ended ? ' (signed out on every device)' : ''}`);
   go('/admin', `${name} updated${password ? '. Give them the new password' : ''}`);
 }
 
@@ -280,7 +300,7 @@ export async function inviteAction(fdata: FormData) {
     id = data.user!.id;
   }
   await store.saveStaff({ id, email, name, role, active: true, projects });
-  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : 'an accountant';
+  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : `an accountant (${projects.join(', ') || 'all buildings'})`;
   await staffLog(me, `${name} (${email}) added as ${as} by ${staffName(me)}`);
   go('/admin', `${name} can now sign in as ${as}`);
 }

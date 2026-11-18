@@ -30,6 +30,7 @@ export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects
         <Go href="/whatsapp" className="side-i si si-wa" current={path.startsWith('/whatsapp') || path.startsWith('/messages')}><span className="si-ic" aria-hidden="true"><Wa /></span><span className="side-l">WhatsApp</span></Go>
         <Go href="/approvals" className="side-i si si-apv" current={path.startsWith('/approvals')}><span className="si-ic" aria-hidden="true"><Ic n="check" /></span><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
         {(() => { const n = admin ? 0 : projects.reduce((a, p) => a + (p.todo || 0), 0); return <Go href="/tasks" className="side-i si si-todo" current={path.startsWith('/tasks')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">{admin ? 'Team To do' : 'To do'}</span>{n ? <span className="side-b" title={`${n} task${n === 1 ? '' : 's'} for you`}>{n}</span> : null}</Go>; })()}
+        {role !== 'manager' ? <Go href="/received" className="side-i si si-rcv" current={path.startsWith('/received')}><span className="si-ic" aria-hidden="true"><Ic n="wallet" /></span><span className="side-l">Received payments</span></Go> : null}
         <Go href="/cash" className="side-i si si-cash" current={path.startsWith('/cash')}><span className="si-ic" aria-hidden="true"><Ic n="wallet" /></span><span className="side-l">Cash</span></Go>
         <Go href="/reports" className="side-i si si-rpt" current={path.startsWith('/reports')}><span className="si-ic" aria-hidden="true"><Ic n="trend" /></span><span className="side-l">Reports</span></Go>
         <Go href="/log" className="side-i si si-log" current={path.startsWith('/log') || path.startsWith('/admin/activity')}><span className="si-ic" aria-hidden="true"><Ic n="list" /></span><span className="side-l">Activity</span></Go>
@@ -55,7 +56,7 @@ export function Topbar({ todo, firstTodo, bell, roleLabel, initials, name, defau
       <QuickActions projects={projects} pid={path.startsWith('/p/') ? path.split('/')[2] : null} role={roleLabel} />
       <Go href={bell?.href || (firstTodo ? `/p/${firstTodo}/todo` : `/p/${pid}/todo`)} className="icon-btn bell-btn" title={bell?.label || 'To do'} ariaLabel={`${bell?.label || 'To do'}${todo ? `, ${todo} waiting` : ''}`}><Ic n="bell" />{todo ? <span className="dot-n">{todo}</span> : null}</Go>
       <details className="more me-menu"><summary className="me"><span className="me-av">{initials}</span><div className="me-t"><div className="me-n">{roleLabel}</div><div className="me-r">Minawa Group</div></div></summary>
-        <div className="menu menu-r"><div className="menu-who"><b>{name}</b><span>{roleLabel}</span></div><a href="/account" className="menu-link">Change password</a><form action={signOut}><button type="submit">Sign out</button></form></div>
+        <div className="menu menu-r"><div className="menu-who"><b>{name}</b><span>{roleLabel}</span></div><SoundToggle /><form action={signOut}><button type="submit">Sign out</button></form></div>
       </details>
     </div>
   );
@@ -126,4 +127,12 @@ export function ThemeSwitch() {
   return <div className="thm" role="group" aria-label="Theme">
     {THEMES.map(([k, label, ic]) => <button key={k} type="button" className={`thm-b thm-${k}${t === k ? ' on' : ''}`} aria-pressed={t === k} title={`${label} theme`} aria-label={`${label} theme`} onClick={() => pick(k)}>{ic}<span>{label}</span></button>)}
   </div>;
+}
+
+/** Notification sound on or off, for this browser (the chime in LivePayments reads the same key). */
+export function SoundToggle() {
+  const [on, setOn] = useState(true);
+  useEffect(() => { try { setOn(localStorage.getItem('minawa.sound') !== 'off'); } catch { /* private mode */ } }, []);
+  const flip = () => { const v = !on; setOn(v); try { localStorage.setItem('minawa.sound', v ? 'on' : 'off'); } catch { /* private mode */ } };
+  return <button type="button" className="menu-link" onClick={flip} aria-pressed={on}>Notification sound: {on ? 'on' : 'off'}</button>;
 }

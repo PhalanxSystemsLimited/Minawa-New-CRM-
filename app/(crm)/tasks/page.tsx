@@ -8,7 +8,8 @@ import { getStore } from '@/lib/store';
 import { projects as listProjects, load } from '@/lib/ops';
 import { projectTasks, responsible, myTasks, type Task } from '@/lib/tasks';
 import { use, ownerById } from '@/lib/engine';
-import { verifyAction, rejectAction } from '@/lib/actions';
+import { bulkApproveAction, rejectEntryAction } from '@/lib/actions-cash';
+import { BulkSelect } from '@/components/BulkSelect';
 import { Go, Submit } from '@/components/client';
 import { fd, fds, rs, todayPKT, diff } from '@/lib/fmt';
 
@@ -39,7 +40,7 @@ function Table({ list, staff, today, showWho }: { list: Task[]; staff: Awaited<R
 }
 
 export default async function Tasks({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const v = (await searchParams).v || '';
+  const sp = await searchParams, v = sp.v || '';
   const me = await requireStaff(), store = await getStore(), staff = await store.listStaff(), today = todayPKT();
   const live = (await listProjects(me)).filter(p => p.live);
   const states = await Promise.all(live.map(p => load(p.id, me)));
@@ -72,16 +73,32 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
       <div className="card"><div className="card-row"><h3>Building managers&apos; To do <small>{mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>
     </>;
     return <>
-      {head('To do', 'Money to check: cash payments building managers entered. An owner\'s balance changes only once you confirm.')}
+      {head('To do', 'Payments building managers entered (cash or bank transfer). Tick the ones you have received and approve them; an owner\'s balance changes only then.')}
       {accTabs}
-      <div className="card"><div className="card-row"><h3>Payments to check <small>{proofs.length} waiting</small></h3></div>
-        {proofs.length ? <div className="list">{proofs.map(({ p, o, s }) => <div className="li" key={p.id} id={`proof-${p.id}`}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {p.kind === 'cash' ? <span className="tag warn">Cash · building manager</span> : <span className="tag info">Bank screenshot</span>}</div>
-            <div className="b">{o.name} · {s.proj.name} · {p.kind === 'cash' ? <>recorded by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · ref ${p.ref}` : ''}{p.note ? ` · ${p.note}` : ''}</> : `screenshot sent ${fd(p.d)}`}</div></div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <form action={verifyAction}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="amt" value={p.amount} /><input type="hidden" name="back" value="/tasks" /><Submit className="btn sm primary">{p.kind === 'cash' ? 'Confirm payment' : 'It\'s in the bank'}</Submit></form>
-            <form action={rejectAction} style={{ display: 'flex', gap: 6 }}><input type="hidden" name="pid" value={s.project} /><input type="hidden" name="id" value={p.id} /><input type="hidden" name="back" value="/tasks" />{p.kind === 'cash' ? <input name="reply" type="text" placeholder="Why (for the manager)" aria-label="Why it isn't confirmed" style={{ width: 170 }} /> : null}<Submit className="btn sm">{p.kind === 'cash' ? 'Not received' : 'Can\'t find it'}</Submit></form>
-          </div></div>)}</div> : <p className="empty">Nothing to check.</p>}
-      </div>
+      {(() => {
+        const f = (sp.m === 'cash' ? 'Cash' : sp.m === 'bank' ? 'Bank transfer' : ''), b = sp.b || '';
+        const list = proofs.filter(x => (!f || (x.p.method || 'Cash') === f) && (!b || x.s.project === b)), tot = list.reduce((a, x) => a + x.p.amount, 0);
+        const q = (k: Record<string, string>) => '/tasks?' + new URLSearchParams(Object.entries({ m: sp.m || '', b, ...k }).filter(([, x]) => x)).toString();
+        return <form action={bulkApproveAction} className="card" id="entries"><input type="hidden" name="back" value="/tasks" />
+          <div className="card-row"><h3>Entries to approve <small>{proofs.length} waiting · {rs(proofs.reduce((a, x) => a + x.p.amount, 0))}</small></h3>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><a className="btn sm" href={`/api/export/entries${b ? `?project=${b}` : ''}`}>Download CSV</a></div></div>
+          <div className="chips" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 10px' }}>
+            {[['', 'All'], ['cash', 'Cash'], ['bank', 'Bank transfer']].map(([k, l]) => <a key={k} href={q({ m: k })} className={'chipbtn' + ((sp.m || '') === k ? ' on' : '')}>{l}</a>)}
+            {live.length > 1 ? live.map(pj => <a key={pj.id} href={q({ b: b === pj.id ? '' : pj.id })} className={'chipbtn' + (b === pj.id ? ' on' : '')}>{pj.name}</a>) : null}
+          </div>
+          {list.length ? <><div className="bulk-bar"><BulkSelect /><Submit className="btn primary">Approve selected</Submit></div>
+            <div className="list">{list.map(({ p, o, s }) => <div className="li bulk-row" data-bulk-row key={p.id} id={`proof-${p.id}`}>
+              <input type="checkbox" name="e" value={`${s.project}:${p.id}`} data-amt={p.amount} aria-label={`Approve ${o.apt}, ${rs(p.amount)}`} />
+              <div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {(p.method || 'Cash') === 'Bank transfer' ? <span className="tag info">Bank transfer</span> : <span className="tag warn">Cash</span>}</div>
+                <div className="b">{o.name} · {s.proj.name} · entered by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · receipt ${p.ref}` : ''}{p.txn ? ` · transaction ${p.txn}` : ''}{p.note ? ` · ${p.note}` : ''}</div></div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input name={`reply-${p.id}`} type="text" placeholder="Why (for the manager)" aria-label="Why it wasn't received" style={{ width: 170 }} />
+                <button type="submit" formAction={rejectEntryAction} formNoValidate name="one" value={`${s.project}:${p.id}`} className="btn sm">Not received</button>
+              </div></div>)}</div>
+            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving records each payment, makes its receipt and puts &quot;send receipt&quot; in the building manager&apos;s To do. Approved cash is then with you, ready for the bank deposit on the Cash page.</p></>
+            : <p className="empty">Nothing to approve{f || b ? ' with these filters' : ''}.</p>}
+        </form>;
+      })()}
       {(() => { const cash = cashT; return cash.length ? <div className="card"><div className="card-row"><h3>Cash to receive and deposit <small>{cash.length} open{late(cash) ? ` · ${late(cash)} late` : ''}</small></h3><Go href="/cash" className="btn sm">Open Cash</Go></div><Table list={cash} staff={staff} today={today} showWho={false} /></div> : null; })()}
     </>;
   }

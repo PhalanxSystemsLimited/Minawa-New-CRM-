@@ -7,6 +7,7 @@ import { FixNumberForm } from '@/components/ResendChat';
 import { toggleGeneratorAction } from '@/lib/actions-generator';
 import { possessionAction, adjustAction, instalmentAction, dueAction } from '@/lib/actions-desk';
 import { reverseAction, cancelCashAction } from '@/lib/actions-cash';
+import { bankOf } from '@/lib/bank';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
 import { addDays, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
 import { SERVICES } from '@/lib/defaults';
@@ -74,7 +75,8 @@ const hidden = (o: Owner) => <><input type="hidden" name="pid" value={o.project}
 const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 
 export function OwnerModal({ m, o }: { m: string; o: Owner }) {
-  const S = cur(), bal = balance(o);
+  const S = cur(), bal = balance(o), via = m === 'recpay-bank' ? 'bank' : '';
+  if (via) m = 'recpay';
   if (m.startsWith('instal')) return InstalModal({ o, n: Math.min(24, Math.max(2, +m.split('-')[1] || 3)) });
   if (m.startsWith('reverse-')) {
     const p = S.payments.find(x => x.id === m.slice(8));
@@ -101,17 +103,22 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       {isAdmin() ? null : <div className="callout warn"><div>The Admin approves this first and sees your reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save due date' : 'Send for approval'}</Submit></div></form></ModalShell>;
     case 'recpay': if (cur().role === 'admin') return <ModalShell title="Record a payment"><div className="callout">Payments are entered by the building manager or the Accountant.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
-      if (cur().role === 'manager') return <ModalShell title="Enter a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">Cash {o.name} paid you by hand (payments are in cash only). It goes to the Accountant to confirm; {o.name}&apos;s balance changes once it is confirmed and the receipt is made. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      if (cur().role === 'manager') { const b = bankOf(cur().proj.bank); return <ModalShell title="Enter a payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
+      <div className="callout">A payment {o.name} made to you in cash, or by bank transfer into Minawa&apos;s account. It goes to the Accountant to approve; {o.name}&apos;s balance changes once it is approved and the receipt is made. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <fieldset className="pay-via"><legend>Received as</legend>
+        <label className="pay-via-o"><input type="radio" name="method" value="Cash" defaultChecked={via !== 'bank'} /> <span><b>Cash</b><small>given to you by hand</small></span></label>
+        <label className="pay-via-o"><input type="radio" name="method" value="Bank transfer" defaultChecked={via === 'bank'} /> <span><b>Bank transfer</b><small>{b ? `into ${b.bank} A/C ${b.account}` : 'into Minawa\'s account'}</small></span></label>
+      </fieldset>
       <div className="grid2" style={{ gap: 10 }}>
         <div className="form-row"><label htmlFor="rc-amt">Amount (Rs)</label><input id="rc-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
         <div className="form-row"><label htmlFor="rc-d">Paid on</label><input id="rc-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
       </div>
-      <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave (from the voucher&apos;s office copy or your receipt book)</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" required /></div>
+      <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave {via === 'bank' ? '(optional for a bank transfer)' : '(needed for cash)'}</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" /></div>
+      <div className="form-row"><label htmlFor="rc-txn">Bank transaction ID (needed for a bank transfer)</label><input id="rc-txn" name="txn" type="text" maxLength={80} placeholder="e.g. FT2611180042 or the IBFT reference" /></div>
       <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
-      <div className="m-actions"><CloseBtn /><Submit>Send to the Accountant</Submit></div></form></ModalShell>;
+      <div className="m-actions"><CloseBtn /><Submit>Send to the Accountant</Submit></div></form></ModalShell>; }
       return <ModalShell title="Record a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">Cash {o.name} paid at the office (payments are in cash only). It counts straight away and the receipt is made for the building manager to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <div className="callout">Cash {o.name} paid at the office. It counts straight away and the receipt is made for the building manager to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
       <input type="hidden" name="method" value="Cash" />
       <div className="form-row"><label htmlFor="rp-ref">Receipt number given</label><input id="rp-ref" name="ref" type="text" placeholder="e.g. Office book 2, No. 58" required /></div>

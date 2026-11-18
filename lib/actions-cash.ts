@@ -4,7 +4,8 @@
 import { redirect } from 'next/navigation';
 import { requireRole, staffName } from './session';
 import { mutate, liveProjects } from './ops';
-import { ownerById, at, reversePayment, cancelCash, handOver, receiveHandover, depositHandovers } from './engine';
+import { ownerById, at, reversePayment, cancelCash, handOver, receiveHandover, depositHandovers, verifyProof, rejectProof, receiveCash } from './engine';
+import type { Payment } from './types';
 import { changeOrRequest } from './approvals';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
@@ -75,3 +76,41 @@ export async function depositAction(fdata: FormData) {
   go('/cash', n ? `Rs ${total.toLocaleString('en-US')} deposited, slip ${slip} (${n} hand-over${n === 1 ? '' : 's'})` : 'Nothing to deposit');
 }
 
+
+/** The Accountant approves building managers' entries in one go (ticked rows, or Select all): each becomes a payment
+ *  with its receipt, and the approved cash is with the Accountant (one received hand-over per manager). An entry that
+ *  someone else already approved is skipped, so two accountants can't approve it twice. */
+export async function bulkApproveAction(fdata: FormData) {
+  const staff = await requireRole('accountant', 'admin'), back = S(fdata, 'back') || '/tasks';
+  if (staff.role === 'admin') go(back, 'Entries are approved by the Accountant');
+  const picked = fdata.getAll('e').map(String).filter(x => /^[a-z0-9]+:PR\d+$/i.test(x));
+  if (!picked.length) go(back, 'Tick the entries to approve');
+  const by = new Map<string, string[]>();
+  for (const x of picked) { const [pid, id] = x.split(':'); by.set(pid, [...(by.get(pid) || []), id]); }
+  const allowed = new Set((await liveProjects(staff)).map(p => p.id));
+  let n = 0, total = 0, skipped = 0;
+  for (const [pid, ids] of by) {
+    if (!allowed.has(pid)) { skipped += ids.length; continue; }
+    const r = await mutate(pid, staff, s => {
+      const hold: Payment[] = []; let k = 0, amt = 0, sk = 0;
+      for (const id of ids) {
+        const pr = s.proofs.find(x => x.id === id);
+        if (!pr || pr.status !== 'pending' || pr.kind !== 'cash') { sk++; continue; }
+        const p = verifyProof(pr, s.today, at(15), staffName(staff), undefined, hold); k++; amt += p.amount;
+      }
+      receiveCash(hold, staffName(staff), s.today, at(15));
+      return { k, amt, sk };
+    });
+    n += r.k; total += r.amt; skipped += r.sk;
+  }
+  go(back, n ? `Approved ${n} entr${n === 1 ? 'y' : 'ies'}: Rs ${total.toLocaleString('en-US')}. Receipts are ready for the building managers to send.${skipped ? ` ${skipped} skipped (already handled).` : ''}` : 'Nothing approved: those entries were already handled');
+}
+
+/** One entry the money didn't arrive for: back to the building manager with a note (a button inside the bulk form). */
+export async function rejectEntryAction(fdata: FormData) {
+  const staff = await requireRole('accountant'), back = S(fdata, 'back') || '/tasks', one = S(fdata, 'one'), [pid, id] = one.split(':');
+  const reply = S(fdata, `reply-${id}`);
+  if (!reply) go(back, 'Write why it was not received (the building manager sees it)');
+  const ok = await attempt(() => mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (!pr || pr.status !== 'pending') throw new Error('Already handled'); rejectProof(pr, s.today, at(15), staffName(staff), reply); }, { send: false }));
+  go(back, failed(ok) ? ok.error : 'Marked as not received. The building manager sees your note.');
+}

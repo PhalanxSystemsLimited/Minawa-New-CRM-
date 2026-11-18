@@ -35,27 +35,28 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
 
   return <>
     <div className="proj-head"><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Cash</div></div><div className="crumb-path">Dashboard<span>/</span>Cash</div></div>
-    <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken, until it reaches the Accountant. Hand it over once the Accountant has confirmed the entries.'
-      : acc ? 'Cash from the building managers: count and receive each hand-over, then record the bank deposit.'
+    <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken until the Accountant approves it. Give the cash to the Accountant with your entries: when he approves them, it is with him.'
+      : acc ? 'Approving building managers\' cash entries (To do) means you have the cash. Record the bank deposit here when it goes into the bank.'
       : 'Where the cash is: with the building managers, with the Accountant, or in the bank. You only watch here.'}</p>
 
     <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
-      <div className="kpi"><div className="l">{mgr ? 'Cash with you' : 'With building managers'}</div><div className="v num">{rs(sum(myHand))}</div><div className="cell-sub">confirmed, not handed over</div></div>
-      <div className="kpi"><div className="l">Waiting for confirmation</div><div className="v num">{rs(sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">{myPending.length} entr{myPending.length === 1 ? 'y' : 'ies'}</div></div>
+      <div className="kpi"><div className="l">{mgr ? 'Cash with you' : 'With building managers'}</div><div className="v num">{rs(sum(myHand) + sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">entered, not approved yet</div></div>
+      <div className="kpi"><div className="l">Waiting for approval</div><div className="v num">{rs(sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">{myPending.length} entr{myPending.length === 1 ? 'y' : 'ies'}</div></div>
       <div className="kpi"><div className="l">Handed over, to count</div><div className="v num">{rs(sum(toReceive.map(x => x.h)))}</div><div className="cell-sub">{toReceive.length} hand-over{toReceive.length === 1 ? '' : 's'}</div></div>
       {mgr ? null : <div className="kpi"><div className="l">With the Accountant</div><div className="v num">{rs(sum(now.toDeposit.map(x => x.h)))}</div><div className="cell-sub">received, not in the bank yet</div></div>}
       {mgr ? null : <div className="kpi"><div className="l">Deposited</div><div className="v num">{rs(sum(deposited30.map(x => x.h)))}</div><div className="cell-sub">last 30 days</div></div>}
     </div>
 
-    {mgr ? <div className="card"><div className="card-row"><h3>Cash with you <small>confirmed by the Accountant</small></h3></div>
+    {mgr ? <div className="card"><div className="card-row"><h3>Cash with you <small>until the Accountant approves it</small></h3></div>
       {projects.filter(p => (me.projects || []).includes(p.id)).map(p => {
         const w = myHand.find(x => x.project === p.id), pend = myPending.filter(u => u.pr.project === p.id);
-        return <div className="li" key={p.id} style={{ alignItems: 'flex-start' }}><div className="t"><div className="a"><b>{p.name}</b> · <span className="num">{rs(w?.amount || 0)}</span>{w ? <span className="cell-sub"> · {w.n} payment{w.n === 1 ? '' : 's'} since {fds(w.oldest)}</span> : null}</div>
-          {pend.length ? <div className="b">{rs(sum(pend.map(u => u.pr)))} more ({pend.length}) waiting for the Accountant to confirm: hand it over after that.</div> : null}
+        return <div className="li" key={p.id} style={{ alignItems: 'flex-start' }}><div className="t"><div className="a"><b>{p.name}</b> · <span className="num">{rs((w?.amount || 0) + sum(pend.map(u => u.pr)))}</span></div>
+          {pend.length ? <div className="b">{pend.length} cash entr{pend.length === 1 ? 'y' : 'ies'} waiting for the Accountant: give him the cash and he approves them.</div> : null}
+          {w ? <div className="b">{rs(w.amount)} approved earlier and not handed over yet ({w.n} payment{w.n === 1 ? '' : 's'} since {fds(w.oldest)}).</div> : null}
           {w ? <div className="b">{w.list.map(x => `${x.receipt} ${rs(x.amount)}`).join(' · ')}</div> : null}</div>
           {w ? <form action={handOverAction} className="ho-form" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input type="hidden" name="pid" value={p.id} />
             <input name="note" type="text" placeholder="Note (optional)" aria-label={`Note for the hand-over at ${p.name}`} style={{ minWidth: 160 }} />
-            <Submit className="btn primary sm">Hand over {rs(w.amount)}</Submit></form> : <span className="cell-sub">Nothing to hand over</span>}
+            <Submit className="btn primary sm">Hand over {rs(w.amount)}</Submit></form> : null}
         </div>;
       })}
     </div> : null}

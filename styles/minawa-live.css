@@ -802,3 +802,21 @@ button.lv-kpi{cursor:pointer}
 @keyframes ntfLife{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 @media (max-width:767px){@keyframes ntfSlide{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}}
 @media (prefers-reduced-motion:reduce){.ntf,.ntf.ntf-out,.ntf-life{animation:none}}
+.si-rcv{--si-a:#86EFAC;--si-b:#15803D;--si-g:rgba(22,163,74,.7)}
+/* Loading (18 Nov 2026): top progress bar + a loader that fades in over the page if it takes more than a moment */
+.nav-veil{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99;display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 28px;border-radius:18px;background:var(--surface,#fff);box-shadow:0 24px 60px -24px rgba(22,27,31,.45);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease,visibility 0s linear .18s}
+.nav-veil.run{opacity:1;visibility:visible;transition:opacity .25s ease .35s,visibility 0s linear .35s}
+@media (min-width:1024px){.nav-veil{left:calc(50% + 130px)}}
+.pg-load-mark{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:var(--surface,#fff);box-shadow:0 10px 30px -12px rgba(22,27,31,.35);animation:pgBreathe 1.2s ease-in-out infinite}
+.pg-load-mark img{width:30px;height:30px}
+.pg-load-bar{width:140px;height:3px;border-radius:3px;background:rgba(150,71,36,.15);overflow:hidden}
+.pg-load-bar i{display:block;width:40%;height:100%;border-radius:3px;background:#B4552B;animation:pgSlide 1s cubic-bezier(.4,0,.2,1) infinite}
+.pg-load-t{font-size:12.5px;color:var(--muted,#64748b);letter-spacing:.02em}
+@keyframes pgIn{from{opacity:0}to{opacity:1}}
+@keyframes pgBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes pgSlide{from{transform:translateX(-110%)}to{transform:translateX(260%)}}
+.nav-prog{position:fixed;left:0;top:0;right:0;height:3px;z-index:100;pointer-events:none;opacity:0;transition:opacity .3s}
+.nav-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#B4552B,#E08A55);box-shadow:0 0 10px rgba(180,85,43,.6)}
+.nav-prog.run{opacity:1}.nav-prog.run i{width:82%;transition:width 8s cubic-bezier(.1,.7,.1,1)}
+.nav-prog.done{opacity:0;transition:opacity .35s .15s}.nav-prog.done i{width:100%;transition:width .2s ease}
+@media (prefers-reduced-motion:reduce){.pg-load,.pg-load-mark,.pg-load-bar i{animation:none}.nav-prog i{transition:none}}

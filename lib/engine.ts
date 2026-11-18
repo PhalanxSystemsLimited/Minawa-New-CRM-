@@ -528,22 +528,41 @@ export function ownerProof(o: Owner, amt: number, d: string, t: string, media?: 
   log(d, t, 'message', `Screenshot from ${o.apt} received on WhatsApp and added to To do (${rs(amt)})`, o.id);
   return pr;
 }
-export function verifyProof(p: Proof, d: string, t: string, by: string, amount?: number) {
+export function verifyProof(p: Proof, d: string, t: string, by: string, amount?: number, hold?: Payment[]) {
   const o = ownerById(p.ownerId);
   if (amount && amount > 0) p.amount = amount;
   p.status = 'verified'; p.doneOn = d; p.checkedBy = by;
-  // A payment a building manager entered: only now does it count (receipt, balance, message to the owner).
-  if (p.kind === 'cash') { const m = p.method || 'Cash'; return recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, checked by ${by}`, { collectorId: p.byId || null, collectorName: p.byName || 'Building manager' }); }
+  // A payment a building manager entered: only now does it count (receipt, balance, message to the owner). The
+  // Accountant approves it when he has the money (cash in his hand, or the transfer seen in Minawa's bank account), so
+  // approving is also receiving it: cash goes straight to "with the Accountant", ready for the bank deposit.
+  if (p.kind === 'cash') {
+    const m = p.method || 'Cash', bank = m === 'Bank transfer';
+    const pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, approved by ${by}`,
+      { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: by, approvedAt: `${d} ${t}`, txn: p.txn || null });
+    if (!bank) { if (hold) hold.push(pay); else receiveCash([pay], by, d, t); }
+    return pay;
+  }
   return recordPayment(o, p.amount, 'Bank transfer (screenshot checked)', 'Proof #' + p.id, d, 'proof', t, by);
 }
-/** A building manager enters a cash payment (payments are in cash only): it waits for an accountant to confirm it, and
- *  the owner's balance only changes then (verifyProof). Proofs of kind 'cash' are these manager entries. */
-export const MANAGER_METHODS = ['Cash'];   // payments are in cash only
-export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash') {
+/** Approved cash is with the Accountant: one received hand-over per building manager per approval batch, so the
+ *  Cash page's bank deposit list stays short. */
+export function receiveCash(pays: Payment[], by: string, d: string, t: string) {
+  const groups = new Map<string, Payment[]>();
+  for (const p of pays) if (p.collectorId && !p.handoverId) groups.set(p.collectorId, [...(groups.get(p.collectorId) || []), p]);
+  for (const [id, list] of groups) {
+    const h: Handover = { id: 'HO-' + (100 + nid('ho')), project: S.project, fromId: id, fromName: list[0].collectorName || 'Building manager', amount: list.reduce((a, p) => a + p.amount, 0), paymentIds: list.map(p => p.id), d, t,
+      status: 'received', receivedBy: by, receivedD: d, note: 'Received when the entries were approved', reply: null, depositSlip: null, depositD: null, depositedBy: null };
+    S.handovers.push(h); list.forEach(p => { p.handoverId = h.id; });
+  }
+}
+/** A building manager enters a payment he received (cash, or a bank transfer into Minawa's account, reference only):
+ *  it waits for an accountant to approve it, and the owner's balance only changes then (verifyProof). */
+export const MANAGER_METHODS = ['Cash', 'Bank transfer'];
+export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash', txn = '') {
   const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
-    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null };
+    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null };
   S.proofs.push(pr);
-  log(d, t, 'payment', `${rs(amount)} ${method.toLowerCase()} for ${o.apt} entered by ${byName}${ref ? ` (ref ${ref})` : ''}, paid ${fd(paidOn)}. Waiting for the accountant to confirm it`, o.id);
+  log(d, t, 'payment', `${rs(amount)} ${method === 'Cash' ? 'cash' : 'bank transfer'} for ${o.apt} entered by ${byName}${ref ? ` (receipt ${ref})` : ''}${txn ? ` (transaction ${txn})` : ''}, paid ${fd(paidOn)}. Waiting for the accountant to approve it`, o.id);
   return pr;
 }
 export function rejectProof(p: Proof, d: string, t: string, by = '', reason = '') {
@@ -574,7 +593,7 @@ export function sendDues(o: Owner, d: string, t: string) {
 
 /** Cash paid at the office, recorded by the Accountant: it counts at once and is already with the Accountant. */
 export function officeCash(o: Owner, amt: number, ref: string, d: string, t: string, staffId: string | null, name: string) {
-  const p = recordPayment(o, amt, 'Cash (paid at the office)', ref, d, 'staff', t, name, { collectorId: staffId, collectorName: name });
+  const p = recordPayment(o, amt, 'Cash (paid at the office)', ref, d, 'staff', t, name, { collectorId: staffId, collectorName: name, enteredBy: name, approvedBy: name, approvedAt: `${d} ${t}` });
   const h: Handover = { id: 'HO-' + (100 + nid('ho')), project: S.project, fromId: staffId, fromName: `${name} (office)`, amount: amt, paymentIds: [p.id], d, t,
     status: 'received', receivedBy: name, receivedD: d, note: 'Cash paid at the office', reply: null, depositSlip: null, depositD: null, depositedBy: null };
   S.handovers.push(h); p.handoverId = h.id;

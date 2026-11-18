@@ -1,6 +1,7 @@
 // The content of each document (bill, receipt, statement, clearance), worked out once and drawn twice:
 // on screen (components/Docs.tsx, the demo's .doc look) and as the PDF sent on WhatsApp (lib/pdf.tsx).
 // Call inside use(state, …).
+import { bankOf, bankLine } from './bank';
 import type { Bill, Payment, Owner, Clearance } from './types';
 import { t12 } from '@/lib/fmt';
 import { cur, ownerById, duesBreakdown, balance, feePct, periodLabel, billsOf, unpaidMaint, openingDue, fineBase } from './engine';
@@ -31,9 +32,10 @@ const counterfoilOf = (o: Owner, no: string, due: string, total: number): [strin
 /** Company line printed at the foot of every document. */
 export function orgLine() { const c = cur().company; if (!c) return ''; return [c.legalName, c.address, c.ntn ? `NTN ${c.ntn}` : '', c.phone, c.email].filter(Boolean).join(' · '); }
 const S = () => cur();
-/** How an owner pays: in cash to the building manager, against a receipt (payments are in cash only). */
-const howToPay = (ref: string) => [`Pay in cash to your building manager and show this voucher (${ref}). They keep the office copy and give you a receipt.`,
-  'Only cash is accepted: no bank transfers or cheques. Your payment receipt is sent to you on WhatsApp once it is confirmed.'];
+/** How an owner pays: in cash to the building manager against a receipt, or by bank transfer to Minawa's account. */
+const howToPay = (ref: string) => { const b = bankOf(S().proj.bank); return [`Pay in cash to your building manager and show this voucher (${ref}). They keep the office copy and give you a receipt.`,
+  ...(b ? [`Or pay by bank transfer to ${bankLine(b)}, and give the transaction ID to your building manager. Only to this account: never into a personal account.`] : []),
+  'Your payment receipt is sent to you on WhatsApp once it is confirmed.']; };
 
 export function billDoc(b: Bill): DocData {
   const o = ownerById(b.ownerId), proj = S().proj;
@@ -67,9 +69,9 @@ export function billDoc(b: Bill): DocData {
 
 export function receiptDoc(p: Payment): DocData {
   const o = ownerById(p.ownerId), proj = S().proj;
-  const stamp = { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: p.source === 'proof' ? `Paid in cash · ${p.by}` : `Paid in cash · recorded by ${p.by}`, amount: rs(p.amount) };
+  const stamp = { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: `${/bank/i.test(p.method) ? 'Paid by bank transfer' : 'Paid in cash'} · ${p.enteredBy ? `entered by ${p.enteredBy}${p.approvedBy && p.approvedBy !== p.enteredBy ? `, approved by ${p.approvedBy}` : ''}` : `recorded by ${p.by}`}`, amount: rs(p.amount) };
   const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${t12(p.t)}`],
-    ['Payment method', p.method], ['Reference', p.ref], ['Payment ID', p.id]];
+    ['Payment method', p.method], ['Reference', p.ref], ...(p.txn ? [['Bank transaction ID', p.txn] as [string, string]] : []), ['Payment ID', p.id]];
   const rank = { dues: 0, fee: 1, credit: 2 }, rows = (p.applied || []).slice().sort((a, b) => rank[a.kind] - rank[b.kind]);
   const bal = p.balAfter < 0 ? `${rs(-p.balAfter)} advance credit` : p.balAfter > 0 ? rs(p.balAfter) : 'Rs 0 · all paid';
   return {
