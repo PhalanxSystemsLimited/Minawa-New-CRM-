@@ -2,10 +2,10 @@
 // Plain functions, called inside use(state, …).
 import type { Owner } from '@/lib/types';
 import { cur, ownerById, balance, duesBreakdown, billsOf, unpaid, getTarget, tgLists, isAdmin, apartments, aptOrder, feePct, sortedPayments, periodLabel, rateTypes, baseTypes, rateFor, nextBillDate, cardRate, billDateOf, nextPeriodFor } from '@/lib/engine';
-import { PLAN_LABEL } from '@/lib/types';
+import { PLAN_LABEL, NEW_PLANS } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
 import { toggleGeneratorAction } from '@/lib/actions-generator';
-import { possessionAction, adjustAction, instalmentAction, dueAction } from '@/lib/actions-desk';
+import { possessionAction, adjustAction, instalmentAction, dueAction, discontinueAction } from '@/lib/actions-desk';
 import { reverseAction, cancelCashAction } from '@/lib/actions-cash';
 import { bankOf } from '@/lib/bank';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
@@ -74,10 +74,25 @@ export function DocModal({ doc, flash }: { doc: string; flash?: string }) {
 const hidden = (o: Owner) => <><input type="hidden" name="pid" value={o.project} /><input type="hidden" name="oid" value={o.id} /></>;
 const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 
+/** "Apply to the current bill or from the next bill" on every change to what a customer is charged (Phase 2). */
+export function ApplyTo({ name = 'apply' }: { name?: string }) {
+  return <fieldset className="pay-via apply-to"><legend>Apply the change to</legend>
+    <label className="pay-via-o"><input type="radio" name={name} value="next" defaultChecked /> <span><b>From the next bill</b><small>bills already made stay as they are</small></span></label>
+    <label className="pay-via-o"><input type="radio" name={name} value="current" /> <span><b>The current bill too</b><small>a correction line is added to it</small></span></label>
+  </fieldset>;
+}
 export function OwnerModal({ m, o }: { m: string; o: Owner }) {
   const S = cur(), bal = balance(o), via = m === 'recpay-bank' ? 'bank' : '';
   if (via) m = 'recpay';
   if (m.startsWith('instal')) return InstalModal({ o, n: Math.min(24, Math.max(2, +m.split('-')[1] || 3)) });
+  if (m === 'discontinue') {
+    const on = !o.flagged, admin = isAdmin();
+    if (S.role === 'accountant') return <ModalShell title="Discontinue maintenance"><div className="callout">The building manager asks for this; the Admin approves it.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    return <ModalShell title={on ? 'Discontinue maintenance' : 'Resume maintenance'}><form action={discontinueAction} style={col}>{hidden(o)}<input type="hidden" name="on" value={on ? '1' : '0'} />
+      <div className={`callout ${on ? 'bad' : ''}`}><div>{on ? `${o.name} still owes ${rs(Math.max(0, bal))} after the late warning. Maintenance services for ${o.apt} stop once ${admin ? 'you confirm' : 'the Admin approves'}. Charges keep running and are still owed.` : `Maintenance for ${o.apt} starts again once ${admin ? 'you confirm' : 'the Admin approves'}.`}</div></div>
+      <div className="form-row"><label htmlFor="dc-r">Reason{admin ? ' (optional)' : ''}</label><input id="dc-r" name="reason" type="text" required={!admin} placeholder={on ? 'e.g. No payment after the warning of 30 Dec; owner not answering' : 'e.g. Paid in full on 5 Jan'} /></div>
+      <div className="m-actions"><CloseBtn /><Submit>{admin ? (on ? 'Discontinue maintenance' : 'Resume maintenance') : 'Send for approval'}</Submit></div></form></ModalShell>;
+  }
   if (m.startsWith('reverse-')) {
     const p = S.payments.find(x => x.id === m.slice(8));
     if (!p || cur().role === 'manager') return <ModalShell title="Reverse a payment"><div className="callout">{p ? 'Only the Admin or the Accountant can reverse a payment.' : 'This payment is not there any more (already reversed?).'}</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
@@ -137,6 +152,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         {isAdmin() ? null : <div className="form-row"><label htmlFor="dc-w">Reason for the admin <span className="req">(required)</span></label><input id="dc-w" name="why" type="text" required placeholder="e.g. Agreed with the owner for paying the year in advance" /></div>}
         {isAdmin() ? <div className="callout">Applies to bills from the next billing day. Recorded with your name.</div>
           : <div className="callout warn"><div>An admin has to approve this first. Once approved, it applies to bills from the next billing day.</div></div>}
+        <ApplyTo />
         <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save discount' : 'Send for approval'}</Submit></div></form></ModalShell>; }
     case 'clearance': {
       if (bal > 0) {
@@ -164,8 +180,9 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="eo-p">WhatsApp number</label><input id="eo-p" name="phone" type="tel" defaultValue={o.phone} placeholder="+92 3xx xxx xxxx" /></div>
       <div className="form-row"><label htmlFor="eo-e">Email</label><input id="eo-e" name="email" type="email" defaultValue={o.email} /></div>
       <div className="form-row"><label htmlFor="eo-ps">Possession date (billing day)</label><input id="eo-ps" name="possession" type="date" required defaultValue={o.possessionKnown ? o.possession : ''} /></div>
-      <div className="form-row"><label htmlFor="eo-pl">Billing plan (owner&apos;s choice)</label><select id="eo-pl" name="plan" defaultValue={o.plan || 'monthly'}>{Object.entries(PLAN_LABEL).map(([k, l]) => <option key={k} value={k}>{l}{k === 'quarterly' ? ' (every 3 months on their billing date)' : k === 'annual' ? ' (once a year on their billing date)' : ' (every month on their billing date)'}</option>)}</select></div>
+      <div className="form-row"><label htmlFor="eo-pl">Billing plan (owner&apos;s choice)</label><select id="eo-pl" name="plan" defaultValue={o.plan || 'monthly'}>{Object.entries(PLAN_LABEL).filter(([k]) => k !== 'quarterly' || o.plan === 'quarterly').map(([k, l]) => <option key={k} value={k}>{l}{k === 'quarterly' ? ' (every 3 months, kept for this customer)' : k === 'sixmonthly' ? ' (due every 6 months on the possession day)' : k === 'annual' ? ' (due once a year on the possession day)' : ' (due every month on the possession day)'}</option>)}</select></div>
       <div className="form-row"><label htmlFor="eo-r">Own monthly fee (Rs)</label><input id="eo-r" name="ownRate" type="number" min="0" step="1" defaultValue={o.rate || ''} placeholder={`Empty: rate card, ${rs(cardRate(o, billDateOf(nextPeriodFor(o))))} a month`} /><div className="cell-sub">Only for a flat with its own agreed fee. Counts from the {fm(nextPeriodFor(o))} bill.</div></div>
+      <ApplyTo />
       {isAdmin() ? null : <><div className="callout warn"><div>A change to the possession date, the billing plan or the monthly fee needs an admin&apos;s approval. The other details save straight away.</div></div>
         <div className="form-row"><label htmlFor="eo-w">Reason for the admin <span className="req">(required if you change the possession date, plan or fee)</span></label><input id="eo-w" name="why" type="text" placeholder="e.g. Owner asked to pay quarterly" /></div></>}
       <div className="form-row"><label htmlFor="eo-ab"><input id="eo-ab" name="abroad" type="checkbox" defaultChecked={o.abroad} /> Owner lives abroad</label></div>
@@ -181,7 +198,8 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
     case 'generator': { if (cur().role !== 'manager') return <ModalShell title="Generator charges"><div className="callout">The generator charges list is kept by the building manager.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
       const on = !o.generator;
       return <ModalShell title={on ? 'Add generator charges' : 'Remove generator charges'}><form action={toggleGeneratorAction} style={col}>{hidden(o)}<input type="hidden" name="on" value={on ? '1' : '0'} />
-        <div className="callout">{on ? `${o.apt} goes on the Generator Charges List` : `${o.apt} comes off the Generator Charges List`}. It counts from the flat&apos;s next bill; bills already made don&apos;t change.</div>
+        <div className="callout">{on ? `${o.apt} goes on the Generator Charges List` : `${o.apt} comes off the Generator Charges List`}.</div>
+        <ApplyTo />
         {isAdmin() ? null : <><div className="form-row"><label htmlFor="gn-w">Reason for the admin <span className="req">(required)</span></label><input id="gn-w" name="why" type="text" required placeholder="e.g. Generator connection installed on 10 Nov" /></div>
           <div className="callout warn"><div>An admin has to approve this first.</div></div></>}
         <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? (on ? 'Add generator charges' : 'Remove generator charges') : 'Send for approval'}</Submit></div></form></ModalShell>; }
@@ -280,7 +298,7 @@ export function PossessionModal() {
     </div>
     <div className="grid2" style={{ gap: 10 }}>
       <div className="form-row"><label htmlFor="np-d">Possession date</label><input id="np-d" name="possession" type="date" required defaultValue={S.today} /></div>
-      <div className="form-row"><label htmlFor="np-pl">Billing plan</label><select id="np-pl" name="plan" defaultValue="monthly">{Object.entries(PLAN_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
+      <div className="form-row"><label htmlFor="np-pl">Billing plan</label><select id="np-pl" name="plan" defaultValue="monthly">{NEW_PLANS.map(k => <option key={k} value={k}>{PLAN_LABEL[k]}</option>)}</select></div>
     </div>
     <div className="form-row"><label htmlFor="np-x">Note (optional)</label><input id="np-x" name="note" type="text" placeholder="e.g. Keys and meter reading handed over" /></div>
     <div className="m-actions"><CloseBtn keys={['m']} /><Submit>{isAdmin() ? 'Record possession' : 'Send for approval'}</Submit></div></form></ModalShell>;

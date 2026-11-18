@@ -1,5 +1,5 @@
 // One apartment (the demo's viewOwner): the flat, its owner, and bills, payments, history, notes and messages.
-import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator, instalmentStatus, anchorOf } from '@/lib/engine';
+import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator, instalmentStatus, anchorOf, billsOf, openingDue } from '@/lib/engine';
 import { getStore } from '@/lib/store';
 import type { WaLog } from '@/lib/types';
 import { PLAN_LABEL } from '@/lib/types';
@@ -82,11 +82,12 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <div className="bal"><div className="l">{bal < 0 ? 'Credit' : 'Owes'}</div><div className="v num" style={{ color: bal > 0 ? (st === 'flagged' ? 'var(--bad)' : 'var(--fg)') : 'var(--good)' }}>{rs(Math.abs(bal))}</div><div className="cell-sub">{bal < 0 ? 'Used for the next bills' : bal > 0 ? '' : 'All paid'}</div></div>
         </div>
         {closed ? null : <div className="actions">
-          {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Enter cash payment' : 'Record cash payment'}</Go> : null}
+          {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Enter payment' : 'Record cash payment'}</Go> : null}
           {bal > 0 && !o.exempt && S.role === 'manager' ? waBtn(o) : null}
           <details className="more"><summary className="btn">More ▾</summary><div className="menu">
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
             <Go href={m('note')}>Add note</Go>
+            {S.role !== 'accountant' ? o.flagged ? <Go href={m('discontinue')}>Resume maintenance{ask}</Go> : bal > 0 && billsOf(o).some(b => b.dueDate < S.today && b.net > b.paid) || (o.openingLeft > 0 && S.today > openingDue()) ? <Go href={m('discontinue')}>Discontinue maintenance{ask}</Go> : null : null}
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
             <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
             {hasGenerator() && S.role === 'manager' ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>

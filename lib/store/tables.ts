@@ -5,7 +5,7 @@ export const TABLES = {
     'exempt', 'exemptWhy', 'director', 'discount', 'abroad', 'invalidPhone', 'noPhone', 'rate', 'status', 'closedOn', 'flagged', 'flaggedOn', 'promiseUntil',
     'notes', 'suspensions', 'prevOwnerId', 'plan', 'floor', 'sheet', 'generator', 'instalments', 'dueDay', 'firstBill'],
   bills: ['id', 'ownerId', 'project', 'period', 'periodEnd', 'months', 'billDate', 'dueDate', 'finalDate', 'amount', 'discount', 'extras', 'net', 'paid', 'fine', 'finePaid', 'fined', 'fromCredit',
-    'prev', 'noticeSkipped', 'flagSkipped', 'reminders', 'lines', 'bd'],
+    'prev', 'noticeSkipped', 'flagSkipped', 'reminders', 'lines', 'bd', 'covFrom', 'covTo'],
   entries: ['id', 'ownerId', 'project', 'd', 'kind', 'amount', 'desc', 'ref', 'pid'],
   messages: ['id', 'ownerId', 'project', 'd', 't', 'from', 'kind', 'title', 'text', 'tpl', 'vars', 'pdf', 'status', 'waId', 'error', 'manual', 'shot', 'sentAt'],
   payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt', 'collectorId', 'collectorName', 'handoverId', 'reversed', 'enteredBy', 'approvedBy', 'approvedAt', 'txn'],

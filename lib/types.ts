@@ -31,8 +31,11 @@ export interface Rules {
   utilities: string[];      // utility bills entered each month for this project, e.g. ['Electricity']
   /** Fine old arrears (opening balances from before go-live) too. Off: the fine is only on the system's own bills. */
   fineArrears: boolean;
+  /** Phase 2 (18 Nov 2026): the bill (and the building manager's "send bill" To do) is made this many days before each
+   *  due date (15), and the late-payment warning this many days after it if still unpaid (15). */
+  billLead: number; warnAfter: number;
 }
-export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null };
+export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null, billLead: 15, warnAfter: 15 };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
   const x = { ...DEFAULT_RULES, ...r } as Rules & { autoSend?: unknown };
   delete x.autoSend;   // from before: WhatsApp is only sent by hand now
@@ -44,12 +47,17 @@ export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
   x.fineArrears = x.fineArrears === true;
   x.graceDays = Math.max(0, Math.min(60, Math.round(+x.graceDays))); if (!Number.isFinite(x.graceDays)) x.graceDays = DEFAULT_RULES.graceDays;
   x.dueDays = Math.max(1, Math.min(28, Math.round(+x.dueDays) || DEFAULT_RULES.dueDays));
+  x.billLead = Math.max(1, Math.min(60, Math.round(+x.billLead) || DEFAULT_RULES.billLead));
+  x.warnAfter = Math.max(1, Math.min(60, Math.round(+x.warnAfter) || DEFAULT_RULES.warnAfter));
   x.startOn = typeof x.startOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.startOn) ? x.startOn : null;
   return x;
 }
-export type Plan = 'monthly' | 'quarterly' | 'annual';
-export const PLAN_MONTHS: Record<Plan, number> = { monthly: 1, quarterly: 3, annual: 12 };
-export const PLAN_LABEL: Record<Plan, string> = { monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annually' };
+export type Plan = 'monthly' | 'quarterly' | 'sixmonthly' | 'annual';
+export const PLAN_MONTHS: Record<Plan, number> = { monthly: 1, quarterly: 3, sixmonthly: 6, annual: 12 };
+export const PLAN_LABEL: Record<Plan, string> = { monthly: 'Monthly', quarterly: 'Quarterly', sixmonthly: 'Every 6 months', annual: 'Yearly' };
+/** Plans offered for new possessions (quarterly stays only for customers already on it). */
+export const NEW_PLANS: Plan[] = ['monthly', 'sixmonthly', 'annual'];
+export const isPlan = (x: unknown): x is Plan => typeof x === 'string' && x in PLAN_MONTHS;
 
 export interface Discount { kind: 'pct' | 'fixed'; value: number; until: ISODate | null }
 export interface Note { d: ISODate; by: string; text: string }
@@ -87,12 +95,14 @@ export interface InstalmentPlan { id: string; approvedD: ISODate; startLeft: num
 export interface BreakdownRow { label: string; short: string; sub?: string; amount: number }
 export interface Breakdown { rows: BreakdownRow[]; dues: number; fee: number; feeBase: number; total: number }
 
-export interface BillLine { label: string; amount: number; kind: 'maintenance' | 'discount' | 'utility' }
+export interface BillLine { label: string; amount: number; kind: 'maintenance' | 'generator' | 'discount' | 'utility' | 'correction' }
 export interface Bill {
   id: string; ownerId: string; project: string; period: string; periodEnd: string; months: number;
   billDate: ISODate; dueDate: ISODate; finalDate: ISODate;
   amount: number; discount: number; extras: number; net: number; paid: number; fine: number; finePaid: number; fined: boolean;
   fromCredit: number; prev: number; noticeSkipped: boolean; flagSkipped: boolean; reminders: number[]; lines: BillLine[]; bd: Breakdown | null;
+  /** Phase 2: the days this bill covers (possession day to the day before its due date). finalDate = the late-warning date. */
+  covFrom?: ISODate | null; covTo?: ISODate | null;
 }
 
 /** A utility bill (electricity, water…) entered by the accountant for one flat and month; goes on the next bill. */
@@ -198,7 +208,7 @@ export interface State {
  *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
  *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
  *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse';
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'changes';
 export interface Approval {
   id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;

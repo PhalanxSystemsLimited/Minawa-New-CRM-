@@ -5,7 +5,7 @@ import { Go } from '@/components/client';
 import { Submit } from '@/components/client';
 import { Wa } from '@/components/icons';
 import { projectPage, projHead } from '@/components/views/project';
-import { TargetOpts } from '@/components/views/modals';
+import { TargetOpts, ApplyTo } from '@/components/views/modals';
 import { ApprovalItem } from '@/components/views/approvals';
 import { pendingProject } from '@/lib/approvals';
 import { ratesAction, rulesAction, fineAction, projectBankAction } from '@/lib/actions';
@@ -41,7 +41,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
             {types.map(ty => <tr key={ty}><td className="cell-main">{ty}</td><td className="r num">{rs(rateFor(ty, S.today))}</td><td className="r"><input className="fee-in num" type="number" min="0" step="100" name={`r:${ty}`} defaultValue={rateFor(ty, nextFrom)} aria-label={`${ty} rate from ${fd(nextFrom)}`} /></td></tr>)}
           </tbody></table></div>
           {why('why-rates')}
-          <div className="m-actions" style={{ marginTop: 10 }}><span className="muted" style={{ fontSize: 12, marginRight: 'auto', alignSelf: 'center' }}>New rates apply to bills from that date. Advance credit pays the new rate.</span><Submit>{save('Save rates')}</Submit></div></form>
+          <div style={{ marginTop: 10 }}><ApplyTo /></div>
+          <div className="m-actions" style={{ marginTop: 10 }}><span className="muted" style={{ fontSize: 12, marginRight: 'auto', alignSelf: 'center' }}>New rates apply to bills from that date; the old rates stay in the history. &quot;The current bill too&quot; corrects every customer&apos;s unpaid current bill.</span><Submit>{save('Save rates')}</Submit></div></form>
         </div>
         <div className="card" id="fine"><h3>Fine after the due date <small>{ad ? 'accountants\' changes come to you for approval' : 'needs approval'}</small></h3>
           <form action={fineAction} className="rules-form">{hid}
@@ -57,13 +58,11 @@ export default async function Settings({ params, searchParams }: { params: Promi
       </div>
         <div className="card"><h3>Billing schedule <small>new bills use these</small></h3>
           <form action={rulesAction} className="rules-form">{hid}
-            <div className="rule"><label htmlFor="ru-gr">New customers&apos; first bill</label><div className="rule-in"><input id="ru-gr" name="graceDays" type="number" min="0" max="60" defaultValue={r.graceDays} /><span>days after possession; then on that date every month, quarter or year</span></div></div>
-            <div className="rule"><label htmlFor="ru-day">Existing customers</label><div className="rule-in"><span>on the day of their possession date; with no date on file, on the</span><input id="ru-day" name="billDay" type="number" min="1" max="28" defaultValue={r.billDay} /></div></div>
-            <div className="rule"><label htmlFor="ru-due">Due date</label><div className="rule-in"><span>on the</span><input id="ru-due" name="dueDays" type="number" min="1" max="28" defaultValue={r.dueDays} /><span>of the month after the bill (a 5 Jan bill is due {fds(`2027-02-${String(r.dueDays).padStart(2, '0')}`)})</span></div></div>
-            <div className="rule"><label htmlFor="ru-rem">2nd and 3rd reminders</label><div className="rule-in"><span>on the</span><input id="ru-rem" name="remindOn" defaultValue={r.remindOn.join(', ')} style={{ width: 90 }} /><span>of the due month, while the bill is unpaid and before its due date</span></div></div>
-            <div className="rule"><label htmlFor="ru-fin">Flag for disconnection</label><div className="rule-in"><input id="ru-fin" name="flagDays" type="number" min="1" max="120" defaultValue={r.flagDays} /><span>days after the due date, if still unpaid</span></div></div>
-            <div className="rule"><label htmlFor="ru-ut">Utility bills entered here</label><div className="rule-in"><input id="ru-ut" name="utilities" defaultValue={r.utilities.join(', ')} placeholder="e.g. Electricity, Water" style={{ width: 220 }} /><span>added to each flat&apos;s next bill</span></div></div>
-            <p className="cell-sub" style={{ margin: '4px 0 0' }}>Bills, reminders, notices and receipts are made on time and wait in <b>Send on WhatsApp</b>, where staff send them by hand.</p>
+            <div className="rule"><label>Due date</label><div className="rule-in"><span>each customer&apos;s possession day, every 1, 6 or 12 months by their plan; with no possession date on file, the 1st of the month</span></div></div>
+            <div className="rule"><label htmlFor="ru-lead">Bill and &quot;send bill&quot; To do</label><div className="rule-in"><input id="ru-lead" name="billLead" type="number" min="1" max="60" defaultValue={r.billLead} /><span>days before the due date</span></div></div>
+            <div className="rule"><label htmlFor="ru-warn">Late payment warning</label><div className="rule-in"><input id="ru-warn" name="warnAfter" type="number" min="1" max="60" defaultValue={r.warnAfter} /><span>days after the due date, if still unpaid (the building manager decides on the fine)</span></div></div>
+            <div className="rule"><label htmlFor="ru-ut">Utility bills</label><div className="rule-in"><input id="ru-ut" name="utilities" defaultValue={r.utilities.join(', ')} placeholder="e.g. Electricity" style={{ width: 220 }} /><span>entered by the building manager, added to the next bill</span></div></div>
+            <p className="cell-sub" style={{ margin: '4px 0 0' }}>Bills and late warnings are made on time and wait in the building manager&apos;s <b>Send on WhatsApp</b>, where they are sent by hand. Nothing is fined or discontinued automatically.</p>
             {why('why-rules')}
             <div className="m-actions"><span className="muted" style={{ fontSize: 12, marginRight: 'auto', alignSelf: 'center' }}>Last run: {S.settings.lastRun ? fd(S.settings.lastRun) : 'not yet'}.</span><Submit>{save('Save schedule')}</Submit></div>
           </form>
@@ -94,11 +93,11 @@ export default async function Settings({ params, searchParams }: { params: Promi
       </div>
       <details className="card rules-card"><summary>How the system works</summary><ul className="rules">
         {r.startOn ? <li>Go-live on {fd(r.startOn)}: every customer with a balance gets a statement for it, due on the {ord(r.dueDays)} of the next month. Monthly charges start in {fm(S.goLive.slice(0, 7))}; the months before are in the opening balances.</li> : null}
-        <li>Each customer has a billing date. New customers (possessions recorded here and approved by the Admin): {r.graceDays} days after possession (possession 10 Nov → 5 Dec). Existing customers: the day of their possession date (possessed on the 5th → billed on the 5th); with no possession date on file, the {ord(r.billDay)}. Flats without a possession are not billed.</li>
-        <li>Bills repeat on that date at {hour12(r.sendHour)}: every month, every 3 months (quarterly) or every 12 months (annual); in a shorter month on its last day. A monthly bill is for that month (a new customer&apos;s for the month before, the first one from the possession date); quarterly and annual bills cover the next 3 or 12 months. Electricity and other utility bills entered by the accountant go on the next bill. The bill is the first reminder.</li>
-        <li>Every bill is due on the {ord(r.dueDays)} of the month after it (5 Dec → {ord(r.dueDays)} Jan); a customer can have their own due day once the Admin approves it. {r.remindOn.length ? `Reminders go out on the ${r.remindOn.map(ord).join(' and ')} of the due month while the bill is unpaid.` : ''} The day after the due date the fine ({r.feePct}% of the unpaid bills{r.fineArrears ? ' and old arrears' : ''}, changed with an admin's approval) is added and a final notice goes out.</li>
-        <li>{r.flagDays} days after the due date, flats still unpaid are flagged for disconnection. Paying in full clears the flag.</li>
         <li>Customers pay in cash to the building manager against the bill voucher, or by bank transfer into Minawa&apos;s account above. The building manager enters each payment (receipt number for cash, transaction ID for a transfer); the owner&apos;s balance changes once the Accountant confirms it, and the receipt goes to the building manager&apos;s To do to send on WhatsApp. The Accountant can also record cash paid at the office. Every message tells the owner to pay in cash to the building manager.</li>
+        <li>Each customer is due on their possession day, every month, every 6 months or once a year by their plan (a few existing customers stay quarterly); with no possession date on file, on the 1st. A bill covers the period up to the day before its due date (possession 20 Nov, monthly: 20 Nov – 19 Dec, due 20 Dec); a first part-period is charged by the day.</li>
+        <li>The bill, and the building manager&apos;s &quot;send bill&quot; To do, is made {r.billLead} days before each due date. If it is still unpaid {r.warnAfter} days after the due date, a late payment warning waits in the building manager&apos;s To do; he decides when sending whether to add the fine ({r.feePct}% of what is late).</li>
+        <li>Nothing is discontinued automatically: after the warning the building manager can ask to discontinue maintenance, and the Admin approves it. Royal Enclave flats on the Generator list get a separate generator line on each bill.</li>
+        <li>Changes to what a customer pays (rates, discount, generator, own fee) apply from the next bill, or to the current bill too as a correction line. Old bills are never recalculated, so the history shows what was charged when.</li>
         <li>A payment covers dues and the late fee in proportion, so the fee stays {r.feePct}% of what is still owed; dues are paid oldest first. Extra money becomes advance credit for the next bills.</li>
         <li>A promise to pay pauses notices until the promised date; if it passes unpaid, the accountant is alerted.</li>
         <li>Directors&apos; apartments are exempt. Discounts can be a percentage or fixed, with an optional end date.</li>

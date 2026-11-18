@@ -7,7 +7,7 @@ import { intl } from './dispatch';
 import { requireStaff, requireRole, staffName } from './session';
 import { siteOrigin } from './doclink';
 import { mutate, load } from './ops';
-import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting } from './engine';
+import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting, addFine, removeFine } from './engine';
 import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
 import { compose, composeQueued, cantSend, pendingGroups, toDoKinds, type SendItem, type SendType, setDocBase } from './manual-send';
@@ -190,4 +190,21 @@ export async function resendFixedAction(input: { pid: string; oid: string }): Pr
 /** Dues messages still waiting in Send on WhatsApp for this owner: the message sent now replaces them. */
 function pendingDues(s: { messages: import('./types').Message[] }, o: Owner) {
   return s.messages.filter(m => m.ownerId === o.id && m.status === 'pending' && m.from === 'biz' && ['bill', 'reminder', 'notice', 'link'].includes(m.kind) && m.tpl !== 'credit').map(m => m.id);
+}
+
+/** "Add fine" / "Remove fine" in the send runner (Phase 2): the building manager decides on the fine when sending a
+ *  late warning or a reminder. Returns the message written again with the new figures. */
+export async function fineAction(input: { pid: string; item: SendItem; add: boolean }): Promise<{ ok: boolean; error?: string; text?: string; fine?: SendItem['fine'] }> {
+  const staff = await requireRole('manager');
+  setDocBase(await siteOrigin());
+  try {
+    return await mutate(input.pid, staff, s => {
+      const o = ownerById(input.item.ownerId); if (!o) throw new Error('Owner not found');
+      const t = nowPKT(), who = staffName(staff);
+      const n = input.add ? addFine(o, s.today, t, who) : removeFine(o, s.today, t, who);
+      if (input.add && !n) throw new Error('Nothing is late, so there is no fine to add');
+      const it = compose(o, (input.item.kind === 'reminder' ? 'reminder' : 'notice'), s.today, t);
+      return { ok: true, text: it?.text, fine: it?.fine };
+    }, { send: false });
+  } catch (e) { return { ok: false, error: (e as Error).message }; }
 }

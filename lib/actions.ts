@@ -60,7 +60,7 @@ export async function discountAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), k = S(fdata, 'kind'), v = Math.max(0, Math.round(+S(fdata, 'value') || 0));
   if (k === 'pct' && v > 100) go(ownerPath(pid, oid), 'A percentage discount can be at most 100');
   // An admin's discount applies now; an accountant's waits for an admin's approval.
-  const r = await attempt(() => mutate(pid, staff, s => changeOrRequest(needOwner(s, oid), 'discount', { kind: k === 'none' || !v ? 'none' : k, value: v, until: S(fdata, 'until') || null }, S(fdata, 'why')), { send: false }));
+  const r = await attempt(() => mutate(pid, staff, s => changeOrRequest(needOwner(s, oid), 'discount', { kind: k === 'none' || !v ? 'none' : k, value: v, until: S(fdata, 'until') || null, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, S(fdata, 'why')), { send: false }));
   if (failed(r)) go(ownerPath(pid, oid) + '?m=discount', r.error);
   go(ownerPath(pid, oid), (r as ChangeResult).text);
 }
@@ -130,8 +130,8 @@ export async function editOwnerAction(fdata: FormData) {
     const out: ChangeResult[] = [], why = S(fdata, 'why');
     const plan = S(fdata, 'plan');
     if (pos && (pos !== o.possession || !o.possessionKnown)) out.push(changeOrRequest(o, 'posdate', { possession: pos }, why));
-    if (plan && ['monthly', 'quarterly', 'annual'].includes(plan)) out.push(changeOrRequest(o, 'plan', { plan }, why));
-    if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null }, why)); }
+    if (plan && ['monthly', 'quarterly', 'sixmonthly', 'annual'].includes(plan)) out.push(changeOrRequest(o, 'plan', { plan }, why));
+    if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, why)); }
     return out.filter(x => x.done === 'requested').map(x => x.summary);
   }, { send: false }));
   if (failed(asked)) go(ownerPath(pid, oid) + '?m=edit', `Not saved: ${asked.error}`);
@@ -183,7 +183,7 @@ export async function ratesAction(fdata: FormData) {
   const r = await attempt(() => mutate(pid, staff, () => {
     const rates: Record<string, number> = {};
     for (const ty of [...new Set([...rateTypes(), ...S(fdata, 'newtype').split(',').map(x => x.trim()).filter(Boolean)])]) { const v = Math.round(+S(fdata, 'r:' + ty) || 0); if (v > 0) rates[ty] = v; }
-    return changeOrRequest(null, 'rates', { from, rates }, S(fdata, 'why'));
+    return changeOrRequest(null, 'rates', { from, rates, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, S(fdata, 'why'));
   }, { send: false }));
   go(back, failed(r) ? r.error : r.done === 'applied' ? 'Rates saved. Use a mass announcement to tell owners.' : r.text);
 }
@@ -194,8 +194,8 @@ export async function rulesAction(fdata: FormData) {
     const r0 = s.settings.rules;
     const remindOn = [...new Set(S(fdata, 'remindOn').split(/[,\s]+/).map(x => Math.round(+x)).filter(x => x >= 1 && x <= 28))].sort((x, y) => x - y);
     const utilities = [...new Set(S(fdata, 'utilities').split(',').map(x => x.trim()).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1)))];
-    const c = { billDay: n('billDay', 1, 28, r0.billDay), dueDays: n('dueDays', 1, 28, r0.dueDays), remindOn, flagDays: n('flagDays', 1, 120, r0.flagDays), utilities, graceDays: n('graceDays', 0, 60, r0.graceDays ?? 25) };
-    if (remindOn.some(x => x >= c.dueDays)) throw new Error(`Reminders go out in the due month before the due date: pick days before the ${ord(c.dueDays)}.`);
+    const c = { billDay: r0.billDay, dueDays: r0.dueDays, remindOn: r0.remindOn, flagDays: r0.flagDays, utilities, graceDays: r0.graceDays, billLead: n('billLead', 1, 60, r0.billLead), warnAfter: n('warnAfter', 1, 60, r0.warnAfter) };
+    void remindOn;
     return changeOrRequest(null, 'rules', c, S(fdata, 'why'));
   }, { send: false }));
   go(back, failed(r) ? r.error : r.text);

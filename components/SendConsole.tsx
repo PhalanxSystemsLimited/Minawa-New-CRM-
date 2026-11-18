@@ -4,7 +4,7 @@
 //    CRM asks "Did you send the message?" (WaReturnPrompt); the answer is recorded and the next owner comes up.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { prepareSendAction, recordSentAction, dropPendingAction } from '@/lib/actions-send';
+import { prepareSendAction, recordSentAction, dropPendingAction, fineAction } from '@/lib/actions-send';
 import type { SendItem, SendType } from '@/lib/manual-send';
 import { Wa, Ic } from './icons';
 import { awaitReturn, clearAwait, type WaAnswer } from './WaReturnPrompt';
@@ -68,6 +68,16 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
   useEffect(() => { if (go) begin(type === 'queue' && (notice || only) ? [] : ids); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const it = items[i], body = it ? (edits[it.key] ?? it.text) : '';
+  const [fineBusy, setFineBusy] = useState(false);
+  const toggleFine = async (add: boolean) => {
+    if (!it) return; setFineBusy(true); setErr('');
+    try {
+      const r = await fineAction({ pid, item: it, add });
+      if (!r.ok) setErr(r.error || 'Could not change the fine');
+      else { setItems(xs => xs.map((x, j) => j === i ? { ...x, text: r.text || x.text, fine: r.fine ?? x.fine } : x)); setEdits(e => { const n = { ...e }; delete n[it.key]; return n; }); }
+    } catch { setErr('Could not change the fine. Try again.'); }
+    setFineBusy(false);
+  };
   const to = it ? (test || digits(it.to || it.phone)) : '';
   const chatUrl = it ? (via === 'web' ? `https://web.whatsapp.com/send?phone=${to}&text=${encodeURIComponent(body)}` : `https://wa.me/${to}?text=${encodeURIComponent(body)}`) : '';
   const openChat = () => { awaitReturn(pid, { ...it, text: body }, to); const w = window.open(chatUrl, 'minawa-whatsapp'); try { w?.focus(); } catch { /* ignore */ } setOpened(true); };
@@ -142,6 +152,11 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
         <div className="cell-sub">Apartment {it.apt}, {it.name}{test ? ` · testing, the owner's number is ${it.phone}` : ''}</div></div></div>
       <div className="form-row"><label htmlFor="sc-body">{it.title} <span className="cell-sub">(you can edit it here before opening the chat)</span></label>
         <textarea id="sc-body" value={body} onChange={e => setEdits(x => ({ ...x, [it.key]: e.target.value }))} style={{ minHeight: 210 }}></textarea></div>
+      {it.fine && (it.fine.offer > 0 || it.fine.added > 0) ? <div className={`sc-fine${it.fine.added ? ' on' : ''}`}>
+        <div className="t"><b>{it.fine.added ? `Fine added: Rs ${it.fine.added.toLocaleString('en-US')}` : `Add a fine? ${it.fine.pct}% of what is late = Rs ${it.fine.offer.toLocaleString('en-US')}`}</b>
+          <span className="cell-sub">{it.fine.added ? 'It is in the message and on the customer\'s account.' : 'Your decision: send with the fine, or without it.'}</span></div>
+        <button type="button" className={`btn sm${it.fine.added ? '' : ' primary'}`} disabled={fineBusy} onClick={() => toggleFine(!it.fine?.added)}>{fineBusy ? 'Saving…' : it.fine.added ? 'Remove fine' : 'Add fine'}</button>
+      </div> : null}
       {it.pdfHref ? <div className="wa-att"><span className="pdf-ic" aria-hidden="true">PDF</span><div className="t"><b>{it.pdf?.kind === 'receipt' ? 'Receipt' : it.pdf?.kind === 'bill' ? 'Bill' : 'Statement'} PDF</b><span className="cell-sub">Optional: download it and attach it in the chat</span></div>
         <a className="btn sm" href={it.pdfHref} download><Ic n="download" s={14} /> Download</a></div> : null}
       {done[it.key] === 'notsent' ? <div className="callout warn" style={{ marginTop: 10 }}><div>Saved as <b>not sent</b>. Open the chat again to send it, or Skip.</div></div>

@@ -18,7 +18,7 @@ import { redirect } from 'next/navigation';
 import { requireStaff } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
-const KIND: Record<string, string> = { bill: 'Bill', reminder: 'Reminder', notice: 'Final notice', link: 'Dues', receipt: 'Receipt', alert: 'Maintenance notice', announcement: 'Message', info: 'Message' };
+const KIND: Record<string, string> = { bill: 'Bill', reminder: 'Reminder', notice: 'Late warning', link: 'Dues', receipt: 'Receipt', alert: 'Maintenance notice', announcement: 'Message', info: 'Message' };
 
 export default async function SendPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;

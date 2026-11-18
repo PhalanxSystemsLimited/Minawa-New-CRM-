@@ -17,7 +17,7 @@ export default async function Apartments({ params, searchParams }: { params: Pro
     const apts = apartments(), counts: Record<string, number> = {};
     apts.forEach(o => { const s = ownerStatus(o); counts[s] = (counts[s] || 0) + 1; });
     const owing = (counts.due || 0) + (counts.overdue || 0) + (counts.flagged || 0), withFee = apts.filter(o => (o.feeDue || 0) > 0).length;
-    const f: [string, string, number][] = [['all', 'All', apts.length], ['owing', 'Owe money', owing], ['fee', 'Fine', withFee], ['flagged', 'Flagged', counts.flagged || 0], ['paid', 'Paid up', counts.paid || 0], ['exempt', 'Exempt', counts.exempt || 0]];
+    const f: [string, string, number][] = [['all', 'All', apts.length], ['owing', 'Owe money', owing], ['fee', 'Fine', withFee], ['flagged', 'Discontinued', counts.flagged || 0], ['paid', 'Paid up', counts.paid || 0], ['exempt', 'Exempt', counts.exempt || 0]];
     const owes = (s: OwnerStatus) => s === 'due' || s === 'overdue' || s === 'flagged';
     const fits = (o: Owner) => filter === 'all' || (filter === 'owing' ? owes(ownerStatus(o)) : filter === 'fee' ? (o.feeDue || 0) > 0 : ownerStatus(o) === filter);
     const hay = (o: Owner) => `${o.apt} ${accountsOf(o).map(x => `${x.name} ${x.phone}`).join(' ')}`.toLowerCase();

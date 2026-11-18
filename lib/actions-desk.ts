@@ -177,3 +177,14 @@ export async function dueAction(fdata: FormData) {
   if (!r) go(`${back}?m=due`, err || 'Not saved');
   go(back, r!.text);
 }
+
+/** Discontinue (or resume) a customer's maintenance after the late warning: the building manager asks, the Admin approves. */
+export async function discontinueAction(fdata: FormData) {
+  const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), on = S(fdata, 'on') === '1', reason = S(fdata, 'reason');
+  const back = `/p/${pid}/apartments/${oid}`;
+  if (staff.role !== 'admin' && !reason) go(`${back}?m=discontinue`, 'Write the reason for the Admin');
+  let r = '';
+  try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'discontinue', { on }, reason).text; }, { send: false }); }
+  catch (e) { go(back, (e as Error).message); }
+  go(back, r);
+}

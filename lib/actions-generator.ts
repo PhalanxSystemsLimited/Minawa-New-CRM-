@@ -11,7 +11,7 @@ import { changeOrRequest } from './approvals';
 
 export interface GeneratorResult { ok: boolean; changed: number; requested: number; error?: string }
 
-export async function setGeneratorAction(input: { pid: string; ids: string[]; on: boolean; why?: string }): Promise<GeneratorResult> {
+export async function setGeneratorAction(input: { pid: string; ids: string[]; on: boolean; why?: string; apply?: 'current' | 'next' }): Promise<GeneratorResult> {
   const staff = await requireStaff(), on = !!input.on, ids = [...new Set((input.ids || []).map(String))];
   if (staff.role !== 'manager') return { ok: false, changed: 0, requested: 0, error: 'The generator charges list is kept by the building manager.' };
   if (!ids.length) return { ok: false, changed: 0, requested: 0, error: 'Tick at least one apartment.' };
@@ -22,7 +22,7 @@ export async function setGeneratorAction(input: { pid: string; ids: string[]; on
       for (const id of ids) {
         const o = ownerById(id);
         if (!o || o.status !== 'active') continue;
-        const r = changeOrRequest(o, 'generator', { on }, input.why || '');
+        const r = changeOrRequest(o, 'generator', { on, apply: input.apply === 'current' ? 'current' : 'next' }, input.why || '');
         if (r.done === 'applied') changed++; else if (r.done === 'requested') requested++;
       }
       return { changed, requested };
@@ -35,9 +35,10 @@ export async function setGeneratorAction(input: { pid: string; ids: string[]; on
 /** The same for one flat, from its page (a form). */
 export async function toggleGeneratorAction(fdata: FormData) {
   const pid = String(fdata.get('pid') || ''), oid = String(fdata.get('oid') || ''), on = fdata.get('on') === '1';
-  const r = await setGeneratorAction({ pid, ids: [oid], on, why: String(fdata.get('why') || '') });
+  const apply = fdata.get('apply') === 'current' ? 'current' : 'next';
+  const r = await setGeneratorAction({ pid, ids: [oid], on, why: String(fdata.get('why') || ''), apply });
   if (!r.ok) redirect(`/p/${pid}/apartments/${oid}?m=generator&t=${encodeURIComponent(r.error || 'Not saved')}`);
   const t = !r.ok ? r.error || 'Not saved' : r.requested ? `Sent to an admin for approval: ${on ? 'add to' : 'remove from'} the Generator Charges List. It applies once approved.`
-    : r.changed ? (on ? 'Added to the Generator Charges List' : 'Removed from the Generator Charges List') + '; it counts from the next bill' : 'No change';
+    : r.changed ? (on ? 'Added to the Generator Charges List' : 'Removed from the Generator Charges List') + (apply === 'current' ? '; the current bill is corrected' : '; it counts from the next bill') : 'No change';
   redirect(`/p/${pid}/apartments/${oid}?t=${encodeURIComponent(t)}`);
 }

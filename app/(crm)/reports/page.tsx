@@ -8,7 +8,7 @@ import { fd, fds, fm, rs, todayPKT, prevMonth } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS: Record<string, [string, string]> = { due: ['Due', 'info'], overdue: ['Overdue', 'warn'], flagged: ['Flagged', 'bad'] };
+const STATUS: Record<string, [string, string]> = { due: ['Due', 'info'], overdue: ['Overdue', 'warn'], flagged: ['Discontinued', 'bad'] };
 
 export default async function Reports({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams, me = await requireStaff(), today = todayPKT();
@@ -47,7 +47,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
           <div className="kpi"><div className="l">Apartments owing</div><div className="v num">{rows.length}</div><div className="cell-sub">{overdue ? 'overdue or flagged' : 'with a balance'}</div></div>
           <div className="kpi"><div className="l">Total owed</div><div className="v num">{rs(sum)}</div><div className="cell-sub">arrears, bills and fines</div></div>
           <div className="kpi"><div className="l">Overdue</div><div className="v num">{rows.filter(x => x.status === 'overdue').length}</div><div className="cell-sub">past the due date</div></div>
-          <div className="kpi"><div className="l">Flagged</div><div className="v num">{rows.filter(x => x.status === 'flagged').length}</div><div className="cell-sub">for disconnection</div></div>
+          <div className="kpi"><div className="l">Discontinued</div><div className="v num">{rows.filter(x => x.status === 'flagged').length}</div><div className="cell-sub">maintenance stopped</div></div>
         </div>
         <div className="card"><div className="card-row"><h3>{overdue ? 'Defaulters' : 'Who owes'} <small>{rows.length} apartment{rows.length === 1 ? '' : 's'} · worst first</small></h3></div>
           {rows.length ? <div className="tbl-wrap"><table className="rpt-tbl"><thead><tr><th>Apartment</th><th>Owner</th>{pid ? null : <th>Building</th>}<th className="r">Earlier dues</th><th className="r">Unpaid bills</th><th className="r">Fine</th>{rows.some(x => x.other) ? <th className="r">Other</th> : null}<th className="r">Total</th><th>Oldest due</th><th>Status</th></tr></thead><tbody>

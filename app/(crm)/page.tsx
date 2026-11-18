@@ -1,6 +1,7 @@
 // The company dashboard: every project at once (the demo's viewHome).
 import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
+import { duesList } from '@/lib/reports';
 import { use, projStats, sortedPayments, ownerById, upcoming, collections, nextBillOf } from '@/lib/engine';
 import { pendingCount } from '@/lib/manual-send';
 import { KIND_LABEL } from '@/lib/approvals';
@@ -92,7 +93,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const accent = new Map(st.map((x, i) => [x.p.id, pi(i)]));
   const ringPct = y26 ? (y26.due ? 100 * y26.paid / y26.due : 0) : pct;
   const upTone = (k: string) => k === 'flag' || k === 'fine' ? 'red' : k === 'remind' ? 'amber' : k === 'bill' ? 'blue' : 'green';
-  const upKind = (k: string) => k === 'bill' ? 'Bill' : k === 'remind' ? 'Reminder' : k === 'fine' ? 'Fine + notice' : k === 'flag' ? 'Flag' : 'Alert';
+  const upKind = (k: string) => k === 'bill' ? 'Bill' : k === 'remind' ? 'Reminder' : k === 'fine' ? 'Late warning' : k === 'flag' ? 'Discontinued' : 'Alert';
 
   const payFeed = recent.length ? <div className="lv-feed">{recent.map(r => r.feed)}</div> : <p className="empty">No payments yet.</p>;
   const waFeed = wa.length ? <div className="lv-feed">{wa.slice(0, 6).map(e => <div className="lv-fi" key={e.id}>
@@ -122,6 +123,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </>}
       <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
+    {(() => {
+      // Past due (Phase 2): customers whose bill (or old arrears) is past its due date, worst first. The building manager
+      // can send a reminder straight away; others open the customer.
+      const late = duesList(states, true).slice(0, 8), all = duesList(states, true).length;
+      if (!late.length) return null;
+      return <><Lbl>Past due</Lbl>
+        <div className="card"><div className="card-row"><h3>Past their due date <small>{all} customer{all === 1 ? '' : 's'} · worst first</small></h3><A href="/reports?o=1" className="btn sm">See all</A></div>
+          <div className="tbl-wrap"><table><thead><tr><th>Apartment</th><th>Customer</th><th>Building</th><th className="r">Owed</th><th>Due date</th><th></th></tr></thead><tbody>
+            {late.map(x => <tr key={x.project + x.ownerId}><td><A href={`/p/${x.project}/apartments/${x.ownerId}`} className="apt-a"><b>{x.apt}</b></A></td><td>{x.name}</td><td>{x.pname}</td>
+              <td className="r num"><b>{rs(x.total)}</b>{x.fine ? <div className="cell-sub">incl. fine {rs(x.fine)}</div> : null}</td>
+              <td style={{ whiteSpace: 'nowrap' }}>{x.oldestDue ? fds(x.oldestDue) : '—'}<div className="cell-sub">{x.daysOver} day{x.daysOver === 1 ? '' : 's'} late{x.status === 'flagged' ? ' · discontinued' : ''}</div></td>
+              <td className="r">{staff.role === 'manager' && x.phone ? <A href={`/p/${x.project}/send?type=reminder&ids=${x.ownerId}&go=1`} className="btn sm wa">Send reminder</A> : <A href={`/p/${x.project}/apartments/${x.ownerId}`} className="btn sm">Open</A>}</td></tr>)}
+          </tbody></table></div></div></>;
+    })()}
 
     <div className="lv-layout lv-dash">
     <div className="lv-main">

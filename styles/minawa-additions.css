@@ -351,3 +351,9 @@ input:not([type]), input[type=email], input[type=password] { border: 1px solid v
 .chipbtn.on{background:var(--ink,#161B1F);color:#fff;border-color:transparent}
 @media (max-width:767px){.bulk-row{flex-wrap:wrap}.bulk-row .t{flex-basis:calc(100% - 40px)}}
 .signin-help{margin:16px 0 0;font-size:12.5px;line-height:1.5;opacity:.8;text-align:center}
+
+/* Send runner: the building manager's fine decision on a late warning (Phase 2) */
+.sc-fine{display:flex;align-items:center;gap:12px;margin:10px 0 0;padding:12px 14px;border-radius:12px;border:1px dashed rgba(217,119,6,.55);background:rgba(245,158,11,.08)}
+.sc-fine.on{border-style:solid;border-color:rgba(220,38,38,.45);background:rgba(220,38,38,.06)}
+.sc-fine .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.apply-to{margin-top:4px}

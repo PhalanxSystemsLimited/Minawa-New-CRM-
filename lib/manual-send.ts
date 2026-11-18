@@ -4,7 +4,7 @@
 // Everything here runs inside the engine (use(s, …)).
 import { bankOf } from './bank';
 import type { Message, Owner } from './types';
-import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct } from './engine';
+import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer } from './engine';
 import { rs, fd, fill, addDays } from './fmt';
 import { intl } from './dispatch';
 import { docToken, type DocKind } from './doclink';
@@ -25,7 +25,7 @@ export const SEND_TYPES: { key: SendType; label: string; hint: string }[] = [
   { key: 'link', label: 'Dues', hint: 'What they owe today and how to pay' },
   { key: 'bill', label: 'Bill', hint: 'Their latest bill, with the full balance' },
   { key: 'reminder', label: 'Reminder', hint: 'A friendly reminder before the due date' },
-  { key: 'notice', label: 'Final notice', hint: 'Overdue: pay by the final date or utilities are disconnected' },
+  { key: 'notice', label: 'Late payment warning', hint: 'Unpaid 15 days after the due date: you can add the fine when sending' },
   { key: 'receipt', label: 'Receipt', hint: 'Confirms their latest payment' },
   { key: 'custom', label: 'Own message', hint: 'Write it yourself; {{name}}, {{apt}}, {{total}} fill in for each owner' }
 ];
@@ -37,6 +37,8 @@ export interface SendItem {
   key: string; ownerId: string; apt: string; name: string; phone: string; to: string;
   kind: string; title: string; text: string;
   pdf: Message['pdf']; pdfHref: string | null; fromMsg: string | null; replaces: string[];
+  /** Late warnings and reminders: the fine the building manager can add before sending (pct of what is late). */
+  fine?: { pct: number; offer: number; added: number } | null;
 }
 
 
@@ -110,7 +112,8 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
   // The PDF goes in as a link just above the sign-off (the voucher with the due date, or the receipt).
   const withPdf = (text: string, pdf: Message['pdf']) => { const l = pdfLine(pdf), f = foot(); return l && text.endsWith(f) ? text.slice(0, -f.length) + l + '\n' + f : text; };
   const out = (kind: string, title: string, text: string, pdf: Message['pdf']): Item =>
-    ({ ...base, kind, title, text: withPdf(text, pdf), pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null });
+    ({ ...base, kind, title, text: withPdf(text, pdf), pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null,
+      fine: kind === 'notice' || kind === 'reminder' ? { pct: feePct(), offer: fineOffer(o, d), added: o.feeDue || 0 } : null });
   if (type === 'custom') {
     const l = opts.pay && bal > 0;
     const v = { name: niceName(o.name), apt: o.apt, block: o.block || '', project: S.proj.name, total: rs(Math.max(0, bal)), dues: rs(Math.max(0, bal)), due: f.bill ? fd(f.bill.dueDate) : '' };
@@ -146,10 +149,12 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     return out('reminder', 'Reminder', text, { kind: 'statement', id: o.id });
   }
   if (type === 'notice') {
-    const nb = f.late || f.bill, final = nb && nb.finalDate >= d ? nb.finalDate : addDays(d, 7);
-    const text = lines(head(o, '⚠️ Final notice', 'Your maintenance dues are overdue.'), details(o), duesList(o, bal), '',
-      `❗ *Please pay by ${fd(final)}*, otherwise your utilities will be disconnected.`, payBlock(), foot());
-    return out('notice', 'Final notice', text, nb ? { kind: 'bill', id: nb.id } : { kind: 'statement', id: o.id });
+    // Late payment warning (15 days after the due date). Whether a fine is added is the building manager's choice at
+    // send time ("Add fine" in Send on WhatsApp); once added it shows in the dues list.
+    const nb = f.late || f.bill, by = addDays(d, 7);
+    const text = lines(head(o, '⚠️ Late payment warning', nb ? `Your maintenance dues were due on *${fd(nb.dueDate)}* and are still unpaid.` : 'Your maintenance dues are overdue.'), details(o), duesList(o, bal), '',
+      `❗ *Please pay by ${fd(by)}.* If the dues remain unpaid, maintenance services may be discontinued.`, payBlock(), foot());
+    return out('notice', 'Late payment warning', text, nb ? { kind: 'bill', id: nb.id } : { kind: 'statement', id: o.id });
   }
   const text = lines(head(o, '💳 Your dues', 'Here are your maintenance dues as of today.'), details(o), duesList(o, bal), payBlock(), foot());
   return out('link', 'Your dues', text, { kind: 'statement', id: o.id });
@@ -172,7 +177,7 @@ export function pendingGroups(filter?: (m: Message) => boolean) {
 export const TODO_GROUPS: { key: string; label: string; hint: string; kinds: string[] }[] = [
   { key: 'bill', label: 'Monthly bills', hint: 'First alert: the bill made on the customer\'s billing date', kinds: ['bill'] },
   { key: 'reminder', label: 'Reminders', hint: 'Unpaid bills, on the 3rd and 7th of the due month', kinds: ['reminder'] },
-  { key: 'notice', label: 'Final notices', hint: 'Unpaid after the due date: the fine is added', kinds: ['notice'] },
+  { key: 'notice', label: 'Late payment warnings', hint: 'Unpaid 15 days after the due date: add the fine if you decide to', kinds: ['notice'] },
   { key: 'receipt', label: 'Payment confirmations', hint: 'Payments the Accountant confirmed: send each owner their receipt (PDF)', kinds: ['receipt'] },
   { key: 'link', label: 'Dues messages', hint: 'Updated dues and how to pay', kinds: ['link'] },
   { key: 'other', label: 'Notices and messages', hint: 'Maintenance notices and announcements', kinds: ['alert', 'announcement', 'info', 'statement', 'reply'] }

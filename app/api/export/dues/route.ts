@@ -6,7 +6,7 @@ import { todayPKT } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
 const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-const ST: Record<string, string> = { due: 'Due', overdue: 'Overdue', flagged: 'Flagged for disconnection' };
+const ST: Record<string, string> = { due: 'Due', overdue: 'Overdue', flagged: 'Maintenance discontinued' };
 
 export async function GET(req: Request) {
   const staff = await currentStaff();
