@@ -675,3 +675,17 @@ html[data-theme=frost] .el-search input{background:rgba(255,255,255,.16);color:#
 .cap-bar{position:sticky;left:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 4px 4px;font-size:13px;color:var(--px-mute)}
 .cap-bar span{margin-right:auto;font-weight:600}
 @media print{.cap-bar{display:none}}
+
+/* ---- Update 115 (21 Nov 2026): receipts, bills and statements are white paper in every theme ---- */
+/* The paper keeps the Light theme's colours: the dark and frost themes must not tint its stamp, table or text. */
+html[data-theme]:root .doc{--ink:#141517;--stone:#F6F5F1;--line:#E6E4DD;--fg:#232a30;--muted:#5b6166;--surface:#fff;color-scheme:light;background:#fff;color:#232a30;text-shadow:none}
+html[data-theme]:root .doc .rstamp{background:#F6F5F1;border-color:#141517}
+html[data-theme]:root .doc .rstamp.sp{background:#E2EDE4;border-color:#2F6B3F}
+html[data-theme]:root .doc th{background:#F8F7F3;color:#53606a;border-color:#dfe5e4}
+html[data-theme]:root .doc td,html[data-theme]:root .doc .tot td{color:#1e293b;background:transparent}
+html[data-theme]:root .doc td .sub{color:#697277}
+html[data-theme]:root .doc tbody tr,html[data-theme]:root .doc tbody tr:hover{background:transparent;transform:none;box-shadow:none}
+html[data-theme]:root .doc .kv div{color:#232a30}
+html[data-theme]:root .doc .kv div span{color:#697277}
+html[data-theme]:root .doc .fine{background:#fff4e0;color:#6b4200}
+html[data-theme]:root .doc :is(b,strong){color:inherit}
