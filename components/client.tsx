@@ -44,7 +44,7 @@ export function ModalShell({ title, wide, children, closeKeys = ['m', 'doc', 'id
     <div id="modal">
       <div className="m-back" onClick={close}></div>
       <div ref={card} className={'m-card' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" aria-label={title}>
-        <div className="m-head"><h3>{title}</h3><button className="icon" onClick={close} aria-label="Close">×</button></div>
+        <div className="m-head"><h3>{title}</h3><a className="icon m-x" href={without(...closeKeys)} role="button" aria-label="Close" onClick={e => { e.preventDefault(); e.stopPropagation(); close(); }}>×</a></div>
         <div className="m-body">{children}</div>
       </div>
     </div>
@@ -52,7 +52,8 @@ export function ModalShell({ title, wide, children, closeKeys = ['m', 'doc', 'id
 }
 export function CloseBtn({ label = 'Cancel', className = 'btn', keys = ['m', 'doc', 'id', 'flash'] }: { label?: string; className?: string; keys?: string[] }) {
   const r = useRouter(), without = useWithout();
-  return <button type="button" className={className} onClick={() => r.replace(without(...keys), { scroll: false })}>{label}</button>;
+  // A real link as well, so it closes even if the page's script hasn't started yet.
+  return <a className={className} href={without(...keys)} role="button" onClick={e => { e.preventDefault(); r.replace(without(...keys), { scroll: false }); }}>{label}</a>;
 }
 
 /** Toast from ?t=…, shown once, then removed from the address. */

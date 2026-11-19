@@ -266,8 +266,8 @@ export async function staffAction(fdata: FormData) {
   if (name !== st!.name) ch.push(`name ${st!.name} → ${name}`);
   if (email !== st!.email) ch.push(`email ${st!.email} → ${email}`);
   if (role !== st!.role) ch.push(`role ${roleLabel(st!.role)} → ${roleLabel(role)}`);
-  if (role !== 'admin' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ') || (role === 'accountant' ? 'all' : 'none')}`);
-  if (role === 'manager' && !projects.length) go(back, 'Tick at least one building for a building manager');
+  if (role !== 'admin' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ')}`);
+  if ((role === 'manager' || role === 'accountant') && !projects.length) go(back, 'Please select at least one building for this role before saving.');
   if (active !== st!.active) ch.push(active ? 'can sign in again' : 'sign-in turned off');
   if (password) ch.push('password changed');
   if (!ch.length) go('/admin', 'Nothing changed');
@@ -288,7 +288,7 @@ export async function inviteAction(fdata: FormData) {
   const me = await requireAdmin();
   const email = S(fdata, 'email').toLowerCase(), name = S(fdata, 'name'), role = roleOf(S(fdata, 'role')), projects = buildingsOf(fdata, role), password = String(fdata.get('password') ?? '');
   if (!email || !name || password.length < 8) go('/admin?add=1', 'Enter a name, an email and a password of at least 8 characters');
-  if (role === 'manager' && !projects.length) go('/admin?add=1', 'Tick at least one building for a building manager');
+  if ((role === 'manager' || role === 'accountant') && !projects.length) go('/admin?add=1', 'Please select at least one building for this role before creating the account.');
   if (!EMAIL_RE.test(email)) go('/admin?add=1', 'Enter a valid email');
   const store = await getStore(), list = await store.listStaff();
   if (list.some(x => x.email.toLowerCase() === email)) go('/admin', `${email} is already on the staff list. Use Edit to change their details.`);
@@ -300,7 +300,7 @@ export async function inviteAction(fdata: FormData) {
     id = data.user!.id;
   }
   await store.saveStaff({ id, email, name, role, active: true, projects });
-  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : `an accountant (${projects.join(', ') || 'all buildings'})`;
+  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : `an accountant (${projects.join(', ')})`;
   await staffLog(me, `${name} (${email}) added as ${as} by ${staffName(me)}`);
   go('/admin', `${name} can now sign in as ${as}`);
 }

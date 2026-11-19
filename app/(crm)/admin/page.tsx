@@ -4,6 +4,7 @@ import { getStore } from '@/lib/store';
 import { staffAction, inviteAction } from '@/lib/actions';
 import { companyAction } from '@/lib/actions-desk';
 import { Submit, Go, ModalShell, CloseBtn, PasswordInput } from '@/components/client';
+import { StaffAccess } from '@/components/StaffAccess';
 import { ActivityList, lastSeen, roleTag } from '@/components/views/activity';
 import { projects as listProjects } from '@/lib/ops';
 import { waTestNumber } from '@/lib/whatsapp';
@@ -29,13 +30,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
           <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}</td>
           <td className="cell-sub">{s.email}</td>
-          <td>{roleTag(s.role)}{s.role !== 'admin' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || (s.role === 'manager' ? 'No building yet' : 'All buildings (none ticked)')}</div> : null}</td>
+          <td>{roleTag(s.role)}{s.role !== 'admin' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || <span className="tag warn">No building ticked{s.role === 'accountant' ? ': sees every building until you tick them' : ''}</span>}</div> : null}</td>
           <td>{s.active ? <span className="tag good">Can sign in</span> : <span className="tag bad">Turned off</span>}</td>
           <td className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{l ? lastSeen(l.d, l.t) : 'Not yet'}</td>
           <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/log?who=${encodeURIComponent(s.id)}`} className="btn sm">Activity</Go> <Go href={`/admin?edit=${encodeURIComponent(s.id)}`} className="btn sm">Edit</Go></td>
         </tr>; })}
       </tbody></table></div>
-      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants approve the payments entered in their buildings; their changes go to an Admin for approval. Building managers and accountants only see the buildings ticked for them. Building managers record payments, send reminders on WhatsApp and ask the Admin for changes for an owner.</p>
+      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants approve the payments entered in their buildings; their changes go to an Admin for approval. Building managers and accountants only see the buildings ticked for them, and each must have at least one. Building managers record payments, send reminders on WhatsApp and ask the Admin for changes for an owner.</p>
     </div>
     <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, fines) shows here." />
@@ -44,8 +45,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <form action={inviteAction} className="rules-form">
         <div className="form-row"><label htmlFor="iv-n">Name</label><input id="iv-n" name="name" required /></div>
         <div className="form-row"><label htmlFor="iv-e">Email (they sign in with it)</label><input id="iv-e" name="email" type="email" autoComplete="off" required /></div>
-        <div className="form-row"><label htmlFor="iv-r">Role</label><select id="iv-r" name="role" defaultValue="accountant"><option value="accountant">Accountant</option><option value="manager">Building manager</option><option value="admin">Admin (owner, directors)</option></select></div>
-        <fieldset className="bld-pick"><legend>Buildings (for a building manager or an accountant)</legend>{projs.map(p => <label key={p.id} className="cb"><input type="checkbox" name="projects" value={p.id} /> {p.name}</label>)}<p className="cell-sub" style={{ margin: '4px 0 0' }}>Building managers and accountants only see the buildings ticked here (an accountant with none ticked sees every building). Admins always see every building.</p></fieldset>
+        <StaffAccess prefix="iv" role="accountant" projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={[]} saving="create" />
         <div className="form-row"><label htmlFor="iv-p">Password (8+ characters)</label><PasswordInput id="iv-p" name="password" autoComplete="new-password" minLength={8} required /></div>
         <p className="cell-sub" style={{ margin: 0 }}>They can sign in straight away. Give them the email and password yourself.</p>
         <div className="m-actions"><CloseBtn keys={keys} /><Submit>Add</Submit></div>
@@ -54,8 +54,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       <form action={staffAction} className="rules-form"><input type="hidden" name="id" value={ed.id} />
         <div className="form-row"><label htmlFor="ed-n">Name</label><input id="ed-n" name="name" defaultValue={ed.name} required /></div>
         <div className="form-row"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
-        <div className="form-row"><label htmlFor="ed-r">Role</label><select id="ed-r" name="role" defaultValue={ed.role}><option value="accountant">Accountant</option><option value="manager">Building manager</option><option value="admin">Admin (owner, directors)</option></select></div>
-        <fieldset className="bld-pick"><legend>Buildings (for a building manager or an accountant)</legend>{projs.map(p => <label key={p.id} className="cb"><input type="checkbox" name="projects" value={p.id} defaultChecked={(ed.projects || []).includes(p.id)} /> {p.name}</label>)}<p className="cell-sub" style={{ margin: '4px 0 0' }}>Building managers and accountants only see the buildings ticked here (an accountant with none ticked sees every building). Admins always see every building.</p></fieldset>
+        <StaffAccess key={ed.id} prefix="ed" role={ed.role} projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={ed.role === 'admin' ? [] : ed.projects || []} saving="save" />
         <div className="form-row"><label htmlFor="ed-p">New password <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(leave empty to keep the current one)</span></label><PasswordInput id="ed-p" name="password" autoComplete="new-password" minLength={8} /></div>
         <label className="cb"><input type="checkbox" name="active" defaultChecked={ed.active} /> Can sign in{ed.id === me.id ? ' (you can\'t turn off your own access)' : ''}</label>
         <div className="m-actions"><CloseBtn keys={keys} /><Submit>Save changes</Submit></div>

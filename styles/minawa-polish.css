@@ -529,3 +529,12 @@ html[data-theme=frost] .form-row input[type=month],html[data-theme=frost] .form-
 .rc-li:not(.late) .rc-ic{animation:rcPulse 2.2s ease-out infinite}
 @media (max-width:640px){.rc-list .rc-li{grid-template-columns:auto minmax(0,1fr)}.rc-when{grid-column:2;align-items:flex-start;flex-direction:row;flex-wrap:wrap}.rc-li > .btn{grid-column:1 / -1;justify-self:stretch}}
 @media (prefers-reduced-motion:reduce){.rc-li .rc-ic{animation:none!important}}
+
+/* ---------- staff form (update 106): close link, buildings list greyed out for an Admin, missing-building message ---------- */
+.m-head .m-x{display:grid;place-items:center;flex:none;text-decoration:none;cursor:pointer;position:relative;z-index:2}
+.m-actions a.btn{text-decoration:none}
+.bld-pick{transition:opacity .25s,border-color .2s,background-color .2s}
+.bld-pick.off{opacity:.45;background:var(--px-soft);cursor:not-allowed}
+.bld-pick.off .cb{cursor:not-allowed}
+.bld-pick.bad{border-color:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 18%,transparent)}
+.bld-err{margin:4px 0 0;font-size:12.5px;font-weight:700;color:var(--bad)}
