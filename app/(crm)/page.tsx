@@ -20,6 +20,7 @@ import { DocModal } from '@/components/views/modals';
 import { ActivityList, lastSeen } from '@/components/views/activity';
 import { getStore } from '@/lib/store';
 import { ApprovalItem, type ApprovalView } from '@/components/views/approvals';
+import { fmtNumber, freeAt, validNumber } from '@/lib/wa-numbers';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +68,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   // Accountants: what an admin rejected (with the admin's note) in the last 30 days, and the rest of their requests.
   const apvRejected = admin ? [] : apv.filter(v => v.a.status === 'rejected' && (v.a.decidedD || '') >= addDays(today, -29)).sort(byDecided);
   const apvMine = admin ? [] : [...apvWait, ...apv.filter(v => v.a.status === 'approved' && (v.a.decidedD || '') >= addDays(today, -13)).sort(byDecided)].slice(0, 5);
+  // WhatsApp numbers and their daily limits (20 Nov 2026): the Admin sees every number; others their own.
+  let waCard: React.ReactNode = null;
+  try {
+    const store = await getStore(), people = staff.role === 'admin' ? (staffList.length ? staffList : await store.listStaff()) : [staff];
+    const nums = new Map<string, { number: string; limit: number; who: string[] }>();
+    for (const x of people) for (const n of x.waNumbers || []) if (n.active && x.active && validNumber(n.number)) { const r = nums.get(n.number) || { number: n.number, limit: n.limit, who: [] }; r.limit = Math.min(r.limit, n.limit); r.who.push(x.name); nums.set(n.number, r); }
+    if (nums.size && staff.role !== 'accountant') {
+      const use = await store.waUsage([...nums.values()].map(r => ({ number: r.number, limit: r.limit })));
+      waCard = <div className="card lv-wa"><div className="card-row"><h3>WhatsApp today <small>customers in the last 24 hours</small></h3>{staff.role === 'admin' ? <Go href="/admin#wa" className="btn sm">Numbers</Go> : null}</div>
+        {[...nums.values()].map(r => { const u = use.find(x => x.number === r.number), lim = r.limit + (u?.extra || 0), used = u?.used || 0, pc = Math.min(100, Math.round(100 * used / Math.max(1, lim)));
+          return <div className="wa-use-row" key={r.number}><div className="t"><b className="num">{fmtNumber(r.number)}</b><span className="cell-sub">{staff.role === 'admin' ? r.who.join(', ') : 'your number'}{pc >= 100 && u?.nextFree ? ` · next place at ${freeAt(u.nextFree)}` : ''}</span></div>
+            <div className="wa-use"><span className={'wa-use-bar' + (pc >= 100 ? ' full' : pc >= 80 ? ' near' : '')}><i style={{ width: `${pc}%` }}></i></span><b className="num">{used}/{lim}</b></div></div>; })}
+      </div>;
+    }
+  } catch (e) { console.error('wa usage', (e as Error).message); }
   let modal = null;
   if (sp.doc && sp.dp) { const s = states.find(x => x.project === sp.dp); if (s) modal = use(s, () => DocModal({ doc: sp.doc, flash: sp.flash })); }
 
@@ -221,6 +237,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     </div>
 
     <aside className="lv-side">
+    {waCard ? <><Lbl>WhatsApp limit</Lbl>{waCard}</> : null}
     <Lbl>What happened</Lbl>
     <div className="card lv-act"><div className="card-row"><h3>Activity</h3><Go href="/log" className="btn sm">See all</Go></div>
         <LiveTabs tabs={[{ key: 'pay', label: 'Payments', badge: newN, body: payFeed }, { key: 'wa', label: 'WhatsApp', badge: waSent, seen: { name: waSeenName, value: waLatest }, body: waFeed },

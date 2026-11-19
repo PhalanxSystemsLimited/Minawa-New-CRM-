@@ -1,6 +1,6 @@
 // The data store. With Supabase settings in the environment it uses Supabase (production); without them it
 // keeps everything in data/local-db.json, so the CRM runs on a laptop with the sample data and no setup.
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Role, Company, WaLog } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Role, Company, WaLog, WaTake, WaUse } from '../types';
 import { STATE_TABLES, KEY, type TableName } from './tables';
 
 export interface LoadOpts { today: string; by?: string; role?: Role }
@@ -40,6 +40,12 @@ export interface Store {
   revision(): Promise<number>;
   getCompany(): Promise<Company>;
   saveCompany(c: Company): Promise<void>;
+  /** WhatsApp daily limit (20 Nov 2026): count this customer on this sending number, or refuse when it is full. */
+  waTake(i: { number: string; limit: number; to: string; staffId: string; staffName: string; project: string; ownerId: string }): Promise<WaTake>;
+  /** Each sending number's use in the last 24 hours (limits as given; extras added). */
+  waUsage(nums: { number: string; limit: number }[]): Promise<WaUse[]>;
+  /** The Admin allows a number more chats for the next 24 hours. */
+  waExtra(i: { number: string; amount: number; reason: string; byId: string; byName: string }): Promise<void>;
 }
 export const DEFAULT_COMPANY: Company = { legalName: 'Minawa (Pvt) Ltd', address: '', ntn: '', phone: '', email: '' };
 
@@ -100,4 +106,24 @@ export async function getStore(): Promise<Store> {
     store = new LocalStore();
   }
   return store;
+}
+
+/** A sending number's use from its chat opens and the Admin's extras in the last 24 hours (rows already filtered to the
+ *  last 24 hours). Each customer counts once; the next place frees up 24 hours after the earliest customer counted. */
+export function useOf(nums: { number: string; limit: number }[], opens: { number: string; to_phone: string; at: string }[], extras: { number: string; amount: number }[]): WaUse[] {
+  const out = new Map<string, WaUse>();
+  for (const n of nums) {
+    if (out.has(n.number)) { const u = out.get(n.number)!; u.limit = Math.min(u.limit, n.limit); continue; }
+    out.set(n.number, { number: n.number, used: 0, limit: n.limit, extra: 0, nextFree: null });
+  }
+  const first = new Map<string, string>();
+  for (const o of opens) { const k = `${o.number}|${o.to_phone}`; const f = first.get(k); if (!f || o.at < f) first.set(k, o.at); }
+  for (const [k, at] of first) {
+    const u = out.get(k.split('|')[0]); if (!u) continue;
+    u.used++;
+    const free = new Date(new Date(at).getTime() + 24 * 3600e3).toISOString();
+    if (!u.nextFree || free < u.nextFree) u.nextFree = free;
+  }
+  for (const x of extras) { const u = out.get(x.number); if (u) u.extra += x.amount; }
+  return [...out.values()];
 }

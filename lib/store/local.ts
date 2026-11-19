@@ -1,15 +1,17 @@
 // File store for running without Supabase: data/local-db.json, created from the sample on first use.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Rate, Company, WaLog } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Rate, Company, WaLog, WaTake, WaUse } from '../types';
 import { TEMPLATES, PROJECTS, defaultSettings } from '../defaults';
 import { STATE_TABLES, KEY, natSort, type TableName } from './tables';
-import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
+import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, useOf, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
 import { buildSample, SAMPLE_START } from '../seed';
 
 interface DB {
   projects: Project[]; templates: Record<string, Template>; settings: Record<string, ProjectSettings>; counters: Record<string, number>;
   log: LogEntry[]; staff: Staff[]; company?: Company; walog?: WaLog[];
+  waOpens?: { number: string; to_phone: string; staff_id: string; staff_name: string; project: string; owner_id: string; at: string }[];
+  waExtras?: { number: string; amount: number; reason: string; by_id: string; by_name: string; at: string }[];
   owners: object[]; bills: object[]; entries: object[]; messages: object[]; payments: object[]; handovers?: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
 }
 const FILE = path.join(process.cwd(), 'data', 'local-db.json');
@@ -122,6 +124,24 @@ export class LocalStore implements Store {
   async getWaLog(o: WaLogQuery) {
     return clone((db().walog || []).filter(e => (!o.project || e.project === o.project) && (!o.ownerId || e.ownerId === o.ownerId) && (!o.answer || e.answer === o.answer)
       && (!o.since || e.d >= o.since) && (!o.staffIds || (!!e.staffId && o.staffIds.includes(e.staffId)))).slice(-(o.limit || 300)).reverse());
+  }
+  async waTake(i: { number: string; limit: number; to: string; staffId: string; staffName: string; project: string; ownerId: string }): Promise<WaTake> {
+    const d = db(), since = new Date(Date.now() - 24 * 3600e3).toISOString();
+    const opens = (d.waOpens ||= []).filter(o => o.number === i.number && o.at > since), extra = (d.waExtras ||= []).filter(x => x.number === i.number && x.at > since).reduce((a, x) => a + x.amount, 0);
+    const u = useOf([{ number: i.number, limit: i.limit }], opens, []).find(x => x.number === i.number)!, limit = i.limit + extra;
+    if (opens.some(o => o.to_phone === i.to)) return { ok: true, repeat: true, used: u.used, limit };
+    if (u.used >= limit) return { ok: false, repeat: false, used: u.used, limit, nextFree: u.nextFree };
+    d.waOpens.push({ number: i.number, to_phone: i.to, staff_id: i.staffId, staff_name: i.staffName, project: i.project, owner_id: i.ownerId, at: new Date().toISOString() });
+    flush();
+    return { ok: true, repeat: false, used: u.used + 1, limit };
+  }
+  async waUsage(nums: { number: string; limit: number }[]): Promise<WaUse[]> {
+    const d = db(), since = new Date(Date.now() - 24 * 3600e3).toISOString(), set = new Set(nums.map(n => n.number));
+    return useOf(nums, (d.waOpens || []).filter(o => set.has(o.number) && o.at > since), (d.waExtras || []).filter(x => set.has(x.number) && x.at > since));
+  }
+  async waExtra(i: { number: string; amount: number; reason: string; byId: string; byName: string }) {
+    const d = db(); (d.waExtras ||= []).push({ number: i.number, amount: i.amount, reason: i.reason, by_id: i.byId, by_name: i.byName, at: new Date().toISOString() });
+    d.counters.__rev = Date.now(); flush();
   }
   async listStaff() { return clone(db().staff); }
   async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); db().counters.__rev = Date.now(); flush(); }

@@ -538,3 +538,53 @@ html[data-theme=frost] .form-row input[type=month],html[data-theme=frost] .form-
 .bld-pick.off .cb{cursor:not-allowed}
 .bld-pick.bad{border-color:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 18%,transparent)}
 .bld-err{margin:4px 0 0;font-size:12.5px;font-weight:700;color:var(--bad)}
+
+/* ---- Update 107 (20 Nov 2026): WhatsApp numbers, daily limit, printed vouchers ---- */
+.sc-from{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 14px;margin:0 0 12px;border:1px solid var(--px-line);border-radius:14px;background:var(--px-soft)}
+.sc-from-l{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:var(--px-mute)}
+.sc-from-l .wa-ico{width:16px;height:16px;color:#25D366}
+.sc-from select{padding:6px 10px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit;font-size:14px;font-weight:600}
+.sc-from-u{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+.sc-from-bar,.wa-use-bar{position:relative;display:inline-block;width:110px;height:8px;border-radius:99px;background:color-mix(in srgb,var(--px-mute) 22%,transparent);overflow:hidden;flex:none}
+.sc-from-bar i,.wa-use-bar i{position:absolute;inset:0 auto 0 0;border-radius:inherit;background:var(--good,#16a34a);transition:width .5s var(--ease,ease)}
+.wa-use-bar.near i{background:var(--warn,#d97706)}
+.sc-from.full .sc-from-bar i,.wa-use-bar.full i{background:var(--bad,#b0241c)}
+.sc-from.full{border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+.sc-from-plan{flex-basis:100%;font-size:12.5px;color:var(--px-mute)}
+.sc-from-none{margin:0 0 12px}
+.wa-use{display:flex;align-items:center;gap:10px}
+.wa-use .wa-use-bar{flex:1;min-width:70px;width:auto}
+.wa-use b{white-space:nowrap;font-size:13px}
+.wa-use-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--px-line)}
+.wa-use-row:first-of-type{border-top:0}
+.wa-use-row .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.wa-use-row .wa-use{flex:0 0 46%}
+.lv-wa .cell-sub{font-size:12px}
+.wa-nums{display:flex;flex-direction:column;gap:10px;margin:4px 0 12px;padding:12px 14px;border:1px solid var(--px-line);border-radius:14px}
+.wa-nums legend{padding:0 6px;font-weight:700;font-size:13px}
+.wa-nums-list{display:flex;flex-direction:column;gap:8px}
+.wa-num{display:grid;grid-template-columns:minmax(150px,1.6fr) minmax(100px,1fr) 100px auto auto;align-items:end;gap:8px 10px;padding:10px;border-radius:12px;background:var(--px-soft);transition:opacity .2s}
+.wa-num .form-row{margin:0}
+.wa-num.off{opacity:.55}
+.wa-num-on{align-self:center;margin-bottom:4px;white-space:nowrap}
+.wa-num-x{align-self:center;width:32px;height:32px;border-radius:9px;font-size:20px;line-height:1}
+.wa-nums > .btn{align-self:flex-start}
+.wa-nums-cell{display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+@media (max-width:640px){.wa-num{grid-template-columns:1fr 1fr}.wa-num .form-row:first-child{grid-column:1/-1}.wa-use-row{flex-wrap:wrap}.wa-use-row .wa-use{flex-basis:100%}}
+.vb-acts{display:flex;flex-wrap:wrap;gap:8px}
+.vb-acts .btn.disabled{opacity:.5;pointer-events:none}
+.vb-list .li{cursor:pointer;align-items:center}
+.vb-list .li > input[type=checkbox]{flex:none;width:18px;height:18px;margin:0 4px 0 0;accent-color:var(--rust)}
+.vb-all{font-size:13px;padding-top:4px;padding-bottom:8px}
+.vb-bal{white-space:nowrap;font-weight:700;font-size:13px}
+.vb-li .tag{margin-left:6px}
+@media (max-width:640px){.vb-li{flex-wrap:wrap}.vb-li .t{flex:1 1 70%}}
+html[data-theme=frost] .sc-from select{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.35)}
+html[data-theme=frost] .sc-from select option{color:#0F172A}
+.vb-list .li.vb-all{justify-content:flex-start;gap:8px}
+.wa-nums-cell .wa-ico.inl{width:13px;height:13px;color:#25D366;vertical-align:-2px}
+.wa-nums-cell small{color:var(--px-mute);font-weight:600}
+.sc-from-u b,.sc-from-u .num{white-space:nowrap}
+html[data-theme=frost] .sc-from-l,html[data-theme=frost] .sc-from-plan{color:rgba(255,255,255,.9)}
+@media (max-width:640px){.vb-card > .card-row{flex-wrap:wrap;gap:10px}.vb-card > .card-row > h3{flex:1 1 100%}.vb-card > .card-row > h3 > small{margin-left:0}.sc-from-u{flex-wrap:wrap}}
+@media (max-width:640px){html .card.vb-card > .card-row > h3[data-hic]{flex-wrap:wrap;row-gap:2px}html .card.vb-card > .card-row > h3[data-hic] > small{flex-basis:100%;margin-left:0}}

@@ -7,7 +7,12 @@ import { useRouter } from 'next/navigation';
 import { prepareSendAction, recordSentAction, dropPendingAction, fineAction, releaseSendAction } from '@/lib/actions-send';
 import type { SendItem, SendType } from '@/lib/manual-send';
 import { Wa, Ic } from './icons';
-import { awaitReturn, clearAwait, type WaAnswer } from './WaReturnPrompt';
+import { clearAwait, type WaAnswer } from './WaReturnPrompt';
+import { openWhatsApp, savedFrom, saveFrom } from './wa-open';
+import type { WaUse } from '@/lib/types';
+
+/** A sending number for the picker: its label and daily limit (20 Nov 2026). */
+export interface FromNumber { number: string; label: string; limit: number; shown: string }
 
 export interface SendRow {
   id: string; apt: string; block: string; name: string; phone: string; hold: boolean; bal: number; balTxt: string; overdue: boolean;
@@ -20,8 +25,9 @@ const VARS = '{{name}} {{apt}} {{block}} {{total}} {{due}} {{project}}';
 /** wa.me numbers: digits only, 03xx… → 923xx… */
 const digits = (p: string) => { let d = p.replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0') && d.length === 11) d = '92' + d.slice(1); return d; };
 
-export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, waiting, only = '' }: {
+export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, waiting, only = '', numbers = [], usage = [], plan }: {
   pid: string; rows: SendRow[]; blocks: string[]; types: { key: SendType; label: string; hint: string }[]; start: SendType; ids: string[]; go: boolean; notice: string; waiting: number; only?: string;
+  numbers?: FromNumber[]; usage?: WaUse[]; plan?: string | null;
 }) {
   const router = useRouter();
   const [type, setType] = useState<SendType>(start);
@@ -33,6 +39,20 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
   const [items, setItems] = useState<SendItem[]>([]), [left, setLeft] = useState<{ apt: string; why: string }[]>([]), [test, setTest] = useState<string | null>(null);
   const [i, setI] = useState(0), [opened, setOpened] = useState(false), [edits, setEdits] = useState<Record<string, string>>({}), [done, setDone] = useState<Record<string, Done>>({});
   const [via, setVia] = useState<'web' | 'app'>('web');
+  // The WhatsApp number this person sends from, and how much of its daily limit is used (updated after each chat).
+  const [from, setFrom] = useState(numbers[0]?.number || '');
+  const [uses, setUses] = useState<Record<string, { used: number; limit: number; nextFree: string | null }>>(() => Object.fromEntries(usage.map(u => [u.number, { used: u.used, limit: u.limit + u.extra, nextFree: u.nextFree }])));
+  const [opening, setOpening] = useState(false), [blocked, setBlocked] = useState('');
+  useEffect(() => { const v = savedFrom(); if (v && numbers.some(n => n.number === v)) setFrom(v); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  const pickFrom = (n: string) => { setFrom(n); saveFrom(n); setErr(''); };
+  const fromN = numbers.find(n => n.number === from), fromU = uses[from] || (fromN ? { used: 0, limit: fromN.limit, nextFree: null } : null);
+  const fromBar = numbers.length ? <div className={'sc-from' + (fromU && fromU.used >= fromU.limit ? ' full' : '')}>
+    <span className="sc-from-l"><Wa /> Sending from</span>
+    {numbers.length > 1 ? <select aria-label="Sending from" value={from} onChange={e => pickFrom(e.target.value)}>{numbers.map(n => <option key={n.number} value={n.number}>{n.shown} · {n.label}</option>)}</select> : <b className="num">{fromN?.shown} <span className="cell-sub">{fromN?.label}</span></b>}
+    {fromU ? <span className="sc-from-u"><span className="sc-from-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, 100 * fromU.used / Math.max(1, fromU.limit))}%` }}></i></span>
+      <b className="num">{fromU.used} of {fromU.limit}</b> customers in the last 24 hours{fromU.used >= fromU.limit ? <span className="tag bad">Limit reached</span> : null}</span> : null}
+    {plan ? <span className="sc-from-plan">{plan}</span> : null}
+  </div> : <div className="callout warn sc-from-none"><div><b>You have no WhatsApp number in the CRM yet.</b> Chats can&apos;t be opened until the Admin adds your number in Staff &amp; connections (with its daily limit).</div></div>;
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {   // phones can't use WhatsApp Web: open the app there unless the accountant chose otherwise
     let v: string | null = null; try { v = localStorage.getItem('minawa.waVia'); } catch { /* private mode */ }
@@ -81,11 +101,20 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
   };
   const to = it ? (test || digits(it.to || it.phone)) : '';
   const chatUrl = it ? (via === 'web' ? `https://web.whatsapp.com/send?phone=${to}&text=${encodeURIComponent(body)}` : `https://wa.me/${to}?text=${encodeURIComponent(body)}`) : '';
-  const openChat = () => { awaitReturn(pid, { ...it, text: body }, to); const w = window.open(chatUrl, 'minawa-whatsapp'); try { w?.focus(); } catch { /* ignore */ } setOpened(true); };
-  const next = () => { setOpened(false); if (i + 1 < items.length) setI(i + 1); else { setStep('done'); router.refresh(); } };
+  const openChat = async () => {
+    if (opening) return;
+    setOpening(true); setErr(''); setBlocked('');
+    const r = await openWhatsApp({ pid, item: { ...it, text: body }, to, url: chatUrl, from });
+    setOpening(false);
+    if (r.from && r.used != null && r.limit != null) setUses(u => ({ ...u, [r.from!]: { used: r.used!, limit: r.limit!, nextFree: r.nextFree ?? u[r.from!]?.nextFree ?? null } }));
+    if (!r.ok) { setErr(r.error || 'The chat could not be opened.'); return; }
+    if (r.blocked) setBlocked(chatUrl);
+    setOpened(true);
+  };
+  const next = () => { setOpened(false); setBlocked(''); setErr(''); if (i + 1 < items.length) setI(i + 1); else { setStep('done'); router.refresh(); } };
   const mark = (k: string, v: Done) => setDone(d => ({ ...d, [k]: v }));
   const sent = () => {
-    const item = { ...it, text: body }; clearAwait(item.key); mark(item.key, 'saving');
+    const item = { ...it, text: body, from: from || null }; clearAwait(item.key); mark(item.key, 'saving');
     // Saved in the background, in order, so the next chat can open straight away.
     chain.current = chain.current.then(() => recordSentAction({ pid, item, via: 'button' }).then(r => { mark(item.key, r.ok ? 'sent' : 'error'); if (!r.ok) setErr(`${item.apt}: not saved (${r.error}). Mark it again from the list.`); }, () => mark(item.key, 'error')));
     next();
@@ -106,6 +135,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
   const sentN = n('sent') + n('saving');
 
   if (step === 'pick') return <div className="card sc">
+    {fromBar}
     <h3>1. What to send</h3>
     <div className="nc-types">{types.map(t => <button type="button" key={t.key} className="chipbtn" aria-pressed={type === t.key} onClick={() => chooseType(t.key)}>{t.label}{t.key === 'queue' ? <> <span className="n">{waiting}</span></> : null}</button>)}</div>
     <p className="cell-sub sc-hint">{types.find(t => t.key === type)?.hint}.{type === 'queue' && !waiting ? ' Nothing is waiting right now: bills, reminders and receipts appear here as the CRM makes them.' : ''}</p>
@@ -134,7 +164,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
       {showOut ? <ul>{out.map(r => <li key={r.id}><b>{r.apt}</b> {r.name}: {r.why[type]}</li>)}</ul> : null}</div> : null}
     {err ? <div className="callout bad" style={{ marginTop: 12 }}><div>{err}</div></div> : null}
     <div className="m-actions" style={{ marginTop: 14 }}><span className="muted" style={{ fontSize: 12.5, marginRight: 'auto', alignSelf: 'center' }}>{chosen.length} owner{chosen.length === 1 ? '' : 's'} ticked</span>
-      <button type="button" className="btn wa" disabled={!chosen.length || busy} onClick={() => begin()}><Wa /> {busy ? 'Preparing…' : `Start sending to ${chosen.length}`}</button></div>
+      <button type="button" className="btn wa" disabled={!chosen.length || busy || !numbers.length} onClick={() => begin()}><Wa /> {busy ? 'Preparing…' : `Start sending to ${chosen.length}`}</button></div>
   </div>;
 
   if (step === 'done' || !it) return <div className="card sc">
@@ -147,6 +177,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
 
   return <div className="sc-run">
     <div className="card sc-main">
+      {fromBar}
       <div className="card-row"><h3>{i + 1} of {items.length}</h3><span className="muted" style={{ fontSize: 12.5 }}>{sentN} sent{n('skipped') ? ` · ${n('skipped')} skipped` : ''}</span></div>
       <div className="sc-prog" aria-hidden="true"><span style={{ width: `${100 * i / items.length}%` }}></span></div>
       <div className="wa-to"><span className="wa-logo"><Wa /></span><div style={{ minWidth: 0 }}><div className="cell-sub">To</div><b className="num">+{to}</b>
@@ -164,7 +195,8 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
         : !opened ? <p className="cell-sub" style={{ margin: '10px 0 0' }}>Open the chat, press Send in WhatsApp, then come back here: the CRM asks whether it went and records your answer.</p> : null}
       {err ? <div className="callout bad" style={{ marginTop: 10 }}><div>{err}</div></div> : null}
       <div className="sc-acts">
-        <button type="button" className={`btn ${opened ? '' : 'wa'}`} onClick={openChat}><Wa /> {opened ? 'Open the chat again' : 'Open chat in WhatsApp'}</button>
+        <button type="button" className={`btn ${opened ? '' : 'wa'}`} onClick={openChat} disabled={opening || !numbers.length}><Wa /> {opening ? 'Checking the daily limit…' : opened ? 'Open the chat again' : 'Open chat in WhatsApp'}</button>
+        {blocked ? <a className="btn wa" href={blocked} target="minawa-whatsapp" rel="noopener"><Wa /> The browser blocked the tab: open the chat</a> : null}
         <button type="button" className="btn" onClick={sent} title="If the question didn't appear when you came back"><Ic n="check" s={15} /> Mark as sent</button>
         <button type="button" className="btn" onClick={skip}>Skip</button>
         {it.fromMsg ? <button type="button" className="link-btn" onClick={aside} title="Don't send this one at all; it leaves the Ready to send list">Don&apos;t send this</button> : null}

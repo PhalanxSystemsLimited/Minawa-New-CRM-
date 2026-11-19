@@ -1,5 +1,6 @@
 // To do (the demo's viewFollow): the only things that need a person.
 import { cur, ownerById, failedList, fixWaiting, awaitingApproval } from '@/lib/engine';
+import { voucherRows, DUES } from '@/lib/vouchers';
 import { ResendButton } from '@/components/ResendChat';
 import { toDoGroups, pendingGroups } from '@/lib/manual-send';
 import { fd, fds, rs, t12 } from '@/lib/fmt';
@@ -20,13 +21,14 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
     // Who does this list: the building's manager(s); everyone when the building has none. Bank transfers are the
     // Accountant's (and an Admin's), so a manager doesn't see them here.
     const mgrs = S.managers || [], acts = S.role === 'manager', money = S.role !== 'manager';
-    const pr = money ? S.proofs.filter(p => p.status === 'pending') : [], fl = failedList(), al = S.alerts.filter(a => !a.done), ts = toDoGroups().filter(g => g.key !== 'receipt'), tsN = ts.reduce((a, g) => a + g.n, 0);
+    const pr = money ? S.proofs.filter(p => p.status === 'pending') : [], fl = failedList().filter(m => !(ownerById(m.ownerId).noPhone && DUES.includes(m.kind))), al = S.alerts.filter(a => !a.done), ts = toDoGroups().filter(g => g.key !== 'receipt'), tsN = ts.reduce((a, g) => a + g.n, 0);
     // Receipts: customers who just paid (most urgent), each with its own Send button.
     const rc = pendingGroups(m => m.kind === 'receipt').map(g => ({ m: g.msg, o: ownerById(g.msg.ownerId), p: S.payments.find(x => x.id === g.msg.pdf?.id) })).filter(x => x.o).sort((a, b) => (b.m.d + b.m.t).localeCompare(a.m.d + a.m.t));   // newest first
+    const vr = voucherRows().filter(r => r.items.length), vrN = vr.reduce((a, r) => a + r.items.length, 0);
     const held = acts ? S.payments.filter(p => p.collectorId === S.staffId && !p.handoverId && !p.reversed && !awaitingApproval(p)) : [], heldAmt = held.reduce((a, p) => a + p.amount, 0);
     const hid = (id: string) => <><input type="hidden" name="pid" value={pid} /><input type="hidden" name="id" value={id} /></>;
     const head = <div className="page-head"><div><h2>To do</h2><p>{acts ? 'What needs a person. The CRM makes bills, reminders and notices at 11:00 AM; they wait here for you to send one by one on WhatsApp.' : `${mgrs.length ? `Sent by ${mgrs.join(', ')} (building manager).` : 'No building manager is assigned to this building yet: the Admin assigns one in Staff & connections.'} You can follow it here; the sending is theirs.`}</p></div></div>;
-    if (!rc.length && !tsN && !pr.length && !fl.length && !al.length && !held.length) return <>{projHead('follow')}{head}<Empty card kind="done" title="All clear">Nothing needs you right now.</Empty></>;
+    if (!rc.length && !vr.length && !tsN && !pr.length && !fl.length && !al.length && !held.length) return <>{projHead('follow')}{head}<Empty card kind="done" title="All clear">Nothing needs you right now.</Empty></>;
     return <>
       {projHead('follow')}{head}
       {rc.length ? <div className="card rc-card" id="receipts"><div className="card-row"><h3 data-hic="receipt" data-tone="green">Receipts to send <small>{rc.length} customer{rc.length === 1 ? '' : 's'} just paid · send first</small></h3>
@@ -42,6 +44,11 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
         <div className="list">{ts.map(g => <div className="li" key={g.key}><div className="t"><div className="a">{g.label} · <span className="num">{g.n}</span> owner{g.n === 1 ? '' : 's'}</div><div className="b">{g.hint} · waiting since {fds(g.since)}</div></div>
           {acts ? <Go href={`/p/${pid}/send?type=queue&kind=${g.key}&go=1`} className="btn sm wa"><Wa /> Send {g.n === 1 ? 'it' : 'one by one'}</Go> : <span className="tag warn">{mgrs.length ? `Waiting for ${mgrs[0]}` : 'No building manager yet'}</span>}</div>)}</div>
         <p className="cell-sub" style={{ margin: '10px 0 0' }}>Each owner&apos;s chat opens with the message typed in. When you come back you confirm it was sent, and they leave this list.</p>
+      </div> : null}
+      {vr.length ? <div className="card" id="print"><div className="card-row"><h3 data-hic="print" data-tone="violet">Printed vouchers to deliver <small>{vr.length} customer{vr.length === 1 ? '' : 's'} without WhatsApp · {vrN} paper{vrN === 1 ? '' : 's'}</small></h3>
+        {acts ? <Go href={`/p/${pid}/send?mode=print`} className="btn sm primary"><Ic n="print" s={15} /> Print and deliver</Go> : <span className="tag warn">{mgrs.length ? `Waiting for ${mgrs[0]}` : 'No building manager yet'}</span>}</div>
+        <div className="list">{vr.slice(0, 5).map(r => <div className="li" key={r.o.id}><div className="t"><div className="a"><span className="apt-t">{r.o.apt}</span> · {r.o.name}</div><div className="b">{r.items.map(i => i.what).join('; ')} · {r.why.toLowerCase()}</div></div></div>)}</div>
+        {vr.length > 5 ? <p className="cell-sub" style={{ margin: '8px 0 0' }}>and {vr.length - 5} more on the Printed vouchers list.</p> : null}
       </div> : null}
       {pr.length ? <div className="card"><h3>Check these bank transfers <small>owners sent a screenshot</small></h3>
         <div className="list">{pr.map(p => { const o = ownerById(p.ownerId); return <div className="li" key={p.id}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span></div><div className="b">{o.name} · sent {fd(p.d)}</div></div>

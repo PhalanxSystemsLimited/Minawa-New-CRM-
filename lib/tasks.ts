@@ -9,6 +9,7 @@ import type { State, Staff } from './types';
 import { use, ownerById, failedList, instalmentStatus, awaitingApproval } from './engine';
 import { toDoGroups, pendingGroups } from './manual-send';
 import { addDays, rs } from './fmt';
+import { voucherRows, DUES } from './vouchers';
 
 export type TaskRole = 'manager' | 'accountant';
 export interface Task {
@@ -43,8 +44,16 @@ export function projectTasks(s: State): Task[] {
       out.push({ id: `send:${s.project}:${g.key}`, role: 'manager', project: s.project, pname: s.proj.name, what: `Send on WhatsApp: ${g.label.toLowerCase()}`,
         detail: `${g.n} owner${g.n === 1 ? '' : 's'} waiting`, since: g.since, deadline, overdue: late(deadline), href: `${P}/send?type=queue&kind=${g.key}&go=1` });
     }
+    // Customers without WhatsApp: their bills, warnings and receipts are printed and delivered by hand (one task).
+    const vr = voucherRows().filter(r => r.items.length);
+    if (vr.length) {
+      const since = vr.flatMap(r => r.items.map(i => i.msg.d)).sort()[0], deadline = addDays(since, 2), n = vr.reduce((a, r) => a + r.items.length, 0);
+      out.push({ id: `print:${s.project}`, role: 'manager', project: s.project, pname: s.proj.name, what: 'Deliver printed vouchers',
+        detail: `${vr.length} customer${vr.length === 1 ? '' : 's'} without WhatsApp · ${n} paper${n === 1 ? '' : 's'} to print`, since, deadline, overdue: late(deadline), href: `${P}/send?mode=print` });
+    }
     for (const m of failedList()) {
       const o = ownerById(m.ownerId), deadline = addDays(m.d, 2);
+      if (o.noPhone && DUES.includes(m.kind)) continue;   // on the printed vouchers list instead
       out.push({ id: `fix:${m.id}`, role: 'manager', project: s.project, pname: s.proj.name, what: o.noPhone ? 'Add a WhatsApp number' : 'Fix the WhatsApp number',
         detail: m.title, apt: o.apt, owner: o.name, since: m.d, deadline, overdue: late(deadline), href: `${P}/apartments/${o.id}?m=fix&from=todo` });
     }

@@ -71,11 +71,19 @@ const styles = () => withFonts({
 });
 
 function Doc({ d }: { d: DocData }) {
-  const { Document, Page, Text, View, Image, Svg, Path } = R!;
+  const { Document } = R!;
+  return <Document title={d.filename.replace(/\.pdf$/, '')} author="Minawa Group"><DocPage d={d} /></Document>;
+}
+/** Several documents in one PDF (printed vouchers, 20 Nov 2026): each starts on its own page. */
+function Docs({ list, title }: { list: DocData[]; title: string }) {
+  const { Document } = R!;
+  return <Document title={title} author="Minawa Group">{list.map((d, i) => <DocPage key={i} d={d} />)}</Document>;
+}
+function DocPage({ d }: { d: DocData }) {
+  const { Page, Text, View, Image, Svg, Path } = R!;
   const st = styles() as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   const logo = fs.existsSync(pub('assets', 'minawa-logo.png')) ? pub('assets', 'minawa-logo.png') : null;
   return (
-    <Document title={d.filename.replace(/\.pdf$/, '')} author="Minawa Group">
       <Page size="A4" orientation={d.grids?.length ? 'landscape' : 'portrait'} style={st.page}>
         <View style={st.doc}>
           <View style={st.dh}>
@@ -115,7 +123,6 @@ function Doc({ d }: { d: DocData }) {
             <View style={st.kv}>{d.counterfoil.map(([k, v]) => <View key={k} style={st.kvItem}><Text style={st.kvLabel}>{k}</Text>{v ? <Text>{v}</Text> : <View style={st.cfLine} />}</View>)}</View></View> : null}
         </View>
       </Page>
-    </Document>
   );
 }
 
@@ -123,4 +130,10 @@ export async function renderPdf(d: DocData): Promise<Buffer> {
   if (!R) R = await import('@react-pdf/renderer');
   registerFonts(R.Font);
   return R.renderToBuffer(<Doc d={d} />);
+}
+
+export async function renderPdfMany(list: DocData[], title: string): Promise<Buffer> {
+  if (!R) R = await import('@react-pdf/renderer');
+  registerFonts(R.Font);
+  return R.renderToBuffer(<Docs list={list} title={title} />);
 }

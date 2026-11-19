@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { fixNumberSendAction, resendFixedAction, type ResendResult } from '@/lib/actions-send';
-import { awaitReturn } from './WaReturnPrompt';
+import { openWhatsApp } from './wa-open';
 import { Wa } from './icons';
 
 /** WhatsApp Web, or the app on phones (the same choice as in Send on WhatsApp). */
@@ -16,12 +16,11 @@ function chatUrl(to: string, text: string) {
   return via === 'web' ? `https://web.whatsapp.com/send?phone=${to}&text=${encodeURIComponent(text)}` : `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
 }
 
-/** Opens the chat from the click itself (a tab opened later, after the server answers, is blocked by browsers), and asks
- *  "Did you send the message?" on coming back. */
-function openChat(pid: string, r: Ready) {
-  awaitReturn(pid, r.item, r.to);
-  const w = window.open(chatUrl(r.to, r.item.text), 'minawa-whatsapp');
-  try { w?.focus(); } catch { /* ignore */ }
+/** Opens the chat (after the daily limit check on the server; the tab is opened by the click itself, as browsers block
+ *  tabs opened later), and asks "Did you send the message?" on coming back. Returns an error to show, if any. */
+async function openChat(pid: string, r: Ready): Promise<string | null> {
+  const x = await openWhatsApp({ pid, item: r.item, to: r.to, url: chatUrl(r.to, r.item.text) });
+  return x.ok ? (x.blocked ? 'The browser blocked the WhatsApp tab. Allow pop-ups for the CRM and try again.' : null) : x.error || 'The chat could not be opened.';
 }
 type Ready = { item: NonNullable<ResendResult['item']>; to: string; toast?: string };
 const readyOf = (r: ResendResult): Ready | null => r.ok && r.item && r.to ? { item: r.item, to: r.to, toast: r.toast } : null;
@@ -55,7 +54,8 @@ export function FixNumberForm({ pid, oid, name, phone, noPhone, owes }: { pid: s
     <ReadyBox r={ready} saved={`Number saved: ${v}. Now open the chat and send the message.`} />
     <div className="callout">When you come back you&apos;ll be asked whether it was sent. It leaves To do once you say yes.</div>
     <div className="m-actions"><button type="button" className="btn" onClick={() => router.replace(withToast(back, 'Number saved. The message is still in To do until it is sent.'))}>Later</button>
-      <button type="button" className="btn wa" autoFocus onClick={() => { openChat(pid, ready); router.replace(withToast(back, 'Send the message in WhatsApp, then come back here and confirm it was sent.')); }}><Wa /> Open WhatsApp chat</button></div>
+      <button type="button" className="btn wa" autoFocus disabled={busy} onClick={async () => { setBusy(true); const e = await openChat(pid, ready); setBusy(false); if (e) { setErr(e); return; } router.replace(withToast(back, 'Send the message in WhatsApp, then come back here and confirm it was sent.')); }}><Wa /> {busy ? 'Checking the daily limit…' : 'Open WhatsApp chat'}</button></div>
+    {err ? <div className="callout bad"><div>{err}</div></div> : null}
   </div>;
   return <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
     <div className="form-row"><label htmlFor="fx">{noPhone ? 'WhatsApp number' : 'Correct number'} for {name}</label>
@@ -81,6 +81,6 @@ export function ResendButton({ pid, oid }: { pid: string; oid: string }) {
     if (x) setReady(x); else { router.replace(withToast(`/p/${pid}/todo`, r.toast)); router.refresh(); }
   };
   return <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{err ? <span className="cell-sub" style={{ color: 'var(--bad)' }}>{err}</span> : null}
-    {ready ? <button type="button" className="btn sm wa" autoFocus onClick={() => { openChat(pid, ready); setReady(null); }}><Wa /> Open WhatsApp chat</button>
+    {ready ? <button type="button" className="btn sm wa" autoFocus disabled={busy} onClick={async () => { setBusy(true); const e = await openChat(pid, ready); setBusy(false); if (e) setErr(e); else setReady(null); }}><Wa /> {busy ? 'Checking the daily limit…' : 'Open WhatsApp chat'}</button>
       : <button type="button" className="btn sm wa" onClick={prepare} disabled={busy}><Wa /> {busy ? 'Getting it ready…' : 'Send on WhatsApp'}</button>}</span>;
 }

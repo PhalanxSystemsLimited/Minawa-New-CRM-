@@ -186,6 +186,8 @@ export interface WaLog {
   phone: string; sentTo: string; answer: 'sent' | 'not_sent'; via: 'prompt' | 'button';
   messageId: string | null; kind: string; title: string; text: string; amount: number;
   staffId: string | null; staffName: string; staffRole: string; d: ISODate; t: string; at: string; test: boolean;
+  /** The staff member's WhatsApp number the chat was opened from (20 Nov 2026). */
+  fromNumber?: string | null;
 }
 export interface LogEntry { id: string; project: string | null; d: ISODate; t: string; kind: string; text: string; ownerId: string | null;
   /** The staff member who did it (null for the system: daily run, webhooks, sending). */
@@ -239,4 +241,12 @@ export interface Approval {
 export interface Company { legalName: string; address: string; ntn: string; phone: string; email: string }
 
 /** `projects`: for a building manager, the buildings (project ids) they may open; the Admin assigns them. */
-export interface Staff { id: string; email: string; name: string; role: Role; active: boolean; projects?: string[] }
+export interface Staff { id: string; email: string; name: string; role: Role; active: boolean; projects?: string[];
+  /** 20 Nov 2026: the WhatsApp numbers this person sends from (set by the Admin), each with its own daily limit. */
+  waNumbers?: WaNumber[] | null }
+/** A WhatsApp number staff send from. The limit counts different customers in any 24 hours, per number (a number on
+ *  two people's details has one count). */
+export interface WaNumber { id: string; number: string; label: 'Personal' | 'Company'; limit: number; active: boolean }
+/** One sending number's use in the last 24 hours. */
+export interface WaUse { number: string; used: number; limit: number; extra: number; nextFree: string | null }
+export interface WaTake { ok: boolean; repeat?: boolean; used: number; limit: number; nextFree?: string | null }

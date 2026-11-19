@@ -4,7 +4,8 @@
 import { bankJoin } from './bank';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import type { Owner, State, Staff } from './types';
+import type { Owner, State, Staff, WaNumber } from './types';
+import { parseNumbers, fmtNumber, normNumber, validNumber, MAX_LIMIT } from './wa-numbers';
 import { requireStaff, requireRole, requireAdmin, roleName, staffName } from './session';
 import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
@@ -270,12 +271,17 @@ export async function staffAction(fdata: FormData) {
   if ((role === 'manager' || role === 'accountant') && !projects.length) go(back, 'Please select at least one building for this role before saving.');
   if (active !== st!.active) ch.push(active ? 'can sign in again' : 'sign-in turned off');
   if (password) ch.push('password changed');
+  // WhatsApp numbers this person sends from (20 Nov 2026): checked, and every change logged.
+  let waNumbers: WaNumber[] = [], bad = '';
+  try { waNumbers = parseNumbers(S(fdata, 'waNumbers'), st!.waNumbers || []); } catch (e) { bad = (e as Error).message; }
+  if (bad) go(back, bad);
+  if (numsText(st!.waNumbers || []) !== numsText(waNumbers)) ch.push(`WhatsApp numbers: ${numsText(waNumbers) || 'none'}`);
   if (!ch.length) go('/admin', 'Nothing changed');
   if (store.kind === 'supabase' && (email !== st!.email || password)) {
     const { error } = await (await authAdmin()).updateUserById(id, { ...(email !== st!.email ? { email, email_confirm: true } : {}), ...(password ? { password } : {}) });
     if (error) go(back, `Couldn't update the login: ${error.message}`);
   } else if (password) go(back, 'Local mode has one shared password (LOCAL_PASSWORD). Connect Supabase to give each person their own.');
-  await store.saveStaff({ ...st!, name, email, role, active, projects });
+  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers });
   // A new password or login, or sign-in turned off: sign them out on every device at once (18 Nov 2026).
   let ended = false;
   if (store.kind === 'supabase' && (password || email !== st!.email || (!active && st!.active)) && st!.id !== me.id) ended = await endSessions(st!.id);
@@ -290,6 +296,9 @@ export async function inviteAction(fdata: FormData) {
   if (!email || !name || password.length < 8) go('/admin?add=1', 'Enter a name, an email and a password of at least 8 characters');
   if ((role === 'manager' || role === 'accountant') && !projects.length) go('/admin?add=1', 'Please select at least one building for this role before creating the account.');
   if (!EMAIL_RE.test(email)) go('/admin?add=1', 'Enter a valid email');
+  let waNumbers: WaNumber[] = [], bad = '';
+  try { waNumbers = parseNumbers(S(fdata, 'waNumbers')); } catch (e) { bad = (e as Error).message; }
+  if (bad) go('/admin?add=1', bad);
   const store = await getStore(), list = await store.listStaff();
   if (list.some(x => x.email.toLowerCase() === email)) go('/admin', `${email} is already on the staff list. Use Edit to change their details.`);
   let id = 'local-' + Date.now();
@@ -299,8 +308,25 @@ export async function inviteAction(fdata: FormData) {
     if (error || !data.user) go('/admin?add=1', `Couldn't add: ${error?.message}`);
     id = data.user!.id;
   }
-  await store.saveStaff({ id, email, name, role, active: true, projects });
+  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers });
   const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : `an accountant (${projects.join(', ')})`;
-  await staffLog(me, `${name} (${email}) added as ${as} by ${staffName(me)}`);
+  await staffLog(me, `${name} (${email}) added as ${as} by ${staffName(me)}${waNumbers.length ? `; WhatsApp numbers: ${numsText(waNumbers)}` : ''}`);
   go('/admin', `${name} can now sign in as ${as}`);
+}
+
+/* ---------- WhatsApp daily limit (20 Nov 2026) ---------- */
+const numsText = (l: WaNumber[]) => l.map(n => `${fmtNumber(n.number)} (${n.label}, ${n.limit} a day${n.active ? '' : ', not in use'})`).join('; ');
+
+/** The Admin lets a number open chats with more customers for the next 24 hours, with a reason (logged). */
+export async function waExtraAction(fdata: FormData) {
+  const me = await requireAdmin(), number = normNumber(S(fdata, 'number')), amount = Math.round(+S(fdata, 'amount')), reason = S(fdata, 'reason').slice(0, 300);
+  const back = `/admin?extra=${encodeURIComponent(number)}#wa`;
+  if (!validNumber(number)) go('/admin#wa', 'That number isn\'t on anyone\'s details');
+  if (!(amount >= 1 && amount <= MAX_LIMIT)) go(back, `Allow between 1 and ${MAX_LIMIT} more customers`);
+  if (!reason) go(back, 'Write the reason (it goes in the activity log)');
+  const store = await getStore(), who = (await store.listStaff()).filter(x => (x.waNumbers || []).some(n => n.number === number)).map(x => x.name);
+  if (!who.length) go('/admin#wa', 'That number isn\'t on anyone\'s details');
+  await store.waExtra({ number, amount, reason, byId: me.id, byName: staffName(me) });
+  await staffLog(me, `${staffName(me)} allowed ${amount} more WhatsApp customers for the next 24 hours on ${fmtNumber(number)} (${who.join(', ')}): ${reason}`);
+  go('/admin#wa', `${fmtNumber(number)} can message ${amount} more customer${amount === 1 ? '' : 's'} in the next 24 hours`);
 }

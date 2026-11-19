@@ -39,6 +39,8 @@ export interface SendItem {
   pdf: Message['pdf']; pdfHref: string | null; fromMsg: string | null; replaces: string[];
   /** Late warnings and reminders: the fine the building manager can add before sending (pct of what is late). */
   fine?: { pct: number; offer: number; added: number } | null;
+  /** The staff member's WhatsApp number the chat was opened from (the daily limit, 20 Nov 2026). */
+  from?: string | null;
 }
 
 
@@ -97,6 +99,9 @@ function payBlock() {
     b ? '• Only to this account: please do not pay into anyone\'s personal account.' : null);
 }
 const foot = () => lines('', 'For any questions, just reply to this message.', '', 'Thank you,', '*Minawa Group*', '_Maintenance Department_');
+/** Bills and late warnings (20 Nov 2026) ask for a reply: a reply shows the message arrived, and WhatsApp doesn't count
+ *  messages that get a reply against its limit on messages to people who don't answer. */
+const replyFoot = () => lines('', '🙏 *Please reply OK* once you have seen this message, so we know it reached you.', foot());
 
 /** A maintenance notice (water, electricity, lift…) for one flat. */
 function noticeText(o: Owner, title: string, text: string) {
@@ -110,7 +115,7 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
   const S = cur(), f = ownerFacts(o), bal = f.bal;
   const base = { ownerId: o.id, apt: o.apt, name: o.name, phone: o.phone, to: intl(o.phone) };
   // The PDF goes in as a link just above the sign-off (the voucher with the due date, or the receipt).
-  const withPdf = (text: string, pdf: Message['pdf']) => { const l = pdfLine(pdf), f = foot(); return l && text.endsWith(f) ? text.slice(0, -f.length) + l + '\n' + f : text; };
+  const withPdf = (text: string, pdf: Message['pdf']) => { const l = pdfLine(pdf), rf = replyFoot(), f = text.endsWith(rf) ? rf : foot(); return l && text.endsWith(f) ? text.slice(0, -f.length) + l + '\n' + f : text; };
   const out = (kind: string, title: string, text: string, pdf: Message['pdf']): Item =>
     ({ ...base, kind, title, text: withPdf(text, pdf), pdf, pdfHref: pdf ? `/api/pdf/${S.project}/${pdf.kind}/${encodeURIComponent(pdf.id)}` : null,
       fine: kind === 'notice' || kind === 'reminder' ? { pct: feePct(), offer: fineOffer(o, d), added: o.feeDue || 0 } : null });
@@ -136,7 +141,7 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     const k = utilKind(b), lines0 = b.lines.filter(l => l.kind === 'utility');
     const text = lines(head(o, `⚡ ${k} bill · ${fm(b.period)}`, `Your ${k.toLowerCase()} bill for *${fm(b.period)}* is *${rs(b.net)}*, due by *${fd(b.dueDate)}*.`), details(o), '',
       `*${k} bill*`, ...lines0.map(l => `• ${l.label.replace(`${k}, `, '')}: ${rs(l.amount)}`), RULE, bal > 0 ? `*Total to pay now: ${rs(bal)}*` : `*Paid from your advance credit${bal < 0 ? `; credit left ${rs(-bal)}` : ''}.*`,
-      bal > 0 ? payBlock() : null, foot());
+      bal > 0 ? payBlock() : null, bal > 0 ? replyFoot() : foot());
     return out('bill', `${k} bill · ${fm(b.period)}`, text, { kind: 'bill', id: b.id });
   }
   if (type === 'bill' && b && bal <= 0) {
@@ -147,7 +152,7 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
   if (bal <= 0) return null;
   if (type === 'bill' && b) {
     const text = lines(head(o, `🧾 Maintenance bill · ${periodLabel(b)}`, `Your maintenance bill for *${periodLabel(b)}* is ready: *${rs(b.net)}*, due by *${fd(b.dueDate)}*.`),
-      details(o), duesList(o, bal), payBlock(), foot());
+      details(o), duesList(o, bal), payBlock(), replyFoot());
     return out('bill', `Bill · ${periodLabel(b)}`, text, { kind: 'bill', id: b.id });
   }
   if (type === 'reminder') {
@@ -161,7 +166,7 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     // send time ("Add fine" in Send on WhatsApp); once added it shows in the dues list.
     const nb = f.late || f.bill, by = addDays(d, 7);
     const text = lines(head(o, '⚠️ Late payment warning', nb ? `Your maintenance dues were due on *${fd(nb.dueDate)}* and are still unpaid.` : 'Your maintenance dues are overdue.'), details(o), duesList(o, bal), '',
-      `❗ *Please pay by ${fd(by)}.* If the dues remain unpaid, maintenance services may be discontinued.`, payBlock(), foot());
+      `❗ *Please pay by ${fd(by)}.* If the dues remain unpaid, maintenance services may be discontinued.`, payBlock(), replyFoot());
     return out('notice', 'Late payment warning', text, nb ? { kind: 'bill', id: nb.id } : { kind: 'statement', id: o.id });
   }
   const text = lines(head(o, '💳 Your dues', 'Here are your maintenance dues as of today.'), details(o), duesList(o, bal), payBlock(), foot());

@@ -9,6 +9,7 @@ import { initialsOf, WaAnswerBadges } from '@/components/views/activity';
 import { fd, rs, todayPKT, addDays, dow, t12 } from '@/lib/fmt';
 import { KIc, Empty } from '@/components/views/art';
 import { Ic } from '@/components/icons';
+import { fmtNumber } from '@/lib/wa-numbers';
 
 const PERIODS: [string, string][] = [['today', 'Today'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['all', 'All time']];
 
@@ -22,7 +23,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
   let list: Awaited<ReturnType<typeof store.getWaLog>> = [], err = '';
   try { list = await store.getWaLog({ project: pid || null, staffIds: ids, answer: (ans || null) as 'sent' | 'not_sent' | null, since, limit: 1000 }); }
   catch (e) { err = (e as Error).message; }
-  if (q) list = list.filter(e => `${e.apt} ${e.ownerName} ${e.phone} ${e.sentTo} ${e.title} ${e.staffName}`.toLowerCase().includes(q));
+  if (q) list = list.filter(e => `${e.apt} ${e.ownerName} ${e.phone} ${e.sentTo} ${e.fromNumber || ''} ${e.title} ${e.staffName}`.toLowerCase().includes(q));
   const sent = list.filter(e => e.answer === 'sent'), notSent = list.length - sent.length;
   const owners = new Set(sent.map(e => e.ownerId)).size, people = new Set(list.map(e => e.staffId)).size;
   const pname = (id: string) => projs.find(p => p.id === id)?.name || id;
@@ -49,7 +50,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
           {list.map(e => { const h = e.d !== day ? (day = e.d, <tr key={e.id + 'h'} className="wl-day"><td colSpan={6}>{dow(e.d)} {fd(e.d)}</td></tr>) : null;
             return [h, <tr key={e.id}>
               <td className="num" style={{ whiteSpace: 'nowrap' }}>{t12(e.t)}</td>
-              <td><div className="act-who"><span className={`act-av${e.staffRole === 'admin' ? ' admin' : ''}`} aria-hidden="true">{initialsOf(e.staffName)}</span><b>{e.staffName}</b></div><div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : 'Accountant'}</div></td>
+              <td><div className="act-who"><span className={`act-av${e.staffRole === 'admin' ? ' admin' : ''}`} aria-hidden="true">{initialsOf(e.staffName)}</span><b>{e.staffName}</b></div><div className="cell-sub">{e.staffRole === 'admin' ? 'Admin' : e.staffRole === 'manager' ? 'Building manager' : 'Accountant'}</div>{e.fromNumber ? <div className="cell-sub num">from {fmtNumber(e.fromNumber)}</div> : null}</td>
               <td><Go href={`/p/${e.project}/apartments/${e.ownerId}`} className="apt-a">{e.apt}</Go><div className="cell-sub">{e.ownerName}</div><div className="cell-sub num">+{e.sentTo}{e.test ? ' · test number' : ''}</div><div className="cell-sub">{pname(e.project)}</div></td>
               <td><div>{e.title}</div><details className="wl-msg"><summary className="cell-sub">Show the message</summary><p>{e.text}</p></details></td>
               <td className="r num">{e.amount > 0 ? rs(e.amount) : e.amount < 0 ? `${rs(-e.amount)} credit` : 'Paid up'}</td>

@@ -1,10 +1,10 @@
 // Supabase store (production). Uses the service role on the server only; the browser never writes.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Company, WaLog } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Company, WaLog, WaTake, WaUse } from '../types';
 import { TEMPLATES, defaultSettings } from '../defaults';
 import { TABLES, STATE_TABLES, KEY, toCol, fromCol, natSort, type TableName } from './tables';
-import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
+import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, useOf, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
 
 const toRow = (o: Record<string, unknown>, cols?: readonly string[]) => {
   const r: Record<string, unknown> = {};
@@ -160,6 +160,27 @@ export class SupabaseStore implements Store {
     const { data, error } = await this.db.from('payments').select('id,d,t').eq('project', project).gte('d', since).is('reversed', null).limit(1000);
     if (error) throw new Error(error.message);
     return (data || []).map(r => ({ id: String(r.id), d: String(r.d), t: String(r.t) }));
+  }
+  async waTake(i: { number: string; limit: number; to: string; staffId: string; staffName: string; project: string; ownerId: string }): Promise<WaTake> {
+    const { data, error } = await this.db.rpc('wa_take', { p_number: i.number, p_limit: i.limit, p_to: i.to, p_staff_id: i.staffId, p_staff_name: i.staffName, p_project: i.project, p_owner: i.ownerId });
+    if (error) throw new Error(error.message);
+    const r = (data || {}) as { ok?: boolean; repeat?: boolean; used?: number; limit?: number; next_free?: string | null };
+    return { ok: !!r.ok, repeat: !!r.repeat, used: Number(r.used || 0), limit: Number(r.limit || i.limit), nextFree: r.next_free || null };
+  }
+  async waUsage(nums: { number: string; limit: number }[]): Promise<WaUse[]> {
+    const list = [...new Set(nums.map(n => n.number))];
+    if (!list.length) return [];
+    const since = new Date(Date.now() - 24 * 3600e3).toISOString();
+    const [o, x] = await Promise.all([
+      this.db.from('wa_opens').select('number,to_phone,at').in('number', list).gt('at', since).limit(20000),
+      this.db.from('wa_extras').select('number,amount').in('number', list).gt('at', since).limit(1000)]);
+    if (o.error) throw new Error(o.error.message); if (x.error) throw new Error(x.error.message);
+    return useOf(nums, (o.data || []) as { number: string; to_phone: string; at: string }[], (x.data || []) as { number: string; amount: number }[]);
+  }
+  async waExtra(i: { number: string; amount: number; reason: string; byId: string; byName: string }) {
+    const { error } = await this.db.from('wa_extras').insert({ number: i.number, amount: i.amount, reason: i.reason, by_id: i.byId, by_name: i.byName });
+    if (error) throw new Error(error.message);
+    await this.bump();
   }
   async getCompany() { const { data } = await this.db.from('company').select('*').eq('id', 1).limit(1); const r = data?.[0]; if (!r) return { ...DEFAULT_COMPANY }; const c = fromRow<Company & { id?: number }>(r); delete c.id; return { ...DEFAULT_COMPANY, ...c }; }
   async saveCompany(c: Company) { await this.upsert('company', [{ id: 1, ...toRow(c as unknown as Record<string, unknown>) }], 'id'); await this.bump(); }

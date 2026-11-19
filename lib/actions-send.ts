@@ -11,6 +11,30 @@ import { ownerById, balance, log, at, nid, FIX_WAIT, fixWaiting, addFine, remove
 import { nowPKT, fd, rs, waDigits } from './fmt';
 import { waTestNumber } from './whatsapp';
 import { compose, composeQueued, cantSend, pendingGroups, toDoKinds, type SendItem, type SendType, setDocBase } from './manual-send';
+import { pickNumber, fmtNumber, freeAt } from './wa-numbers';
+import { use } from './engine';
+
+/* ---------- WhatsApp daily limit (20 Nov 2026) ---------- */
+export interface ChatTake { ok: boolean; error?: string; from?: string; used?: number; limit?: number; nextFree?: string | null; repeat?: boolean; none?: boolean }
+/** Before a chat opens: counts this customer on the person's sending number (free if already counted in the last 24
+ *  hours), or refuses when the number has reached its daily limit. Checked here on the server, in one step in the
+ *  database, so two people sharing a number can't go over. */
+export async function takeChatAction(input: { pid: string; ownerId: string; from?: string | null }): Promise<ChatTake> {
+  const staff = await requireStaff();
+  const n = pickNumber(staff, input.from);
+  if (!n) return { ok: false, none: true, error: 'You have no WhatsApp number in the CRM yet, so chats can\'t be opened. Ask the Admin to add your number in Staff & connections.' };
+  try {
+    const s = await load(input.pid, staff);
+    const o = use(s, () => ownerById(input.ownerId));
+    if (!o) return { ok: false, error: 'Customer not found.' };
+    const to = intl(o.phone || '');
+    if (!to) return { ok: false, error: `${o.apt} has no WhatsApp number.` };
+    const r = await (await getStore()).waTake({ number: n.number, limit: n.limit, to, staffId: staff.id, staffName: staffName(staff), project: input.pid, ownerId: o.id });
+    if (!r.ok) return { ok: false, from: n.number, used: r.used, limit: r.limit, nextFree: r.nextFree || null,
+      error: `Daily limit reached for ${fmtNumber(n.number)}: ${r.used} of ${r.limit} customers in the last 24 hours.${r.nextFree ? ` The next one frees up at ${freeAt(r.nextFree)}.` : ''} Switch to another of your numbers or wait.` };
+    return { ok: true, from: n.number, used: r.used, limit: r.limit, repeat: !!r.repeat };
+  } catch (e) { console.error('wa_take', (e as Error).message); return { ok: false, error: 'Could not check the daily limit. Check the connection and try again.' }; }
+}
 
 const who = (o: Owner) => `Apt ${o.apt} · ${o.name} (${o.phone || 'no number'})`;
 const owes = (o: Owner) => { const b = balance(o); return b > 0 ? `; balance ${rs(b)}` : b < 0 ? `; credit ${rs(-b)}` : '; paid up'; };
@@ -20,7 +44,7 @@ function waRow(staff: Staff, o: Owner, it: SendItem, answer: WaLog['answer'], vi
   const test = waTestNumber();
   return { id: 'W' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), project: o.project, ownerId: o.id, apt: o.apt, ownerName: o.name, block: o.block || '',
     phone: o.phone || '', sentTo: test || intl(o.phone || ''), answer, via, messageId, kind: it.kind, title: it.title, text: it.text, amount: balance(o),
-    staffId: staff.id, staffName: staffName(staff), staffRole: staff.role, d, t, at: new Date().toISOString(), test: !!test };
+    staffId: staff.id, staffName: staffName(staff), staffRole: staff.role, d, t, at: new Date().toISOString(), test: !!test, fromNumber: it.from || null };
 }
 async function saveWa(row: WaLog | null) {
   if (!row) return;
@@ -46,8 +70,11 @@ export async function prepareSendAction(input: { pid: string; type: SendType; id
       const only = input.only && input.only !== 'all' ? toDoKinds(input.only) : null;
       const groups = pendingGroups(m => (!ids.size || ids.has(m.ownerId)) && (!nt || (m.kind === 'alert' && m.d === nt.d && m.t === nt.t)))
         .filter(g => !only || only.includes(g.msg.kind));
-      // Receipts first (people who just paid), then by apartment order as the owners were listed.
-      groups.sort((a, b) => +(b.msg.kind === 'receipt') - +(a.msg.kind === 'receipt'));
+      // In order of urgency (so the most important go first when a number's daily limit runs out): receipts (people who
+      // just paid), late warnings, bills by due date (nearest first), reminders and dues, then notices and announcements.
+      const rank = (k: string) => k === 'receipt' ? 0 : k === 'notice' ? 1 : k === 'bill' ? 2 : k === 'reminder' || k === 'link' || k === 'statement' ? 3 : 4;
+      const dueOf = (m: typeof groups[number]['msg']) => (m.pdf?.kind === 'bill' ? s.bills.find(b => b.id === m.pdf!.id)?.dueDate : '') || '9999';
+      groups.sort((a, b) => rank(a.msg.kind) - rank(b.msg.kind) || dueOf(a.msg).localeCompare(dueOf(b.msg)));
       for (const g of groups) {
         const o = ownerById(g.msg.ownerId);
         if (!o || o.invalidPhone) { left.push({ apt: o?.apt || g.msg.ownerId, why: o?.noPhone ? 'No WhatsApp number' : 'Number not on WhatsApp' }); continue; }
@@ -219,4 +246,27 @@ export async function fineAction(input: { pid: string; item: SendItem; add: bool
       return { ok: true, text: it?.text, fine: it?.fine };
     }, { send: false });
   } catch (e) { return { ok: false, error: (e as Error).message }; }
+}
+
+/* ---------- Printed vouchers (20 Nov 2026) ---------- */
+/** The building manager delivered these customers' printed vouchers by hand: the messages count as delivered (on paper). */
+export async function deliveredVouchersAction(input: { pid: string; ids: string[] }): Promise<{ ok: boolean; n: number; error?: string }> {
+  const staff = await requireRole('manager');
+  try {
+    const n = await mutate(input.pid, staff, s => {
+      const now = new Date().toISOString(), t = nowPKT(), done = new Map<string, number>();
+      for (const id of (input.ids || []).slice(0, 2000)) {
+        const m = s.messages.find(x => x.id === id && x.status === 'failed'); if (!m) continue;
+        // Older messages of the same kind for this customer go with it (one paper covers them).
+        for (const x of s.messages) if (x.ownerId === m.ownerId && x.status === 'failed' && (x.id === m.id || (x.kind === m.kind && (x.pdf?.id || '') === (m.pdf?.id || '')))) {
+          Object.assign(x, { status: 'sent', waId: 'print', sentAt: now, error: `Printed and delivered by hand by ${staffName(staff)} on ${fd(s.today)}` });
+          done.set(x.ownerId, (done.get(x.ownerId) || 0) + 1);
+        }
+      }
+      for (const [oid, k] of done) { const o = ownerById(oid); if (o) log(s.today, t, 'message', `${staffName(staff)} delivered ${k === 1 ? 'a printed voucher' : `${k} printed vouchers`} by hand to ${o.apt} (${o.noPhone ? 'no WhatsApp number' : 'number not on WhatsApp'})`, o.id); }
+      return done.size;
+    }, { send: false });
+    revalidatePath(`/p/${input.pid}/send`);
+    return { ok: true, n };
+  } catch (e) { return { ok: false, n: 0, error: (e as Error).message }; }
 }

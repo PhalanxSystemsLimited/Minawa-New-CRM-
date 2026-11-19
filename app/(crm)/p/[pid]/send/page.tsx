@@ -12,24 +12,43 @@ import { ApprovalItem } from '@/components/views/approvals';
 import { waTestNumber } from '@/lib/whatsapp';
 import { SEND_TYPES, cantSend, ownerFacts, pendingGroups, type SendType } from '@/lib/manual-send';
 import { SendConsole, type SendRow } from '@/components/SendConsole';
+import { VoucherBatch } from '@/components/VoucherBatch';
+import { voucherRows } from '@/lib/vouchers';
 import { projectPage, projHead } from '@/components/views/project';
 
 import { redirect } from 'next/navigation';
 import { requireStaff } from '@/lib/session';
+import { getStore } from '@/lib/store';
+import { activeNumbers, fmtNumber } from '@/lib/wa-numbers';
+import { diff } from '@/lib/fmt';
 export const dynamic = 'force-dynamic';
 
 const KIND: Record<string, string> = { bill: 'Bill', reminder: 'Reminder', notice: 'Late warning', link: 'Dues', receipt: 'Receipt', alert: 'Maintenance notice', announcement: 'Message', info: 'Message' };
 
 export default async function SendPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
-  if ((await requireStaff()).role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('Sending on WhatsApp is the building manager\'s work.')}`);
+  const me = await requireStaff();
+  if (me.role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('Sending on WhatsApp is the building manager\'s work.')}`);
+  // The person's WhatsApp numbers and how much of each one's daily limit is used (20 Nov 2026).
+  const nums = activeNumbers(me);
+  let usage: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['waUsage']>> = [];
+  try { usage = await (await getStore()).waUsage(nums.map(n => ({ number: n.number, limit: n.limit }))); } catch (e) { console.error('wa usage', (e as Error).message); }
+  const numbers = nums.map(n => ({ number: n.number, label: n.label, limit: n.limit, shown: fmtNumber(n.number) }));
   return projectPage(pid, sp, () => {
-    const S = cur(), mode = sp.mode === 'notice' || sp.mode === 'announce' ? sp.mode : 'send', base = `/p/${pid}/send`;
+    const S = cur(), mode = sp.mode === 'notice' || sp.mode === 'announce' || sp.mode === 'print' ? sp.mode : 'send', base = `/p/${pid}/send`;
+    const vrows = voucherRows(), vN = vrows.filter(r => r.items.length).length;
     const modes = <div className="ptabs" role="tablist">
       <Go href={base} current={mode === 'send' ? 'true' : 'false'} replace>Send to owners</Go>
       <Go href={`${base}?mode=notice`} current={mode === 'notice' ? 'true' : 'false'} replace>Maintenance notice</Go>
       <Go href={`${base}?mode=announce`} current={mode === 'announce' ? 'true' : 'false'} replace>Announcement</Go>
+      <Go href={`${base}?mode=print`} current={mode === 'print' ? 'true' : 'false'} replace>Printed vouchers{vN ? <> <span className="tab-b">{vN}</span></> : null}</Go>
     </div>;
+    if (mode === 'print') return <>
+      {projHead('send')}{modes}
+      <div className="page-head"><div><h2>Printed vouchers</h2><p>For customers without WhatsApp ({vrows.length} here: no number, or a number not on WhatsApp). Their bills, late warnings and receipts wait here instead of on WhatsApp: print them in one PDF, deliver them by hand, then mark them delivered. This system sends no email.</p></div></div>
+      <VoucherBatch pid={pid} rows={vrows.map(r => ({ oid: r.o.id, apt: r.o.apt, block: r.o.block || '', name: r.o.name, why: r.why, bal: r.bal > 0 ? rs(r.bal) : r.bal < 0 ? `${rs(-r.bal)} credit` : 'Paid up', owes: r.bal > 0,
+        items: r.items.map(i => ({ key: i.msg.id, ids: i.ids, what: i.what, since: fds(i.msg.d) })) }))} />
+    </>;
     if (mode === 'notice') {
       const flats = apartments().filter(o => o.status === 'active').sort(aptOrder).map(o => ({ id: o.id, apt: o.apt, block: o.block, name: o.name, noPhone: o.invalidPhone }));
       const nblocks = [...new Set(flats.map(f => f.block).filter(Boolean))].sort();
@@ -86,7 +105,17 @@ export default async function SendPage({ params, searchParams }: { params: Promi
       {projHead('send')}{modes}
       <div className="page-head"><div><h2>Send on WhatsApp</h2><p>Choose what to send and who gets it. Each owner&apos;s chat then opens in WhatsApp Web with the message already typed: check it and press Send in WhatsApp. When you come back to the CRM it asks <b>Did you send the message?</b>, and your answer goes on the owner&apos;s history and in staff activity.</p></div></div>
       {waTestNumber() ? <div className="callout warn" style={{ marginBottom: 14 }}><div><b>Testing:</b> every chat opens with the test number +{waTestNumber()} (WHATSAPP_TEST_NUMBER), not the owner&apos;s. Remove that setting to message owners.</div></div> : null}
-      <SendConsole pid={pid} rows={rows} blocks={blocks} types={SEND_TYPES} start={start} ids={sp.ids ? sp.ids.split(',') : []} go={sp.go === '1'} notice={sp.notice || ''} only={sp.kind || ''} waiting={groups.length} />
+      <SendConsole pid={pid} rows={rows} blocks={blocks} types={SEND_TYPES} start={start} ids={sp.ids ? sp.ids.split(',') : []} go={sp.go === '1'} notice={sp.notice || ''} only={sp.kind || ''} waiting={groups.length}
+        numbers={numbers} usage={usage} plan={(() => {
+          // Sending plan: enough bills each day to send every waiting bill before its due date.
+          const dues = groups.filter(g => g.msg.kind === 'bill').map(g => S.bills.find(b => b.id === g.msg.pdf?.id)?.dueDate).filter((d): d is string => !!d).sort();
+          const late = dues.filter(d => d <= S.today).length, ahead = dues.filter(d => d > S.today);
+          let need = 0; ahead.forEach((d, k) => { need = Math.max(need, Math.ceil((k + 1) / diff(d, S.today))); });
+          const parts = [late ? `${late} bill${late === 1 ? ' is' : 's are'} due today or already past due: send ${late === 1 ? 'it' : 'them'} first.` : '',
+            need ? `Then at least ${need} a day sends the other ${ahead.length} before their due dates.` : ''].filter(Boolean);
+          if (!late && need) parts[0] = `Send at least ${need} bill${need === 1 ? '' : 's'} a day to send all ${ahead.length} waiting before their due dates.`;
+          return parts.length ? parts.join(' ') : null;
+        })()} />
     </>;
   });
 }
