@@ -17,6 +17,10 @@ import * as act from '@/lib/actions';
 import { intl } from '@/lib/dispatch';
 import { waTestNumber } from '@/lib/whatsapp';
 import { PhotoField } from '../PhotoField';
+import { AmountGuard } from '../AmountGuard';
+import { payLimits } from '@/lib/engine';
+/** The amount checks under an amount field (21 Nov 2026). */
+const guard = (o: Owner) => { const l = payLimits(o); return <AmountGuard owed={l.owed} cap={l.cap} who={o.name} />; };
 import { photoStore } from '@/lib/images';
 
 /** The photo of a payment at entry (21 Nov 2026), or a note when photo storage isn't set up on live yet. */
@@ -127,6 +131,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <div className="form-row"><label htmlFor="ep-amt">Amount (Rs)</label><input id="ep-amt" name="amt" type="number" min="1" step="1" required defaultValue={left} /></div>
         <div className="form-row"><label htmlFor="ep-d">Paid on</label><input id="ep-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
       </div>
+      {guard(o)}
       <div className="form-row"><label htmlFor="ep-ref">Receipt number you gave (needed for cash)</label><input id="ep-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" /></div>
       <div className="form-row"><label htmlFor="ep-txn">Bank transaction ID (needed for a bank transfer)</label><input id="ep-txn" name="txn" type="text" maxLength={80} placeholder="e.g. FT2611180042" /></div>
       {PayPhoto({ o, always: true, label: 'Photo of the payment', hint: 'The bill receipt, or the customer\'s phone screen showing the payment. Take it with the camera or choose it from the phone; it is shrunk before saving.' })}
@@ -149,7 +154,11 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="du-r">Reason{isAdmin() ? ' (optional)' : ''}</label><input id="du-r" name="reason" type="text" required={!isAdmin()} placeholder="e.g. Salary comes on the 20th" /></div>
       {isAdmin() ? null : <div className="callout warn"><div>The Admin approves this first and sees your reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save due date' : 'Send for approval'}</Submit></div></form></ModalShell>;
-    case 'recpay': if (cur().role === 'admin') return <ModalShell title="Record a payment"><div className="callout">Payments are entered by the building manager or the Accountant.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    case 'recpay': if (cur().role === 'admin') { const lm = payLimits(o); return <ModalShell title="Record a payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}<input type="hidden" name="method" value="Cash" /><input type="hidden" name="over" value="1" />
+      <div className="callout">Payments are entered by the building manager or the Accountant. Only an amount above the most one entry can take ({rs(lm.cap)} for {o.name}, who owes {rs(lm.owed)}) is entered here, by you, after checking it is right.</div>
+      <div className="form-row"><label htmlFor="ra-amt">Amount (Rs), above {rs(lm.cap)}</label><input id="ra-amt" name="amt" type="number" min={lm.cap + 1} step="1" required /></div>
+      <div className="form-row"><label htmlFor="ra-ref">Receipt number given</label><input id="ra-ref" name="ref" type="text" required placeholder="e.g. Office book 2, No. 58" /></div>
+      <div className="m-actions"><CloseBtn /><Submit>Record payment</Submit></div></form></ModalShell>; }
       if (cur().role === 'manager') { const b = bankOf(cur().proj.bank); return <ModalShell title="Enter a payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
       <div className="callout">A payment {o.name} made to you in cash, or by bank transfer into Minawa&apos;s account. It counts at once: {o.name}&apos;s balance changes and the receipt opens for you to send on WhatsApp straight away. The Accountant then confirms he received the money. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <fieldset className="pay-via"><legend>Received as</legend>
@@ -164,6 +173,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         <div className="form-row"><label htmlFor="rc-amt">Amount (Rs)</label><input id="rc-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
         <div className="form-row"><label htmlFor="rc-d">Paid on</label><input id="rc-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
       </div>
+      {guard(o)}
       <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave {via === 'bank' ? '(optional for a bank transfer)' : '(needed for cash)'}</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" /></div>
       <div className="form-row"><label htmlFor="rc-txn">Bank transaction ID (needed for a bank transfer)</label><input id="rc-txn" name="txn" type="text" maxLength={80} placeholder="e.g. FT2611180042 or the IBFT reference" /></div>
       {PayPhoto({ o, label: 'Photo of the bank transfer', hint: 'Take a photo of the transfer on the customer\'s phone screen (or of the bank slip). It is shrunk before saving; the Accountant and the Admin open it with the payment.' })}
@@ -172,6 +182,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       return <ModalShell title="Record a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
       <div className="callout">Cash {o.name} paid at the office. It counts straight away and the receipt is made for the building manager to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
+      {guard(o)}
       <input type="hidden" name="method" value="Cash" />
       <div className="form-row"><label htmlFor="rp-ref">Receipt number given</label><input id="rp-ref" name="ref" type="text" placeholder="e.g. Office book 2, No. 58" required /></div>
       <div className="m-actions"><CloseBtn /><Submit>Record cash payment</Submit></div></form></ModalShell>;

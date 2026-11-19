@@ -49,6 +49,8 @@ export interface SendItem {
   from?: string | null;
   /** Electricity bills and their reminders (21 Nov 2026): the bill and its photo (printed on the bill PDF). */
   billPhoto?: { billId: string; id: string | null; photos: boolean } | null;
+  /** One chat for several flats on the same phone number (21 Nov 2026): the messages it stands for. */
+  parts?: SendItem[] | null;
 }
 
 
@@ -227,6 +229,47 @@ export function toDoGroups() {
 }
 /** How many owners have something waiting to be sent by hand (the tab's badge). */
 export const pendingCount = () => new Set(pendingGroups().map(g => g.msg.ownerId)).size;
+
+/** Bills and reminders (maintenance and electricity) that can go in one message to a phone number shared by several
+ *  flats (21 Nov 2026). Late warnings stay on their own (the fine is decided per flat when sending); so do receipts,
+ *  notices and announcements. */
+export const COMBINE_KINDS = ['bill', 'reminder', 'link'];
+/** Several flats' messages on one phone number → one message, one chat (each flat with its amount and its own PDF). */
+export function combineItems(parts: SendItem[]): SendItem {
+  const S = cur(), owners = [...new Map(parts.map(p => [p.ownerId, ownerById(p.ownerId)])).values()].filter(Boolean);
+  const names = [...new Set(owners.map(o => niceName(o.name)))];
+  const total = owners.reduce((a, o) => a + Math.max(0, balance(o)), 0);
+  // Per flat: each waiting bill or reminder with its own PDF link, then what that flat owes in all.
+  const blocks = owners.map(o => {
+    const mine = parts.filter(p => p.ownerId === o.id);
+    return lines('', `🏢 *${o.apt}*${o.block ? ` · Block ${o.block}` : ''}${names.length > 1 ? ` · ${niceName(o.name)}` : ''}`,
+      ...mine.map(p => {
+        const b = p.pdf?.kind === 'bill' ? S.bills.find(x => x.id === p.pdf!.id) : null, link = pdfLine(p.pdf)?.split('\n').pop() || null;
+        return lines(`• ${p.title}${b ? `: ${rs(b.net)}${b.dueDate ? `, due ${fd(b.dueDate)}` : ''}` : ''}`, link ? `  📄 ${link}` : null);
+      }),
+      `*Due for ${o.apt}: ${rs(Math.max(0, balance(o)))}*`);
+  });
+  const text = lines(`*Minawa Group · Maintenance*`, `_📋 Your ${owners.length} apartments on this number_`, '', `Dear ${names.join(' / ')},`,
+    `Here are the bills and reminders for your apartments in ${S.proj.name}. Each bill (PDF) has its own link below.`, ...blocks, RULE,
+    `*Total to pay for all ${owners.length}: ${rs(total)}*`, payBlock(), replyFoot());
+  const first = parts[0], urgent = parts.find(p => p.kind === 'bill') || first;
+  return { ...first, key: `combo:${first.to}:${parts.map(p => p.key).join('+')}`, apt: owners.map(o => o.apt).join(', '), name: names.join(' / '),
+    kind: urgent.kind, title: `${owners.length} apartments: ${[...new Set(parts.map(p => p.title.split(' · ')[0]))].join(', ')}`, text,
+    pdf: null, pdfHref: null, fromMsg: null, replaces: [], fine: null, billPhoto: null, parts };
+}
+/** Puts the combinable messages of flats sharing a phone number into one item each (the rest stay as they are). */
+export function combineByPhone(items: SendItem[]): SendItem[] {
+  const by = new Map<string, SendItem[]>();
+  for (const it of items) if (COMBINE_KINDS.includes(it.kind) && it.to) by.set(it.to, [...(by.get(it.to) || []), it]);
+  const done = new Set<string>(), out: SendItem[] = [];
+  for (const it of items) {
+    const g = COMBINE_KINDS.includes(it.kind) && it.to ? by.get(it.to)! : null;
+    if (!g || new Set(g.map(x => x.ownerId)).size < 2) { out.push(it); continue; }
+    if (done.has(it.to)) continue;
+    done.add(it.to); out.push(combineItems(g));
+  }
+  return out;
+}
 
 /** One prepared message, written again with today's figures where it's about money owed. */
 export function composeQueued(m: Message, d: string, t: string): Omit<SendItem, 'key' | 'fromMsg' | 'replaces'> | null {

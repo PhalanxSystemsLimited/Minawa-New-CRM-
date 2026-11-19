@@ -1,6 +1,7 @@
 // Cash (17 Nov 2026): every payment is cash, so this screen follows it from the person who took it to the bank.
-//  · Building manager: the confirmed cash he holds per building, entries still waiting for the Accountant, and a
-//    "Hand over" button; his hand-overs and what the Accountant said.
+//  · Building manager: his entries still waiting for the Accountant (the cash he holds). Since 21 Nov 2026 there is
+//    no separate hand-over for them: the Accountant's approval is the hand-over. A "Hand over" button only appears
+//    for older cash approved before that (entered before 19 Nov 2026).
 //  · Accountant: hand-overs to count and receive (or send back with a note), received cash to deposit in the bank
 //    (one slip can cover several hand-overs), and the cash still with each building manager.
 //  · Admin: everything, read-only.
@@ -36,14 +37,14 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
 
   return <>
     <div className="proj-head"><PageIc n="wallet" tone="green" /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Cash</div></div><div className="crumb-path">Dashboard<span>/</span>Cash</div></div>
-    <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken until the Accountant approves it. Each payment counted for the customer, with its receipt, when you entered it; give the cash to the Accountant: when he approves your entries, it is with him.'
+    <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken until the Accountant approves it. Each payment counted for the customer, with its receipt, when you entered it. Give the cash to the Accountant: his approval is the hand-over, so there is nothing else to press.'
       : acc ? 'Approving building managers\' entries (To do) confirms you have the cash; the customers already have their receipts. Record the bank deposit here when it goes into the bank.'
       : 'Where the cash is: with the building managers, with the Accountant, or in the bank. You only watch here.'}</p>
 
     <div className={mgr ? 'kpis' : 'kpis flow'} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
       <div className="kpi"><KIc n="building" tone="rust" /><div className="l">{mgr ? 'Cash with you' : 'With building managers'}</div><div className="v num">{rs(sum(myHand) + sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">entered, not approved yet</div></div>
       <div className="kpi"><KIc n="hourglass" tone="amber" /><div className="l">Waiting for approval</div><div className="v num">{rs(sum(myPending.map(u => u.pr)))}</div><div className="cell-sub">{myPending.length} entr{myPending.length === 1 ? 'y' : 'ies'}</div></div>
-      <div className="kpi"><KIc n="swap" tone="violet" /><div className="l">Handed over, to count</div><div className="v num">{rs(sum(toReceive.map(x => x.h)))}</div><div className="cell-sub">{toReceive.length} hand-over{toReceive.length === 1 ? '' : 's'}</div></div>
+      {mgr && !toReceive.length ? null : <div className="kpi"><KIc n="swap" tone="violet" /><div className="l">Handed over, to count</div><div className="v num">{rs(sum(toReceive.map(x => x.h)))}</div><div className="cell-sub">{toReceive.length} hand-over{toReceive.length === 1 ? '' : 's'}</div></div>}
       {mgr ? null : <div className="kpi"><KIc n="user" tone="teal" /><div className="l">With the Accountant</div><div className="v num">{rs(sum(now.toDeposit.map(x => x.h)))}</div><div className="cell-sub">received, not in the bank yet</div></div>}
       {mgr ? null : <div className="kpi"><KIc n="bank" tone="blue" /><div className="l">Deposited</div><div className="v num">{rs(sum(deposited30.map(x => x.h)))}</div><div className="cell-sub">last 30 days</div></div>}
     </div>
@@ -52,8 +53,9 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
       {projects.filter(p => (me.projects || []).includes(p.id)).map(p => {
         const w = myHand.find(x => x.project === p.id), pend = myPending.filter(u => u.pr.project === p.id);
         return <div className="li" key={p.id} style={{ alignItems: 'flex-start' }}><div className="t"><div className="a"><b>{p.name}</b> · <span className="num">{rs((w?.amount || 0) + sum(pend.map(u => u.pr)))}</span></div>
-          {pend.length ? <div className="b">{pend.length} cash entr{pend.length === 1 ? 'y' : 'ies'} waiting for the Accountant: give him the cash and he approves them.</div> : null}
-          {w ? <div className="b">{rs(w.amount)} approved earlier and not handed over yet ({w.n} payment{w.n === 1 ? '' : 's'} since {fds(w.oldest)}).</div> : null}
+          {pend.length ? <div className="b">{pend.length} entr{pend.length === 1 ? 'y' : 'ies'} waiting for the Accountant: give him the cash; his approval is the hand-over.</div> : <div className="b">Nothing waiting: all your entries are approved.</div>}
+          {pend.length ? <div className="b">{pend.map(u => `${u.apt} ${rs(u.pr.amount)}`).join(' · ')}</div> : null}
+          {w ? <div className="b">Older cash: {rs(w.amount)} approved before 19 Nov 2026 and not handed over yet ({w.n} payment{w.n === 1 ? '' : 's'} since {fds(w.oldest)}). Hand it over once.</div> : null}
           {w ? <div className="b">{w.list.map(x => `${x.receipt} ${rs(x.amount)}`).join(' · ')}</div> : null}</div>
           {w ? <form action={handOverAction} className="ho-form" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input type="hidden" name="pid" value={p.id} />
             <input name="note" type="text" placeholder="Note (optional)" aria-label={`Note for the hand-over at ${p.name}`} style={{ minWidth: 160 }} />

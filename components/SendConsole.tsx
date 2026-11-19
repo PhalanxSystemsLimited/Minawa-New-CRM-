@@ -131,7 +131,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
     const f = (e: Event) => onAnswer.current((e as CustomEvent<WaAnswer>).detail);
     window.addEventListener('minawa:wa-answer', f); return () => window.removeEventListener('minawa:wa-answer', f);
   }, []);
-  const aside = () => { clearAwait(it.key); const k = it.key, ids2 = [it.fromMsg!, ...it.replaces]; mark(k, 'aside'); chain.current = chain.current.then(() => dropPendingAction({ pid, ids: ids2 })); next(); };
+  const aside = () => { clearAwait(it.key); const k = it.key, ids2 = (it.parts?.length ? it.parts : [it]).flatMap(x => [x.fromMsg, ...x.replaces]).filter((x): x is string => !!x); mark(k, 'aside'); chain.current = chain.current.then(() => dropPendingAction({ pid, ids: ids2 })); next(); };
   const n = (v: Done) => Object.values(done).filter(x => x === v).length;
   const sentN = n('sent') + n('saving');
 
@@ -182,7 +182,9 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
       <div className="card-row"><h3>{i + 1} of {items.length}</h3><span className="muted" style={{ fontSize: 12.5 }}>{sentN} sent{n('skipped') ? ` · ${n('skipped')} skipped` : ''}</span></div>
       <div className="sc-prog" aria-hidden="true"><span style={{ width: `${100 * i / items.length}%` }}></span></div>
       <div className="wa-to"><span className="wa-logo"><Wa /></span><div style={{ minWidth: 0 }}><div className="cell-sub">To</div><b className="num">+{to}</b>
-        <div className="cell-sub">Apartment {it.apt}, {it.name}{test ? ` · testing, the owner's number is ${it.phone}` : ''}</div></div></div>
+        <div className="cell-sub">{it.parts?.length ? 'Apartments' : 'Apartment'} {it.apt}, {it.name}{test ? ` · testing, the owner's number is ${it.phone}` : ''}</div></div></div>
+      {it.parts?.length ? <div className="callout info sc-combo"><div><b>One message for {new Set(it.parts.map(p => p.ownerId)).size} apartments on this number.</b> Each has its own bill link in the message; send it once.
+        <div className="sc-combo-l">{it.parts.map(p => <span key={p.key}>{p.apt}: {p.title}{p.pdfHref ? <> · <a href={p.pdfHref} download>PDF</a></> : null}</span>)}</div></div></div> : null}
       <div className="form-row"><label htmlFor="sc-body">{it.title} <span className="cell-sub">(you can edit it here before opening the chat)</span></label>
         <textarea id="sc-body" value={body} onChange={e => setEdits(x => ({ ...x, [it.key]: e.target.value }))} style={{ minHeight: 210 }}></textarea></div>
       {it.fine && (it.fine.offer > 0 || it.fine.added > 0) ? <div className={`sc-fine${it.fine.added ? ' on' : ''}`}>
@@ -203,13 +205,13 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
         {blocked ? <a className="btn wa" href={blocked} target="minawa-whatsapp" rel="noopener"><Wa /> The browser blocked the tab: open the chat</a> : null}
         <button type="button" className="btn" onClick={sent} title="If the question didn't appear when you came back"><Ic n="check" s={15} /> Mark as sent</button>
         <button type="button" className="btn" onClick={skip}>Skip</button>
-        {it.fromMsg ? <button type="button" className="link-btn" onClick={aside} title="Don't send this one at all; it leaves the Ready to send list">Don&apos;t send this</button> : null}
+        {it.fromMsg || it.parts?.some(x => x.fromMsg) ? <button type="button" className="link-btn" onClick={aside} title="Don't send this one at all; it leaves the Ready to send list">Don&apos;t send this</button> : null}
         {i > 0 ? <button type="button" className="link-btn" onClick={() => { setOpened(false); setI(i - 1); }}>Back</button> : null}
       </div>
       <div className="sc-via"><span className="cell-sub">Open chats in</span>
         <button type="button" className="chipbtn" aria-pressed={via === 'web'} onClick={() => setViaSave('web')}>WhatsApp Web</button>
         <button type="button" className="chipbtn" aria-pressed={via === 'app'} onClick={() => setViaSave('app')}>WhatsApp app</button>
-        <button type="button" className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { releaseSendAction({ pid, ownerIds: items.slice(i).map(x => x.ownerId) }).catch(() => {}); setStep('done'); router.refresh(); }}>Stop here</button></div>
+        <button type="button" className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => { releaseSendAction({ pid, ownerIds: items.slice(i).flatMap(x => x.parts?.length ? x.parts.map(p => p.ownerId) : [x.ownerId]) }).catch(() => {}); setStep('done'); router.refresh(); }}>Stop here</button></div>
     </div>
     <div className="card sc-side"><h3>Queue</h3>
       <ol className="sc-q">{items.map((x, k) => { const st = done[x.key];

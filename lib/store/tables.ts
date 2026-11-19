@@ -16,7 +16,7 @@ export const TABLES = {
   rates: ['id', 'project', 'type', 'from', 'amount'],
   charges: ['id', 'ownerId', 'project', 'period', 'kind', 'amount', 'units', 'note', 'by', 'd', 'billId', 'prevReading', 'curReading'],
   notices: ['id', 'project', 'd', 't', 'kind', 'title', 'text', 'audience', 'count', 'failed', 'by'],
-  approvals: ['id', 'project', 'ownerId', 'kind', 'change', 'summary', 'before', 'note', 'byId', 'byName', 'd', 't', 'status', 'decidedById', 'decidedByName', 'decidedD', 'decidedT', 'reply']
+  approvals: ['id', 'project', 'ownerId', 'kind', 'change', 'summary', 'before', 'note', 'byId', 'byName', 'd', 't', 'status', 'decidedById', 'decidedByName', 'decidedD', 'decidedT', 'reply', 'undo']
 } as const;
 export type TableName = keyof typeof TABLES;
 export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', messages: 'id', payments: 'id', handovers: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id', approvals: 'id' };

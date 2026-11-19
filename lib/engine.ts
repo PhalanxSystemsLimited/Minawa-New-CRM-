@@ -90,6 +90,21 @@ export function cardType(o: Owner, d: string) {
 export const cardRate = (o: Owner, d: string) => rateFor(cardType(o, d), d);
 /** What one month of maintenance costs this flat on day d: its own rate, or its rate card (with or without generator). */
 export const rateOf = (o: Owner, d: string) => o.rate || cardRate(o, d);
+/** Payment amount checks (21 Nov 2026). Above `owed` the entry needs a confirmation (the extra becomes advance credit);
+ *  above `cap` it is blocked for building managers and accountants: more than 12 months of this flat's maintenance and
+ *  electricity on top of what is owed, or more than Rs 10,00,000. Paying everything owed is always allowed. */
+export const PAY_CAP = 1000000;
+export function payLimits(o: Owner) {
+  const owed = Math.max(0, balance(o)), el = billsOf(o).filter(b => !b.months && b.lines.some(l => l.kind === 'utility')).slice(-3);
+  const monthly = (rateOf(o, S.today) || 10000) + (el.length ? Math.round(el.reduce((a, b) => a + b.net, 0) / el.length) : 0);
+  return { owed, monthly, cap: Math.max(owed, Math.min(owed + 12 * monthly, PAY_CAP)) };
+}
+/** Why an amount can't be entered (null when it can). */
+export function payBlock(o: Owner, amt: number) {
+  const { owed, cap } = payLimits(o);
+  if (amt <= cap) return null;
+  return `Rs ${amt.toLocaleString('en-US')} is far more than ${o.name} could owe (owes ${rs(owed)}; the most one entry can take is ${rs(cap)}). Check the amount. If it is right, ask the Admin to enter it.`;
+}
 export function discountFor(o: Owner, d: string, amount: number) {
   const x = o.discount;
   if (!x || !x.value) return 0;

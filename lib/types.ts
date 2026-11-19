@@ -249,6 +249,9 @@ export interface Approval {
   summary: string; before: string; note: string;
   byId: string | null; byName: string; d: ISODate; t: string;
   status: ApprovalStatus; decidedById: string | null; decidedByName: string | null; decidedD: ISODate | null; decidedT: string | null; reply: string | null;
+  /** Undo (21 Nov 2026): for an approved rate, rate-card, discount or plan change, what it was before and how many
+   *  bills there were, so the Admin can put it back within 7 days if no bill has used it yet. */
+  undo?: { prev: Record<string, unknown>; bills: number; doneD?: ISODate | null; doneBy?: string | null } | null;
 }
 
 /** Minawa's company details, printed on every bill, statement and receipt. */

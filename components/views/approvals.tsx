@@ -3,7 +3,8 @@
 // and the apartment page.
 import type { Approval } from '@/lib/types';
 import { KIND_LABEL } from '@/lib/approvals';
-import { approveAction, rejectAction, changesAction, withdrawApprovalAction } from '@/lib/actions-approvals';
+import { approveAction, rejectAction, changesAction, withdrawApprovalAction, undoApprovalAction } from '@/lib/actions-approvals';
+import { todayPKT, diff, fd } from '@/lib/fmt';
 import { Go } from '@/components/client';
 import { IC, lastSeen } from './activity';
 
@@ -31,6 +32,12 @@ export function ApprovalItem({ v, admin, meId, back, showOwner = true }: { v: Ap
       <div className="cell-sub">Asked by <b>{a.byName}</b> · {lastSeen(a.d, a.t)}{a.status !== 'pending' && a.decidedD ? <> · {verb}{a.decidedByName && a.decidedByName !== a.byName ? <> by <b>{a.decidedByName}</b></> : null} · {lastSeen(a.decidedD, a.decidedT || '')}</> : null}</div>
       {a.reply ? <div className={`apv-reply${a.status === 'rejected' ? ' bad' : ''}`}><span className="muted">{a.status === 'rejected' ? 'Why it was rejected' : a.status === 'changes' ? 'What to change' : 'Admin\'s note'}:</span> {a.reply}</div> : a.status === 'rejected' ? <div className="apv-reply bad"><span className="muted">Rejected without a note.</span></div> : null}
     </div>
+    {a.status === 'approved' && a.undo?.doneD ? <div className="apv-reply"><span className="muted">Undone:</span> on {fd(a.undo.doneD)}{a.undo.doneBy ? ` by ${a.undo.doneBy}` : ''}; back to “{a.before}”.</div> : null}
+    {admin && a.status === 'approved' && a.undo && !a.undo.doneD && a.decidedD && diff(todayPKT(), a.decidedD) <= 7 ? <form action={undoApprovalAction} className="apv-act">
+      <input type="hidden" name="pid" value={a.project} /><input type="hidden" name="id" value={a.id} /><input type="hidden" name="back" value={back} />
+      <span className="cell-sub">Approved by mistake? Put it back to “{a.before}”. Possible for 7 days, until a bill uses it.</span>
+      <div className="apv-btns"><button type="submit" className="btn sm">Undo</button></div>
+    </form> : null}
     {a.status !== 'pending' ? null : admin ? <form action={approveAction} className="apv-act">
       <input type="hidden" name="pid" value={a.project} /><input type="hidden" name="id" value={a.id} /><input type="hidden" name="back" value={back} />
       <input name="reply" type="text" placeholder={`Note for ${a.byName} (needed to ask for changes)`} aria-label={`Note for ${a.byName}`} />

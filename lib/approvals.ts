@@ -10,7 +10,7 @@ import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
   sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf, leaveFigures, finalizeLeave, unitOf } from './engine';
-import { fd, fm, rs, ord, addDays } from './fmt';
+import { fd, fm, rs, ord, addDays, diff } from './fmt';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
   rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance', leave: 'Customer left' };
@@ -307,6 +307,50 @@ export function changeOrRequest(o: Owner | null, kind: ApprovalKind, c: Record<s
   return { done: 'requested', text: `Sent to an admin for approval: ${summary}. It applies once approved.`, summary };
 }
 
+/** Approved changes the Admin can undo (21 Nov 2026): within UNDO_DAYS, while no bill has used them. A change that
+ *  corrected the current bill can't be undone this way (the opposite change is made by hand). */
+export const UNDO_KINDS: ApprovalKind[] = ['rate', 'rates', 'discount', 'plan'];
+export const UNDO_DAYS = 7;
+const billsNow = (o: Owner | null, kind: ApprovalKind) => kind === 'rates' || !o ? cur().bills.length : cur().bills.filter(b => b.ownerId === o.id).length;
+function before(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>): Record<string, unknown> | null {
+  const S = cur();
+  if (kind === 'rates') { const from = String(c.from); return { from, rows: ratesOf(c).map(([type]) => ({ type, amount: S.rates.find(r => r.type === type && r.from === from)?.amount ?? null })) }; }
+  if (!o) return null;
+  if (kind === 'rate') return { rate: o.rate ?? null };
+  if (kind === 'discount') return { discount: o.discount ? { ...o.discount } : null };
+  if (kind === 'plan') return { plan: o.plan || 'monthly' };
+  return null;
+}
+/** Why an approval can't be undone now (null when it can). */
+export function cantUndo(a: Approval): string | null {
+  if (a.status !== 'approved' || !a.undo) return 'This approval can\'t be undone here: make the opposite change by hand.';
+  if (a.undo.doneD) return `Already undone on ${fd(a.undo.doneD)}${a.undo.doneBy ? ` by ${a.undo.doneBy}` : ''}.`;
+  if (!a.decidedD || diff(cur().today, a.decidedD) > UNDO_DAYS) return `Undo is only possible for ${UNDO_DAYS} days after approving. Make the opposite change by hand.`;
+  const o = a.ownerId ? ownerById(a.ownerId) : null;
+  if (billsNow(o, a.kind) !== a.undo.bills) return 'A bill has been made since this was approved, so it can\'t be undone. Make the opposite change by hand (it applies from the next bill).';
+  if (!noChange(o, a.kind, a.change)) return 'It has been changed again since, so it can\'t be undone. Make the change you want by hand.';
+  return null;
+}
+/** The Admin puts an approved change back the way it was. */
+export function undoApproval(id: string): { ok: boolean; text: string } {
+  const S = cur(), a = S.approvals.find(x => x.id === id), t = at(15), who = S.staffName || S.by;
+  if (!a) return { ok: false, text: 'That approval was not found' };
+  const why = cantUndo(a); if (why) return { ok: false, text: why };
+  const o = a.ownerId ? ownerById(a.ownerId) : null, p = a.undo!.prev;
+  if (a.kind === 'rates') {
+    const from = String(p.from);
+    for (const r of (p.rows || []) as { type: string; amount: number | null }[]) {
+      const i = S.rates.findIndex(x => x.type === r.type && x.from === from);
+      if (r.amount == null) { if (i >= 0) S.rates.splice(i, 1); } else if (i >= 0) S.rates[i].amount = r.amount; else S.rates.push({ id: `${S.project}:${r.type}:${from}`, project: S.project, type: r.type, from, amount: r.amount });
+    }
+  } else if (o && a.kind === 'rate') o.rate = (p.rate as number | null) || null;
+  else if (o && a.kind === 'discount') o.discount = (p.discount as Owner['discount']) || null;
+  else if (o && a.kind === 'plan') o.plan = (p.plan as Plan) || 'monthly';
+  a.undo = { ...a.undo!, doneD: S.today, doneBy: who };
+  log(S.today, t, 'approval', `${who} undid the approved change for ${what(o)} (${KIND_LABEL[a.kind].toLowerCase()}): ${a.summary}. Back to: ${a.before}`, a.ownerId);
+  return { ok: true, text: `Undone${o ? ': ' + o.apt : ''}. Back to: ${a.before}` };
+}
+
 /** An admin approves (the change is made now) or rejects a request (the note is optional). */
 export function decide(id: string, approve: boolean | 'changes', reply = ''): { ok: boolean; text: string } {
   const S = cur(), a = S.approvals.find(x => x.id === id), t = at(15), admin = S.staffName || S.by;
@@ -321,7 +365,9 @@ export function decide(id: string, approve: boolean | 'changes', reply = ''): { 
   }
   if (approve) {
     check(o, a.kind, a.change);
-    text = noChange(o, a.kind, a.change) ? 'Approved; this was already in place, so nothing changed' : applyChange(o, a.kind, a.change, `${admin}, as asked by ${a.byName}`);
+    const same = noChange(o, a.kind, a.change), prev = !same && UNDO_KINDS.includes(a.kind) && a.change.apply !== 'current' ? before(o, a.kind, a.change) : null;
+    text = same ? 'Approved; this was already in place, so nothing changed' : applyChange(o, a.kind, a.change, `${admin}, as asked by ${a.byName}`);
+    a.undo = prev ? { prev, bills: billsNow(o, a.kind), doneD: null, doneBy: null } : null;
   } else text = 'Request rejected; nothing changed';
   Object.assign(a, { status: approve ? 'approved' : 'rejected', decidedById: S.staffId || null, decidedByName: admin, decidedD: S.today, decidedT: t, reply: reply.trim() || null });
   log(S.today, t, 'approval', `${admin} ${approve ? 'approved' : 'rejected'} ${a.byName}'s request for ${a.ownerId ? o?.apt || 'an apartment' : 'the whole project'} (${KIND_LABEL[a.kind].toLowerCase()}): ${a.summary}${reply.trim() ? `. Note: ${reply.trim()}` : ''}`, a.ownerId);

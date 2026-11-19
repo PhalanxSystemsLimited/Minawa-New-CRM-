@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { requireStaff, requireAdmin } from './session';
 import { mutate } from './ops';
-import { decide, withdraw } from './approvals';
+import { decide, withdraw, undoApproval } from './approvals';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 const back = (fd: FormData) => { const b = S(fd, 'back'); return b.startsWith('/') && !b.startsWith('//') ? b : '/approvals'; };
@@ -25,5 +25,13 @@ export async function changesAction(fdata: FormData) { return decideAction(fdata
 export async function withdrawApprovalAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id');
   const r = await mutate(pid, staff, () => withdraw(id, staff.id, staff.role === 'admin'), { send: false });
+  go(back(fdata), r.text);
+}
+
+/** The Admin undoes an approved rate, rate-card, discount or plan change (within 7 days, before any bill used it). */
+export async function undoApprovalAction(fdata: FormData) {
+  const staff = await requireAdmin(), pid = S(fdata, 'pid'), id = S(fdata, 'id');
+  let r: { ok: boolean; text: string };
+  try { r = await mutate(pid, staff, () => undoApproval(id), { send: false }); } catch (e) { r = { ok: false, text: (e as Error).message }; }
   go(back(fdata), r.text);
 }

@@ -13,7 +13,7 @@ import { photoFor } from './actions-photos';
 import { photoStore } from './images';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
-  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash } from './engine';
+  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { blankOwner } from './seed';
 import { use } from './engine';
@@ -33,8 +33,20 @@ export async function recordPaymentAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
   const amt = Math.round(+S(fdata, 'amt'));
   if (!(amt > 0)) go(ownerPath(pid, oid), 'Enter an amount');
-  // Payments are entered by building managers and accountants only (no online payments).
-  if (staff.role === 'admin') go(ownerPath(pid, oid), 'Payments are entered by the building manager or the Accountant');
+  // Amount checks (21 Nov 2026): above what is owed needs the tick; far above it is blocked, except for the Admin.
+  const lim = use(await load(pid, staff), () => { const o = ownerById(oid); if (!o) return null; return { owed: payLimits(o).owed, block: payBlock(o, amt) }; });
+  if (!lim) go(`/p/${pid}`, 'Apartment not found');
+  const formBack = S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
+  // Payments are entered by building managers and accountants only (no online payments); the Admin only enters an
+  // amount above what one entry can take (after checking it is right).
+  if (staff.role === 'admin') {
+    if (!lim!.block) go(ownerPath(pid, oid), 'Payments are entered by the building manager or the Accountant');
+    if (!S(fdata, 'ref') || S(fdata, 'over') !== '1') go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number and tick to confirm the amount');
+    const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
+    redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
+  }
+  if (lim!.block) go(formBack, lim!.block);
+  if (amt > lim!.owed && S(fdata, 'over') !== '1') go(formBack, `Rs ${amt.toLocaleString('en-US')} is more than the Rs ${lim!.owed.toLocaleString('en-US')} owed: tick to confirm the amount (the extra becomes advance credit)`);
   // A building manager enters a payment (cash or bank transfer): since 19 Nov 2026 it counts at once (balance, receipt)
   // and he goes straight to sending the receipt; the Accountant then confirms he received the money.
   if (staff.role === 'manager') {
