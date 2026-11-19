@@ -3,6 +3,7 @@
 // The photo is shrunk here before it is sent (longest side 1600 px, JPEG; usually 100–400 KB instead of 3–5 MB),
 // uploaded, and its id goes with the form (hidden field). With `attach`, it is saved straight onto that bill instead.
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { attachBillPhotoAction } from '@/lib/actions-photos';
 import { Ic } from './icons';
@@ -42,7 +43,14 @@ export function PhotoField({ pid, kind = 'payment', owner = '', name = 'photo', 
   const router = useRouter();
   const [id, setId] = useState<string>(current || ''), [busy, setBusy] = useState(''), [err, setErr] = useState(''), [info, setInfo] = useState('');
   const [need, setNeed] = useState(required), box = useRef<HTMLDivElement>(null), check = useRef<HTMLInputElement>(null);
-  const cam = useRef<HTMLInputElement>(null), pick = useRef<HTMLInputElement>(null);
+  const cam = useRef<HTMLInputElement>(null), pick = useRef<HTMLInputElement>(null), [live, setLive] = useState(false);
+  // "Take photo": a phone opens its own camera app (the file input's capture hint); a laptop or desktop ignores that
+  // hint, so the CRM opens the webcam itself (21 Nov 2026). If no camera can be used, the file picker opens instead.
+  const takePhoto = () => {
+    const phone = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+    if (phone || !navigator.mediaDevices?.getUserMedia) { cam.current?.click(); return; }
+    setErr(''); setLive(true);
+  };
   // Required only for some answers of the form (a bank transfer): follow that field.
   useEffect(() => {
     if (!requiredWhen) return;
@@ -79,11 +87,60 @@ export function PhotoField({ pid, kind = 'payment', owner = '', name = 'photo', 
     <div className="ph-row">
       {id ? <a className="ph-thumb" href={`/api/img/${id}`} target="_blank" rel="noopener" title="Open the photo"><img src={`/api/img/${id}`} alt={label} /></a> : null}
       <div className="ph-btns">
-        <button type="button" className="btn sm" disabled={!!busy} onClick={() => cam.current?.click()}><Ic n="camera" s={15} /> {id ? 'Retake' : 'Take photo'}</button>
+        <button type="button" className="btn sm" disabled={!!busy} onClick={takePhoto}><Ic n="camera" s={15} /> {id ? 'Retake' : 'Take photo'}</button>
         <button type="button" className="btn sm ghost" disabled={!!busy} onClick={() => pick.current?.click()}><Ic n="image" s={15} /> {id ? 'Choose another' : 'Choose image'}</button>
       </div>
       <div className="ph-st" role="status">{busy ? <span className="cell-sub">{busy}</span> : err ? <span className="bld-err">{err}</span> : id ? <span className="tag good">{attach ? 'On the bill' : 'Photo added'}{info ? ` · ${info}` : ''}</span> : null}</div>
     </div>
     {hint && !small ? <p className="cell-sub" style={{ margin: '4px 0 0' }}>{hint}</p> : null}
+    {live ? <CameraBox label={label} onClose={() => setLive(false)} onShot={f => { setLive(false); void go(f); }}
+      onFail={why => { setLive(false); setErr(why); pick.current?.click(); }} /> : null}
   </div>;
+}
+
+/** The webcam, on top of everything (21 Nov 2026): a live picture, Capture, Switch camera (when there are two) and
+ *  Cancel. The picture taken goes through the same shrinking and upload as a chosen photo. */
+function CameraBox({ label, onClose, onShot, onFail }: { label: string; onClose: () => void; onShot: (f: File) => void; onFail: (why: string) => void }) {
+  const video = useRef<HTMLVideoElement>(null), stream = useRef<MediaStream | null>(null);
+  const [facing, setFacing] = useState<'environment' | 'user'>('environment'), [ready, setReady] = useState(false), [many, setMany] = useState(false);
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        if (stop) { s.getTracks().forEach(t => t.stop()); return; }
+        stream.current = s;
+        if (video.current) { video.current.srcObject = s; await video.current.play().catch(() => undefined); }
+        setReady(true);
+        const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+        setMany(cams.length > 1);
+      } catch (e) {
+        const n = (e as DOMException)?.name;
+        onFail(n === 'NotAllowedError' || n === 'SecurityError' ? 'The camera is blocked for this site. Allow the camera in the browser (the camera icon in the address bar), or choose the photo instead.'
+          : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'No camera was found on this computer. Choose the photo instead.'
+          : 'The camera couldn\'t be opened (it may be in use by another app). Choose the photo instead.');
+      }
+    })();
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
+    document.addEventListener('keydown', k, true);
+    return () => { stop = true; document.removeEventListener('keydown', k, true); stream.current?.getTracks().forEach(t => t.stop()); stream.current = null; setReady(false); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facing]);
+  const shoot = () => {
+    const v = video.current; if (!v || !v.videoWidth) return;
+    const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
+    c.toBlob(b => { if (b) onShot(new File([b], 'camera.jpg', { type: 'image/jpeg' })); }, 'image/jpeg', 0.92);
+  };
+  return createPortal(<div className="cam-box" role="dialog" aria-modal="true" aria-label={`Take the ${label.toLowerCase()}`}>
+    <div className="cam-card">
+      <div className="cam-head"><b>{label}</b><button type="button" className="icon cam-x" aria-label="Close the camera" onClick={onClose}>×</button></div>
+      <div className="cam-view">{/* eslint-disable-next-line jsx-a11y/media-has-caption */}<video ref={video} playsInline muted autoPlay />{ready ? null : <span className="cam-wait">Opening the camera… allow it if the browser asks.</span>}</div>
+      <div className="cam-acts">
+        {many ? <button type="button" className="btn sm ghost" onClick={() => setFacing(f => f === 'environment' ? 'user' : 'environment')}>Switch camera</button> : <span />}
+        <div style={{ display: 'flex', gap: 8 }}><button type="button" className="btn sm" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn primary cam-shot" disabled={!ready} onClick={shoot}><Ic n="camera" s={16} /> Capture</button></div>
+      </div>
+    </div>
+  </div>, document.body);
 }
