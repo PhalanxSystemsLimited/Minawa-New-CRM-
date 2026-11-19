@@ -712,3 +712,8 @@ html[data-theme] a,html[data-theme] a:hover,a,a:hover{text-decoration:none}
 :is(p,.callout) a:not(.btn):not(.chipbtn):not(.tag):not(.ph-link):not(.menu-a){text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:3px}
 /* Names in tables and lists (apartments, owners): underline only on hover. */
 :is(td,.li,.apt-a,.crumb-path) a:not(.btn):not(.chipbtn):not(.tag):hover,a.apt-a:hover{text-decoration:underline;text-underline-offset:3px}
+
+/* ---- Update 120 (21 Nov 2026): an empty-list message never lets its icon cover the text, at any width ---- */
+p.empty:not(td > p){padding-left:50px!important;min-width:0;overflow-wrap:anywhere}
+td > p.empty,.cell-sub.empty{padding-left:0!important}
+@media (max-width:480px){p.empty:not(td > p){font-size:12.5px}}

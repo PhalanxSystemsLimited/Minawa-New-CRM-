@@ -160,7 +160,7 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
       <label className="tg-row sc-row" key={r.id}><input type="checkbox" checked={picked.has(r.id)} onChange={e => setPicked(p => { const s2 = new Set(p); e.target.checked ? s2.add(r.id) : s2.delete(r.id); return s2; })} />
         <span className="t"><b>{r.apt}</b> · {r.name}<span className="cell-sub"> {r.phone}</span></span>
         <span className="sc-tags">{r.waiting.length && type === 'queue' ? <span className="tag info">{r.waiting.join(', ')}</span> : null}{r.overdue ? <span className="tag bad">Overdue</span> : null}{r.sentToday ? <span className="tag warn" title="Something was already sent to this owner today">Messaged today</span> : null}</span>
-        <span className={`num sc-bal${r.bal > 0 ? '' : ' muted'}`}>{r.balTxt}</span></label>) : <p className="empty" style={{ padding: 14 }}>{q ? 'Nobody matches.' : 'Nobody here can get this message.'}</p>}</div>
+        <span className={`num sc-bal${r.bal > 0 ? '' : ' muted'}`}>{r.balTxt}</span></label>) : <p className="empty" style={{ margin: 14 }}>{q ? 'Nobody matches.' : 'Nobody here can get this message.'}</p>}</div>
     {out.length ? <div className="sc-out"><button type="button" className="link-btn" onClick={() => setShowOut(!showOut)}>{showOut ? 'Hide' : 'Show'} {out.length} who can&apos;t get this</button>
       {showOut ? <ul>{out.map(r => <li key={r.id}><b>{r.apt}</b> {r.name}: {r.why[type]}</li>)}</ul> : null}</div> : null}
     {err ? <div className="callout bad" style={{ marginTop: 12 }}><div>{err}</div></div> : null}
