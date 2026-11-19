@@ -25,7 +25,11 @@ function write(a: Await | null) {
 /** Called when a chat is opened: ask about this message when they come back. `away`: the WhatsApp tab is already open
  *  and in front (it was opened before the message was ready), so coming back to the CRM asks straight away. */
 export function awaitReturn(pid: string, item: SendItem, to: string, away = false) {
-  write({ pid, item, to, at: Date.now(), left: away });
+  // The WhatsApp tab usually comes to the front before this runs (the CRM checks the daily limit first), so the CRM
+  // may already be in the background: then it already "left", and coming back asks at once (21 Nov 2026).
+  let gone = away;
+  try { gone = gone || document.visibilityState === 'hidden' || !document.hasFocus(); } catch { /* ignore */ }
+  write({ pid, item, to, at: Date.now(), left: gone });
   window.dispatchEvent(new CustomEvent('minawa:wa-await'));
 }
 /** The message was answered another way (e.g. "Mark as sent" or Skip): don't ask. */
@@ -52,9 +56,13 @@ export function WaReturnPrompt() {
     };
     const vis = () => { if (document.visibilityState === 'hidden') { hidden.current = true; leave(); } else back(); };
     const opened = () => { awayAt.current = Date.now(); };
-    window.addEventListener('blur', leave); window.addEventListener('focus', back);
+    // Coming back is caught by whichever the browser fires first (tab shown, window focused, page restored, or the
+    // first mouse move or key press on the page), so the question shows the moment the CRM is in front again.
+    const nudge = () => { if (document.visibilityState === 'visible' && read()?.left && !hidden.current) back(); };
+    window.addEventListener('blur', leave); window.addEventListener('focus', back); window.addEventListener('pageshow', back);
     document.addEventListener('visibilitychange', vis); window.addEventListener('minawa:wa-await', opened);
-    return () => { window.removeEventListener('blur', leave); window.removeEventListener('focus', back); document.removeEventListener('visibilitychange', vis); window.removeEventListener('minawa:wa-await', opened); };
+    document.addEventListener('pointermove', nudge, { passive: true }); document.addEventListener('keydown', nudge);
+    return () => { window.removeEventListener('blur', leave); window.removeEventListener('focus', back); window.removeEventListener('pageshow', back); document.removeEventListener('visibilitychange', vis); window.removeEventListener('minawa:wa-await', opened); document.removeEventListener('pointermove', nudge); document.removeEventListener('keydown', nudge); };
   }, []);
   useEffect(() => { if (ask) yesBtn.current?.focus(); }, [ask]);
 
