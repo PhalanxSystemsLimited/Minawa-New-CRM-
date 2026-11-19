@@ -32,15 +32,15 @@ export async function recordPaymentAction(fdata: FormData) {
   if (!(amt > 0)) go(ownerPath(pid, oid), 'Enter an amount');
   // Payments are entered by building managers and accountants only (no online payments).
   if (staff.role === 'admin') go(ownerPath(pid, oid), 'Payments are entered by the building manager or the Accountant');
-  // A building manager enters cash (payments are in cash only); it waits for the accountant, and the balance changes
-  // only once confirmed.
+  // A building manager enters a payment (cash or bank transfer): since 19 Nov 2026 it counts at once (balance, receipt)
+  // and he goes straight to sending the receipt; the Accountant then confirms he received the money.
   if (staff.role === 'manager') {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
     const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
     if (method === 'Cash' && !S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
     if (method === 'Bank transfer' && !txn) go(ownerPath(pid, oid) + '?m=recpay-bank', 'Enter the bank transaction ID');
     await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null), { send: false });
-    go(ownerPath(pid, oid), `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. The Accountant approves it; the balance changes then.`);
+    go(`/p/${pid}/send?type=queue&kind=receipt&ids=${encodeURIComponent(oid)}&go=1`, `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. Send the receipt now.`);
   }
   if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
   const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));

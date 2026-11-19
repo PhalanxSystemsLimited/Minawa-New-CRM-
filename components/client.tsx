@@ -170,3 +170,14 @@ export function PasswordInput({ id, name, autoComplete, required, minLength, pla
     </div>
   );
 }
+
+/** A submit button inside a shared form that also says which row it is for: React drops a button's name/value when its
+ *  formAction is a server action, so the value goes in a hidden field set at the moment of the click. */
+export function PickSubmit({ action, field, value, className = 'btn sm', children }: { action: (fd: FormData) => Promise<void>; field: string; value: string; className?: string; children: ReactNode }) {
+  return <button type="submit" formAction={action} formNoValidate className={className} onClick={e => {
+    const f = e.currentTarget.form; if (!f) return;
+    let i = f.querySelector<HTMLInputElement>(`input[type=hidden][name="${field}"]`);
+    if (!i) { i = document.createElement('input'); i.type = 'hidden'; i.name = field; f.appendChild(i); }
+    i.value = value;
+  }}>{children}</button>;
+}

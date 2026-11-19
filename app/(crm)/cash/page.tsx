@@ -36,8 +36,8 @@ export default async function Cash({ searchParams }: { searchParams: Promise<Rec
 
   return <>
     <div className="proj-head"><PageIc n="wallet" tone="green" /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Cash</div></div><div className="crumb-path">Dashboard<span>/</span>Cash</div></div>
-    <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken until the Accountant approves it. Give the cash to the Accountant with your entries: when he approves them, it is with him.'
-      : acc ? 'Approving building managers\' cash entries (To do) means you have the cash. Record the bank deposit here when it goes into the bank.'
+    <p className="muted" style={{ margin: 0 }}>{mgr ? 'The cash you have taken until the Accountant approves it. Each payment counted for the customer, with its receipt, when you entered it; give the cash to the Accountant: when he approves your entries, it is with him.'
+      : acc ? 'Approving building managers\' entries (To do) confirms you have the cash; the customers already have their receipts. Record the bank deposit here when it goes into the bank.'
       : 'Where the cash is: with the building managers, with the Accountant, or in the bank. You only watch here.'}</p>
 
     <div className={mgr ? 'kpis' : 'kpis flow'} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>

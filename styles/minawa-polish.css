@@ -518,3 +518,14 @@ html[data-theme=frost] .age > div{background:rgba(255,255,255,.14)}
 html[data-theme=dark] .form-row input[type=month]{background:#141518;border-color:#2F3238;color:#E8EAED;color-scheme:dark}
 html[data-theme=frost] .form-row input[type=month],html[data-theme=frost] .form-row input[type=search]{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);color:#fff;color-scheme:dark}
 @media print{.card[data-bar]::before{display:none!important}.card[data-bar] > [data-barrow]{margin-bottom:14px}.proj-head:has(> .ph-ic){background:none!important;border:0!important;box-shadow:none!important;padding:0!important}}
+
+/* ---------- Receipts to send (update 105): the building manager's most urgent list ---------- */
+.rc-list .rc-li{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:8px 14px}
+.rc-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(140deg,#16A34A,#4ADE80);box-shadow:0 8px 14px -8px #16A34A,inset 0 1px 0 rgba(255,255,255,.4)}
+.rc-li.late .rc-ic{background:linear-gradient(140deg,#DC2626,#F87171);box-shadow:0 8px 14px -8px #DC2626,inset 0 1px 0 rgba(255,255,255,.4)}
+.rc-when{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12.5px;white-space:nowrap}
+.rc-when b{font-weight:700;color:var(--px-ink)}
+@keyframes rcPulse{0%,100%{box-shadow:0 8px 14px -8px #16A34A,inset 0 1px 0 rgba(255,255,255,.4),0 0 0 0 rgba(22,163,74,.45)}60%{box-shadow:0 8px 14px -8px #16A34A,inset 0 1px 0 rgba(255,255,255,.4),0 0 0 8px rgba(22,163,74,0)}}
+.rc-li:not(.late) .rc-ic{animation:rcPulse 2.2s ease-out infinite}
+@media (max-width:640px){.rc-list .rc-li{grid-template-columns:auto minmax(0,1fr)}.rc-when{grid-column:2;align-items:flex-start;flex-direction:row;flex-wrap:wrap}.rc-li > .btn{grid-column:1 / -1;justify-self:stretch}}
+@media (prefers-reduced-motion:reduce){.rc-li .rc-ic{animation:none!important}}

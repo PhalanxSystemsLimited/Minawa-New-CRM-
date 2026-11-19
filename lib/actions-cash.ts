@@ -103,7 +103,7 @@ export async function bulkApproveAction(fdata: FormData) {
     });
     n += r.k; total += r.amt; skipped += r.sk;
   }
-  go(back, n ? `Approved ${n} entr${n === 1 ? 'y' : 'ies'}: Rs ${total.toLocaleString('en-US')}. Receipts are ready for the building managers to send.${skipped ? ` ${skipped} skipped (already handled).` : ''}` : 'Nothing approved: those entries were already handled');
+  go(back, n ? `Approved ${n} entr${n === 1 ? 'y' : 'ies'}: Rs ${total.toLocaleString('en-US')}. The cash is with you; the customers already have their receipts.${skipped ? ` ${skipped} skipped (already handled).` : ''}` : 'Nothing approved: those entries were already handled');
 }
 
 /** One entry the money didn't arrive for: back to the building manager with a note (a button inside the bulk form). */
@@ -112,5 +112,5 @@ export async function rejectEntryAction(fdata: FormData) {
   const reply = S(fdata, `reply-${id}`);
   if (!reply) go(back, 'Write why it was not received (the building manager sees it)');
   const ok = await attempt(() => mutate(pid, staff, s => { const pr = s.proofs.find(x => x.id === id); if (!pr || pr.status !== 'pending') throw new Error('Already handled'); rejectProof(pr, s.today, at(15), staffName(staff), reply); }, { send: false }));
-  go(back, failed(ok) ? ok.error : 'Marked as not received. The building manager sees your note.');
+  go(back, failed(ok) ? ok.error : 'Marked as not received. The payment was taken back and the building manager puts it right with the customer.');
 }

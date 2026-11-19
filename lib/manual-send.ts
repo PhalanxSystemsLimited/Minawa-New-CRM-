@@ -183,10 +183,10 @@ export function pendingGroups(filter?: (m: Message) => boolean) {
 }
 /** To do: the messages waiting to be sent by hand, in groups (bills, the reminders on the 3rd and 7th…). */
 export const TODO_GROUPS: { key: string; label: string; hint: string; kinds: string[] }[] = [
+  { key: 'receipt', label: 'Receipts to send', hint: 'Payments just received: send each customer their receipt (PDF) straight away', kinds: ['receipt'] },
   { key: 'bill', label: 'Monthly bills', hint: 'First alert: the bill made on the customer\'s billing date', kinds: ['bill'] },
   { key: 'reminder', label: 'Reminders', hint: 'Unpaid bills, on the 3rd and 7th of the due month', kinds: ['reminder'] },
   { key: 'notice', label: 'Late payment warnings', hint: 'Unpaid 15 days after the due date: add the fine if you decide to', kinds: ['notice'] },
-  { key: 'receipt', label: 'Payment confirmations', hint: 'Payments the Accountant confirmed: send each owner their receipt (PDF)', kinds: ['receipt'] },
   { key: 'link', label: 'Dues messages', hint: 'Updated dues and how to pay', kinds: ['link'] },
   { key: 'other', label: 'Notices and messages', hint: 'Maintenance notices and announcements', kinds: ['alert', 'announcement', 'info', 'statement', 'reply'] }
 ];

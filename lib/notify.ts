@@ -4,8 +4,8 @@
 //  · Admin: new approval requests.
 //  · Accountant: payments a building manager entered (to confirm) and owners' bank screenshots (to check); their own
 //    requests once the Admin decides them.
-//  · Building manager: new work in To do (bills, reminders, notices to send; numbers to fix; broken promises), their
-//    entered payments once the Accountant confirms or rejects them, and their requests once the Admin decides them.
+//  · Building manager: new work in To do (receipts first; bills, reminders, notices to send; numbers to fix; broken
+//    promises), their entered payments once the Accountant confirms the money or marks it not received, and their requests once the Admin decides them.
 //  · Cash: the Accountant hears about each hand-over; the building manager hears when it is received or sent back.
 //  · Everyone: payments received in their buildings.
 import type { Staff, State } from './types';
@@ -40,7 +40,8 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
           text: `${apt(p.ownerId)} · ${s.proj.name} · ${rs(p.amount)}${p.kind === 'cash' ? ` cash entered by ${p.byName || 'a building manager'}` : ''}`, href: `/tasks#proof-${p.id}` });
       if (staff.role === 'manager' && p.kind === 'cash' && p.byId === staff.id && p.status !== 'pending' && (p.doneOn || '') >= since)
         out.push({ id: `proofd:${s.project}:${p.id}:${p.status}`, at: `${p.doneOn} 23:59`, tone: p.status === 'verified' ? 'good' : 'bad',
-          title: p.status === 'verified' ? 'Payment confirmed' : 'Payment not confirmed', text: `${apt(p.ownerId)} · ${rs(p.amount)}${p.status === 'verified' ? ` confirmed by ${p.checkedBy || 'the Accountant'}` : p.reply ? `: ${p.reply}` : ''}`, href: `${P}/apartments/${p.ownerId}` });
+          title: p.status === 'verified' ? 'Money confirmed' : p.status === 'cancelled' ? 'Entry cancelled' : p.payId ? 'Not received: payment taken back' : 'Payment not confirmed',
+          text: `${apt(p.ownerId)} · ${rs(p.amount)}${p.status === 'verified' ? ` received by ${p.checkedBy || 'the Accountant'}` : p.reply ? `: ${p.reply}` : ''}`, href: p.status === 'rejected' && p.payId ? `${P}/todo` : `${P}/apartments/${p.ownerId}` });
     }
     // Cash hand-overs: the Accountant hears about new ones; the building manager hears the answer.
     for (const h of s.handovers || []) {
@@ -51,11 +52,11 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
           title: h.status === 'received' ? 'Cash received' : 'Hand-over sent back', text: `${s.proj.name} · ${rs(h.amount)}${h.status === 'received' ? ` received by ${h.receivedBy}` : `: ${h.reply || ''}`}`, href: '/cash' });
     }
     // Payments received.
-    for (const p of s.payments) if (p.d >= since)
+    for (const p of s.payments) if (p.d >= since && !(p.entryId && s.proofs.some(x => x.id === p.entryId && x.byId === staff.id)))
       out.push({ id: `pay:${s.project}:${p.id}`, at: `${p.d} ${p.t}`, tone: 'good', title: 'Payment received', text: `${apt(p.ownerId)} · ${s.proj.name} · ${rs(p.amount)} · ${p.method}`, href: `${P}/payments` });
   });
   // A building manager's To do: a task is news when it is new, or when more owners are waiting in it.
-  if (staff.role === 'manager') for (const t of myTasks(states.flatMap(s => projectTasks(s)), staff))
+  if (staff.role === 'manager') for (const t of myTasks(states.flatMap(s => projectTasks(s)), staff)) if (!(t.kind === 'receipt' && t.enteredById === staff.id))
     out.push({ id: `task:${t.id}:${t.detail}`, at: `${t.since} 11:00`, tone: t.overdue ? 'bad' : 'info', title: `To do · ${t.what}`, text: `${t.pname}${t.apt ? ` · ${t.apt}` : ''} · ${t.detail}`, href: t.href });
   return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 60);
 }

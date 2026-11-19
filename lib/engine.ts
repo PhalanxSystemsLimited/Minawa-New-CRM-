@@ -744,20 +744,47 @@ export function ownerProof(o: Owner, amt: number, d: string, t: string, media?: 
 }
 export function verifyProof(p: Proof, d: string, t: string, by: string, amount?: number, hold?: Payment[]) {
   const o = ownerById(p.ownerId);
+  if (p.kind === 'cash' && p.payId && !S.payments.some(x => x.id === p.payId && !x.reversed)) throw new Error('The payment from this entry was already taken back.');
+  const before = p.amount;
   if (amount && amount > 0) p.amount = amount;
   p.status = 'verified'; p.doneOn = d; p.checkedBy = by;
-  // A payment a building manager entered: only now does it count (receipt, balance, message to the owner). The
-  // Accountant approves it when he has the money (cash in his hand, or the transfer seen in Minawa's bank account), so
-  // approving is also receiving it: cash goes straight to "with the Accountant", ready for the bank deposit.
   if (p.kind === 'cash') {
     const m = p.method || 'Cash', bank = m === 'Bank transfer';
-    const pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, approved by ${by}`,
-      { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: by, approvedAt: `${d} ${t}`, txn: p.txn || null, forWhat: p.forWhat || null });
+    // Since 19 Nov 2026 the payment (balance, receipt) was recorded when the building manager entered it: approving only
+    // confirms the money reached the Accountant (cash in his hand, or the transfer seen in Minawa's bank account). Nothing
+    // new goes to the customer, unless the Accountant corrected the amount: then the payment is recorded again with
+    // the right amount and the corrected receipt waits in the building manager's Receipts.
+    let pay = p.payId ? S.payments.find(x => x.id === p.payId && !x.reversed) : undefined;
+    if (pay && p.amount !== before) {
+      reversePayment(o, pay, `Amount corrected by ${by} on approval: ${rs(before)} → ${rs(p.amount)}`, by, d, t, true);
+      pay = entryPayment(o, p, d, t);
+      log(d, t, 'payment', `${by} approved the entry for ${o.apt} with the amount corrected to ${rs(p.amount)}. A corrected receipt is ready to send`, o.id);
+    }
+    if (pay) {
+      pay.approvedBy = by; pay.approvedAt = `${d} ${t}`;
+      log(d, t, 'payment', `${by} confirmed ${rs(pay.amount)} ${bank ? 'bank transfer' : 'cash'} for ${o.apt} (receipt ${pay.receipt}, entered by ${p.byName || 'the building manager'})${bank ? '' : ': the cash is with the Accountant'}`, o.id);
+    } else {
+      // An entry made before 19 Nov 2026: only now does it count (receipt, balance, message to the owner).
+      pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, approved by ${by}`,
+        { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: by, approvedAt: `${d} ${t}`, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id });
+      p.payId = pay.id;
+    }
     if (!bank) { if (hold) hold.push(pay); else receiveCash([pay], by, d, t); }
     return pay;
   }
   return recordPayment(o, p.amount, 'Bank transfer (screenshot checked)', 'Proof #' + p.id, d, 'proof', t, by);
 }
+/** The payment a building manager's entry makes at once: the balance changes and the receipt waits in his Receipts. */
+function entryPayment(o: Owner, p: Proof, d: string, t: string) {
+  const m = p.method || 'Cash', bank = m === 'Bank transfer';
+  const pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, p.byName || 'Building manager',
+    { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: null, approvedAt: null, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id });
+  p.payId = pay.id;
+  return pay;
+}
+/** A payment whose building manager's entry the Accountant hasn't approved yet: it counts for the customer, but the
+ *  money is still with the building manager (not "in hand to hand over": approving it is the hand-over). */
+export const awaitingApproval = (p: Payment) => !!p.entryId && S.proofs.some(x => x.id === p.entryId && x.status === 'pending');
 /** Approved cash is with the Accountant: one received hand-over per building manager per approval batch, so the
  *  Cash page's bank deposit list stays short. */
 export function receiveCash(pays: Payment[], by: string, d: string, t: string) {
@@ -769,21 +796,35 @@ export function receiveCash(pays: Payment[], by: string, d: string, t: string) {
     S.handovers.push(h); list.forEach(p => { p.handoverId = h.id; });
   }
 }
-/** A building manager enters a payment he received (cash, or a bank transfer into Minawa's account, reference only):
- *  it waits for an accountant to approve it, and the owner's balance only changes then (verifyProof). */
+/** A building manager enters a payment he received (cash, or a bank transfer into Minawa's account with its transaction
+ *  ID). Since 19 Nov 2026 it counts at once: the balance changes and the receipt waits in his Receipts to send to the
+ *  customer straight away. The entry also waits for the Accountant, whose approval confirms the money reached him
+ *  (verifyProof); "not received" takes the payment back (rejectProof). */
 export const MANAGER_METHODS = ['Cash', 'Bank transfer'];
 export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash', txn = '', forWhat: 'maintenance' | 'electricity' | null = null) {
   const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
-    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null, forWhat };
+    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null, forWhat, payId: null };
   S.proofs.push(pr);
-  log(d, t, 'payment', `${rs(amount)} ${method === 'Cash' ? 'cash' : 'bank transfer'} for ${o.apt} entered by ${byName}${ref ? ` (receipt ${ref})` : ''}${txn ? ` (transaction ${txn})` : ''}, paid ${fd(paidOn)}. Waiting for the accountant to approve it`, o.id);
+  const pay = entryPayment(o, pr, d, t);
+  log(d, t, 'payment', `${rs(amount)} ${method === 'Cash' ? 'cash' : 'bank transfer'} for ${o.apt} entered by ${byName}${ref ? ` (receipt ${ref})` : ''}${txn ? ` (transaction ${txn})` : ''}, paid ${fd(paidOn)}. Receipt ${pay.receipt} ready to send; the Accountant confirms the money`, o.id);
   return pr;
 }
 export function rejectProof(p: Proof, d: string, t: string, by = '', reason = '') {
   const o = ownerById(p.ownerId);
   p.status = 'rejected'; p.doneOn = d; p.checkedBy = by || null; p.reply = reason || null;
-  if (p.kind === 'cash') {   // nothing goes to the owner: it's between the accountant and the building manager
-    log(d, t, 'payment', `${p.method || 'Cash'} of ${rs(p.amount)} for ${o.apt} entered by ${p.byName || 'a building manager'} was not confirmed by ${by || 'the accountant'}${reason ? `: ${reason}` : ''}. The balance is unchanged`, o.id);
+  if (p.kind === 'cash') {
+    const pay = p.payId ? S.payments.find(x => x.id === p.payId && !x.reversed) : undefined;
+    if (!pay) {   // an entry made before 19 Nov 2026: it never counted
+      log(d, t, 'payment', `${p.method || 'Cash'} of ${rs(p.amount)} for ${o.apt} entered by ${p.byName || 'a building manager'} was not confirmed by ${by || 'the accountant'}${reason ? `: ${reason}` : ''}. The balance is unchanged`, o.id);
+      return;
+    }
+    // The payment counted from the entry and its receipt may already be with the customer: take it back, and the
+    // building manager puts it right with the customer (and enters it again if it was paid).
+    const sent = S.messages.some(m => m.kind === 'receipt' && m.pdf?.id === pay.id && m.status !== 'pending' && m.status !== 'skipped');
+    reversePayment(o, pay, `Not received by ${by || 'the Accountant'}${reason ? `: ${reason}` : ''}`, by || 'Accountant', d, t, true);
+    S.alerts.push({ id: 'AL' + nid('al'), ownerId: o.id, project: S.project, d, done: false, kind: 'entry',
+      text: `${p.method || 'Cash'} of ${rs(p.amount)} (receipt ${pay.receipt}) entered by ${p.byName || 'the building manager'} on ${fd(p.d)} was not received by ${by || 'the Accountant'}${reason ? `: ${reason}` : ''}. The payment was taken back${sent ? ' after its receipt went to the customer' : ' and its receipt not sent'}. Put it right with ${first(o.name)} and enter the payment again if it was paid.` });
+    log(d, t, 'payment', `${p.method || 'Cash'} of ${rs(p.amount)} for ${o.apt} (receipt ${pay.receipt}) not received by ${by || 'the accountant'}${reason ? `: ${reason}` : ''}. Payment taken back; the building manager follows it up`, o.id);
     return;
   }
   pushMsg(o, d, t, { kind: 'info', title: 'About your transfer', manual: true, text: `We couldn't find your transfer of ${rs(p.amount)} in our bank account. Please check the reference and send the bank receipt again, or contact your building manager.` });
@@ -815,7 +856,7 @@ export function officeCash(o: Owner, amt: number, ref: string, d: string, t: str
 }
 /** Take back a wrong payment exactly as it was shared out (bills, old arrears, fine, credit). The payment stays in the
  *  database marked as reversed; the ledger gets a matching entry, so the balance is back to what it was. */
-export function reversePayment(o: Owner, p: Payment, reason: string, by: string, d: string, t: string) {
+export function reversePayment(o: Owner, p: Payment, reason: string, by: string, d: string, t: string, fromEntry = false) {
   if (p.reversed) throw new Error('This payment was already reversed.');
   const label = (b: Bill) => `${b.months ? 'Maintenance' : 'Utilities'}, ${periodLabel(b)}`;
   for (const a of p.applied || []) {
@@ -834,6 +875,8 @@ export function reversePayment(o: Owner, p: Payment, reason: string, by: string,
   const h = p.handoverId ? S.handovers.find(x => x.id === p.handoverId) : null;
   if (h && !h.depositSlip) { h.paymentIds = h.paymentIds.filter(x => x !== p.id); h.amount -= p.amount; }
   for (const m of S.messages) if (m.status === 'pending' && m.pdf?.kind === 'receipt' && m.pdf.id === p.id) { m.status = 'skipped'; m.error = `Payment reversed on ${fd(d)}`; }
+  // A payment from a building manager's entry the Accountant hasn't approved yet: the entry is closed too.
+  if (!fromEntry && p.entryId) { const pr = S.proofs.find(x => x.id === p.entryId && x.status === 'pending'); if (pr) { pr.status = 'cancelled'; pr.doneOn = d; pr.reply = `Payment reversed by ${by}: ${reason}`; } }
   log(d, t, 'payment', `Payment ${p.receipt} of ${rs(p.amount)} for ${o.apt} reversed by ${by}: ${reason}. ${o.apt} owes ${rs(balance(o))} again${h && h.depositSlip ? `. It was already deposited (slip ${h.depositSlip}): correct the bank record` : ''}`, o.id);
   return p;
 }
@@ -841,10 +884,12 @@ export function reversePayment(o: Owner, p: Payment, reason: string, by: string,
 export function cancelCash(pr: Proof, by: string, reason: string, d: string, t: string) {
   if (pr.status !== 'pending') throw new Error('Only an entry still waiting for the Accountant can be cancelled.');
   pr.status = 'cancelled'; pr.doneOn = d; pr.reply = `Cancelled by ${by}${reason ? `: ${reason}` : ''}`;
-  log(d, t, 'payment', `Cash entry of ${rs(pr.amount)} for ${ownerById(pr.ownerId)?.apt} (receipt ${pr.ref || '—'}) cancelled by ${by}${reason ? `: ${reason}` : ''}`, pr.ownerId);
+  const o = ownerById(pr.ownerId), pay = pr.payId ? S.payments.find(x => x.id === pr.payId && !x.reversed) : undefined;
+  if (pay) reversePayment(o, pay, `Entry cancelled by ${by}${reason ? `: ${reason}` : ''}`, by, d, t, true);
+  log(d, t, 'payment', `${pr.method === 'Bank transfer' ? 'Bank transfer' : 'Cash'} entry of ${rs(pr.amount)} for ${o?.apt} (receipt ${pr.ref || '—'}) cancelled by ${by}${reason ? `: ${reason}` : ''}${pay ? `. Payment ${pay.receipt} taken back` : ''}`, pr.ownerId);
 }
 /** Confirmed cash still with this person (not handed over yet). */
-export const cashInHand = (collectorId: string) => S.payments.filter(p => p.collectorId === collectorId && !p.handoverId && !p.reversed);
+export const cashInHand = (collectorId: string) => S.payments.filter(p => p.collectorId === collectorId && !p.handoverId && !p.reversed && !awaitingApproval(p));
 /** A building manager hands all his confirmed cash in this building over to the Accountant. */
 export function handOver(collectorId: string, name: string, note: string, d: string, t: string) {
   const list = cashInHand(collectorId);

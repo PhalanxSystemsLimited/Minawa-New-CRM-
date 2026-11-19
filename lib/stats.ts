@@ -1,6 +1,6 @@
 // Building stats for the dashboards (Phase 4, 18 Nov 2026): one card per building the person looks after (the Admin:
-// every building). Only approved payments count as collected; entries still waiting for the Accountant are shown
-// next to them. Call with a loaded project state.
+// every building). Since 19 Nov 2026 a payment counts as collected from the moment it is entered; the entries the
+// Accountant hasn't confirmed yet are shown next to it. Call with a loaded project state.
 import type { State, Staff } from './types';
 import { use, apartments, balance, billsOf, openingDue, hasGenerator } from './engine';
 

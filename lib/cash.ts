@@ -2,7 +2,7 @@
 // bank: building manager (or the office) → hand-over to the Accountant → bank deposit. Worked out from the data in
 // each building's state; nothing extra is stored apart from the hand-overs themselves.
 import type { Handover, Payment, Proof, State } from './types';
-import { use, ownerById } from './engine';
+import { use, ownerById, awaitingApproval } from './engine';
 
 export interface CashRow {
   project: string; pname: string; collectorId: string; name: string;
@@ -47,7 +47,8 @@ export function dayCash(states: State[], d: string): DayCash {
       if (h.status === 'received' && h.receivedD === d) out.received.push({ h, pname: s.proj.name });
       if (h.depositD === d) out.deposited.push({ h, pname: s.proj.name });
     }
-    for (const pr of s.proofs) if (pr.kind === 'cash' && (pr.method || 'Cash') === 'Cash' && pr.status === 'pending' && pr.d <= d) out.pending.push({ pr, pname: s.proj.name, apt: ownerById(pr.ownerId)?.apt || '' });
+    // Entries made before 19 Nov 2026 only count once approved; newer ones are payments already (counted above).
+    for (const pr of s.proofs) if (pr.kind === 'cash' && !pr.payId && (pr.method || 'Cash') === 'Cash' && pr.status === 'pending' && pr.d <= d) out.pending.push({ pr, pname: s.proj.name, apt: ownerById(pr.ownerId)?.apt || '' });
   });
   out.rows.sort((a, b) => a.pname.localeCompare(b.pname) || a.name.localeCompare(b.name));
   return out;
@@ -61,7 +62,9 @@ export function cashNow(states: State[]) {
   const unconfirmed: { pr: Proof; pname: string; apt: string }[] = [];
   for (const s of states) use(s, () => {
     const groups = new Map<string, Payment[]>();
-    for (const p of s.payments) if (live(p) && !p.handoverId) groups.set(p.collectorId!, [...(groups.get(p.collectorId!) || []), p]);
+    // Cash still with the person who took it, once the Accountant has confirmed it (an entry he hasn't approved yet is
+    // in "unconfirmed": approving it is the hand-over).
+    for (const p of s.payments) if (live(p) && !p.handoverId && !awaitingApproval(p)) groups.set(p.collectorId!, [...(groups.get(p.collectorId!) || []), p]);
     for (const [id, list] of groups) withStaff.push({ project: s.project, pname: s.proj.name, collectorId: id, name: list[0].collectorName || 'Building manager', amount: list.reduce((a, p) => a + p.amount, 0), n: list.length, oldest: list.map(p => p.d).sort()[0], list });
     for (const h of s.handovers) {
       if (h.status === 'pending') toReceive.push({ h, pname: s.proj.name });

@@ -1,12 +1,13 @@
 // The three To do lists (Nov 2026). Each task belongs to one role:
-//  · Building manager: WhatsApp to send (bills, reminders, notices, receipts, links), messages that didn't arrive,
-//    promises to pay that were broken — for the buildings assigned to them.
+//  · Building manager: receipts to send (one task per payment, the most urgent: the customer has just paid; since 19 Nov
+//    2026 made the moment a payment is entered), WhatsApp to send (bills, reminders, notices, links), messages that didn't
+//    arrive, promises to pay that were broken, payments the Accountant didn't receive — for the buildings assigned to them.
 //  · Accountant: money to check — bank-transfer screenshots owners sent (and, from step 3, cash recorded by managers).
 //  · Admin: does none of these; sees both lists to monitor who is responsible and what is late.
 // Tasks are worked out from the project's data every time (nothing extra is stored), so every screen agrees.
 import type { State, Staff } from './types';
-import { use, ownerById, failedList, instalmentStatus } from './engine';
-import { toDoGroups } from './manual-send';
+import { use, ownerById, failedList, instalmentStatus, awaitingApproval } from './engine';
+import { toDoGroups, pendingGroups } from './manual-send';
 import { addDays, rs } from './fmt';
 
 export type TaskRole = 'manager' | 'accountant';
@@ -16,13 +17,28 @@ export interface Task {
   since: string; deadline: string; overdue: boolean; href: string;
   /** Only this person's (cash he took and still has to hand over), not every manager of the building. */
   forId?: string; forName?: string;
+  /** 'receipt': send a customer their receipt (the Receipts screen; done before anything else). */
+  kind?: 'receipt';
+  /** When it was made (receipts: the time the payment was entered). */
+  time?: string;
+  /** Receipts: the building manager who entered the payment (he isn't notified about his own). */
+  enteredById?: string | null;
 }
 
 /** Every open task in one project. Call outside the engine: it enters the project's state itself. */
 export function projectTasks(s: State): Task[] {
   return use(s, () => {
     const P = `/p/${s.project}`, out: Task[] = [], late = (d: string) => s.today > d;
+    // Receipts: one task per customer who just paid, to send straight away (late from the next day).
+    for (const g of pendingGroups(m => m.kind === 'receipt')) {
+      const m = g.msg, o = ownerById(m.ownerId), pay = s.payments.find(p => p.id === m.pdf?.id), entry = pay?.entryId ? s.proofs.find(x => x.id === pay.entryId) : null;
+      if (!o) continue;
+      out.push({ id: `rcpt:${m.id}`, role: 'manager', kind: 'receipt', project: s.project, pname: s.proj.name, what: 'Send the receipt',
+        detail: pay ? `${rs(pay.amount)} · ${pay.receipt} · ${/bank/i.test(pay.method) ? 'bank transfer' : 'cash'}${pay.enteredBy ? ` · entered by ${pay.enteredBy}` : ''}` : m.title,
+        apt: o.apt, owner: o.name, since: m.d, time: m.t, enteredById: entry?.byId || null, deadline: m.d, overdue: late(m.d), href: `${P}/send?type=queue&kind=receipt&ids=${o.id}&go=1` });
+    }
     for (const g of toDoGroups()) {
+      if (g.key === 'receipt') continue;
       const deadline = g.since;   // made at 11:00 AM: meant to go out the same day
       out.push({ id: `send:${s.project}:${g.key}`, role: 'manager', project: s.project, pname: s.proj.name, what: `Send on WhatsApp: ${g.label.toLowerCase()}`,
         detail: `${g.n} owner${g.n === 1 ? '' : 's'} waiting`, since: g.since, deadline, overdue: late(deadline), href: `${P}/send?type=queue&kind=${g.key}&go=1` });
@@ -33,8 +49,8 @@ export function projectTasks(s: State): Task[] {
         detail: m.title, apt: o.apt, owner: o.name, since: m.d, deadline, overdue: late(deadline), href: `${P}/apartments/${o.id}?m=fix&from=todo` });
     }
     for (const a of s.alerts.filter(x => !x.done)) {
-      const o = ownerById(a.ownerId), deadline = addDays(a.d, 2);
-      out.push({ id: `alert:${a.id}`, role: 'manager', project: s.project, pname: s.proj.name, what: 'Follow up a broken promise to pay',
+      const o = ownerById(a.ownerId), entry = a.kind === 'entry', deadline = addDays(a.d, entry ? 1 : 2);
+      out.push({ id: `alert:${a.id}`, role: 'manager', project: s.project, pname: s.proj.name, what: entry ? 'Put right a payment the Accountant didn\'t receive' : 'Follow up a broken promise to pay',
         detail: a.text, apt: o.apt, owner: o.name, since: a.d, deadline, overdue: late(deadline), href: `${P}/apartments/${o.id}` });
     }
     for (const o of s.owners) {
@@ -52,7 +68,7 @@ export function projectTasks(s: State): Task[] {
     }
     // Cash (17 Nov 2026): building manager → Accountant → bank.
     const held = new Map<string, { name: string; amt: number; n: number; oldest: string }>();
-    for (const p of s.payments) if (p.collectorId && !p.handoverId && !p.reversed) {
+    for (const p of s.payments) if (p.collectorId && !p.handoverId && !p.reversed && !awaitingApproval(p)) {
       const h = held.get(p.collectorId) || { name: p.collectorName || 'Building manager', amt: 0, n: 0, oldest: p.d };
       h.amt += p.amount; h.n++; if (p.d < h.oldest) h.oldest = p.d; held.set(p.collectorId, h);
     }

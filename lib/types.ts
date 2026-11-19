@@ -149,6 +149,9 @@ export interface Payment {
   enteredBy?: string | null; approvedBy?: string | null; approvedAt?: string | null; txn?: string | null;
   /** What the payment is for: maintenance (default) or electricity (Oakwood: paid against electricity bills first). */
   forWhat?: 'maintenance' | 'electricity' | null;
+  /** 19 Nov 2026: the building manager's entry this payment came from (it counts, with its receipt, from the moment of
+   *  entry; the entry stays open until the Accountant approves it, which only confirms the money reached him). */
+  entryId?: string | null;
 }
 /** Cash a building manager hands over to the Accountant (or cash paid at the office), followed to the bank deposit. */
 export interface Handover {
@@ -158,13 +161,19 @@ export interface Handover {
   depositSlip: string | null; depositD: ISODate | null; depositedBy: string | null;
 }
 
-/** Money waiting for an accountant to check: a bank-transfer screenshot an owner sent (`transfer`), or cash a building
- *  manager recorded (`cash`: the balance changes only once the accountant confirms it). */
+/** Money waiting for an accountant to check: a bank-transfer screenshot an owner sent (`transfer`), or a payment a
+ *  building manager entered (`cash`, cash or bank transfer). Since 19 Nov 2026 a manager's entry is recorded as a payment
+ *  at once (balance, receipt to send); the Accountant's approval confirms the money reached him, and "not received"
+ *  takes the payment back. Older entries (no payId) still count only once approved. */
 export interface Proof { id: string; ownerId: string; project: string; d: ISODate; t: string; amount: number; status: 'pending' | 'verified' | 'rejected' | 'cancelled'; msgId: string | null; doneOn: ISODate | null; media: string | null;
   kind?: 'transfer' | 'cash'; method?: string | null; ref?: string | null; note?: string | null; byId?: string | null; byName?: string | null; paidOn?: ISODate | null; checkedBy?: string | null; reply?: string | null;
   /** A bank transfer's transaction ID (method 'Bank transfer'). */
-  txn?: string | null; forWhat?: 'maintenance' | 'electricity' | null }
-export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean }
+  txn?: string | null; forWhat?: 'maintenance' | 'electricity' | null;
+  /** The payment recorded when the entry was made (19 Nov 2026). */
+  payId?: string | null }
+/** Something a building manager has to follow up: a broken promise to pay, or (kind 'entry') a payment the Accountant
+ *  did not receive, already taken back, to put right with the customer. */
+export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean; kind?: 'promise' | 'entry' | null }
 export interface Clearance { no: string; ownerId: string; project: string; d: ISODate; by: string }
 /** One flat's line on the office's yearly sheet: what it owed (arrears + the year's charges) and what was paid. */
 export interface SheetSummary {

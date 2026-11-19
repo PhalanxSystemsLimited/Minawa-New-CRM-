@@ -65,7 +65,8 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
     } catch (e) { setErr((e as Error).message || 'Something went wrong. Try again.'); }
     setBusy(false);
   }
-  useEffect(() => { if (go) begin(type === 'queue' && (notice || only) ? [] : ids); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  // From To do: a notice or one kind of message for everyone waiting (no ids), or for the owners given (one receipt).
+  useEffect(() => { if (go) begin(type === 'queue' && (notice || only) && !ids.length ? [] : ids); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const it = items[i], body = it ? (edits[it.key] ?? it.text) : '';
   const [fineBusy, setFineBusy] = useState(false);

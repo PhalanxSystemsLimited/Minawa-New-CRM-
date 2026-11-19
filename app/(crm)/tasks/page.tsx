@@ -10,10 +10,10 @@ import { projectTasks, responsible, myTasks, type Task } from '@/lib/tasks';
 import { use, ownerById } from '@/lib/engine';
 import { bulkApproveAction, rejectEntryAction } from '@/lib/actions-cash';
 import { BulkSelect } from '@/components/BulkSelect';
-import { Go, Submit } from '@/components/client';
-import { fd, fds, rs, todayPKT, diff } from '@/lib/fmt';
+import { Go, Submit, PickSubmit } from '@/components/client';
+import { fd, fds, rs, todayPKT, diff, t12 } from '@/lib/fmt';
 import { PageIc, Empty } from '@/components/views/art';
-import { Ic } from '@/components/icons';
+import { Ic, Wa } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,13 +46,13 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
   const me = await requireStaff(), store = await getStore(), staff = await store.listStaff(), today = todayPKT();
   const live = (await listProjects(me)).filter(p => p.live);
   const states = await Promise.all(live.map(p => load(p.id, me)));
-  const all = states.flatMap(s => projectTasks(s)).sort((a, b) => (+b.overdue - +a.overdue) || a.deadline.localeCompare(b.deadline));
+  const all = states.flatMap(s => projectTasks(s)).sort((a, b) => (+(b.kind === 'receipt') - +(a.kind === 'receipt')) || (+b.overdue - +a.overdue) || a.deadline.localeCompare(b.deadline));
   const mgr = all.filter(t => t.role === 'manager'), acc = all.filter(t => t.role === 'accountant'), mine = myTasks(all, me);
   const late = (l: Task[]) => l.filter(t => t.overdue).length;
-  const head = (title: string, sub: string) => <><div className="proj-head"><PageIc n="clip" tone="rust" /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">{title}</div></div><div className="crumb-path">Dashboard<span>/</span>{title}</div></div><p className="muted" style={{ margin: 0 }}>{sub}</p></>;
+  const head = (title: string, sub: string, ic: [string, 'rust' | 'green'] = ['clip', 'rust']) => <><div className="proj-head"><PageIc n={ic[0]} tone={ic[1]} /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">{title}</div></div><div className="crumb-path">Dashboard<span>/</span>{title}</div></div><p className="muted" style={{ margin: 0 }}>{sub}</p></>;
 
-  const tabs = (list: [string, string, number, number][]) => <nav className="proj-tabs" aria-label="To do lists">{list.map(([k, l, n, lt]) =>
-    <Go key={k} href={k ? `/tasks?v=${k}` : '/tasks'} current={v === k}>{l}{n ? <> <span className={lt ? 'tab-b' : 'tab-new'} title={`${n} open${lt ? `, ${lt} late` : ''}`}>{n}</span></> : null}</Go>)}</nav>;
+  const tabs = (list: [string, string, number, number][], on = v) => <nav className="proj-tabs" aria-label="To do lists">{list.map(([k, l, n, lt]) =>
+    <Go key={k} href={k ? `/tasks?v=${k}` : '/tasks'} current={on === k}>{l}{n ? <> <span className={lt ? 'tab-b' : 'tab-new'} title={`${n} open${lt ? `, ${lt} late` : ''}`}>{n}</span></> : null}</Go>)}</nav>;
 
   if (me.role === 'admin') {
     const accView = v === 'accountants';
@@ -75,13 +75,13 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
       <div className="card"><div className="card-row"><h3>Building managers&apos; To do <small>{mgr.length} open{late(mgr) ? ` · ${late(mgr)} late` : ''}</small></h3></div><Table list={mgr} staff={staff} today={today} showWho /></div>
     </>;
     return <>
-      {head('To do', 'Payments building managers entered (cash or bank transfer). Tick the ones you have received and approve them; an owner\'s balance changes only then.')}
+      {head('To do', 'Payments building managers entered (cash or bank transfer). Each already counts for the customer, who has the receipt. Approve the ones whose money you have received; "Not received" takes the payment back and sends it to the building manager to put right.')}
       {accTabs}
       {(() => {
         const f = (sp.m === 'cash' ? 'Cash' : sp.m === 'bank' ? 'Bank transfer' : ''), b = sp.b || '';
         const list = proofs.filter(x => (!f || (x.p.method || 'Cash') === f) && (!b || x.s.project === b)), tot = list.reduce((a, x) => a + x.p.amount, 0);
         const q = (k: Record<string, string>) => '/tasks?' + new URLSearchParams(Object.entries({ m: sp.m || '', b, ...k }).filter(([, x]) => x)).toString();
-        return <form action={bulkApproveAction} className="card" id="entries"><input type="hidden" name="back" value="/tasks" />
+        return <form action={bulkApproveAction} className="card" id="entries"><input type="hidden" name="back" value="/tasks" /><input type="hidden" name="one" value="" />
           <div className="card-row"><h3>Entries to approve <small>{proofs.length} waiting · {rs(proofs.reduce((a, x) => a + x.p.amount, 0))}</small></h3>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><a className="btn sm" href={`/api/export/entries${b ? `?project=${b}` : ''}`}><Ic n="download" s={15} /> Download CSV</a></div></div>
           <div className="chips" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 10px' }}>
@@ -95,9 +95,9 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
                 <div className="b">{o.name} · {s.proj.name} · entered by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · receipt ${p.ref}` : ''}{p.txn ? ` · transaction ${p.txn}` : ''}{p.note ? ` · ${p.note}` : ''}</div></div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input name={`reply-${p.id}`} type="text" placeholder="Why (for the manager)" aria-label="Why it wasn't received" style={{ width: 170 }} />
-                <button type="submit" formAction={rejectEntryAction} formNoValidate name="one" value={`${s.project}:${p.id}`} className="btn sm">Not received</button>
+                <PickSubmit action={rejectEntryAction} field="one" value={`${s.project}:${p.id}`}>Not received</PickSubmit>
               </div></div>)}</div>
-            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving records each payment, makes its receipt and puts &quot;send receipt&quot; in the building manager&apos;s To do. Approved cash is then with you, ready for the bank deposit on the Cash page.</p></>
+            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving confirms you have the money: nothing new goes to the customer (the receipt went when the payment was entered). Approved cash is then with you, ready for the bank deposit on the Cash page.</p></>
             : <Empty kind="inbox" small title={`Nothing to approve${f || b ? ' with these filters' : ''}`} />}
         </form>;
       })()}
@@ -105,10 +105,35 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
     </>;
   }
 
-  // Building manager: their own list, building by building.
+  // Building manager: receipts to send (their own screen: the customer has just paid, so these go first), then the
+  // rest of their work, building by building.
+  // Receipts newest first: the customer who has just paid is usually the one standing there.
+  const rcpt = mine.filter(t => t.kind === 'receipt').sort((a, b) => `${b.since} ${b.time || ''}`.localeCompare(`${a.since} ${a.time || ''}`)), rest = mine.filter(t => t.kind !== 'receipt');
+  const show = v === 'receipts' || v === 'todo' ? v : rcpt.length ? 'receipts' : 'todo';
+  const mgrTabs = tabs([['receipts', 'Receipts to send', rcpt.length, late(rcpt)], ['todo', 'Other To do', rest.length, late(rest)]], show);
+  if (show === 'receipts') return <>
+    {head('Receipts to send', 'Each payment entered puts its receipt here at once. Send it to the customer straight away: it is the first thing to do, before bills, reminders and notices.', ['receipt', 'green'])}
+    {mgrTabs}
+    {live.length ? live.map(p => { const l = rcpt.filter(t => t.project === p.id); if (!l.length && live.length > 1) return null;
+      return <div className="card rc-card" key={p.id}><div className="card-row"><h3 data-hic="receipt" data-tone="green">{p.name} <small>{l.length} receipt{l.length === 1 ? '' : 's'} to send{late(l) ? ` · ${late(l)} from earlier days` : ''}</small></h3>
+        {l.length > 1 ? <Go href={`/p/${p.id}/send?type=queue&kind=receipt&go=1`} className="btn sm wa"><Wa /> Send all {l.length}, one by one</Go> : null}</div>
+        {l.length ? <div className="list rc-list">{l.map(t => <div className={'li rc-li' + (t.overdue ? ' late' : '')} key={t.id}>
+          <span className="rc-ic" aria-hidden="true"><Ic n="receipt" s={20} /></span>
+          <div className="t"><div className="a"><span className="apt-t">{t.apt}</span> · {t.owner}</div><div className="b">{t.detail}</div></div>
+          <div className="rc-when"><b>{t.since === today ? (t.time ? t12(t.time) : 'Today') : fds(t.since)}</b>{t.overdue ? <span className="tag bad">Waiting since {fds(t.since)}</span> : <span className="tag good">Send now</span>}</div>
+          <Go href={t.href} className="btn sm wa"><Wa /> Send receipt</Go></div>)}</div>
+          : <Empty kind="done" small title="No receipts waiting">Each payment you enter puts its receipt here, to send straight away.</Empty>}
+      </div>; })
+      : <div className="card allclear"><div className="big">No buildings assigned yet</div><p className="muted">Ask the Admin to assign your buildings.</p></div>}
+    {live.length > 1 && !rcpt.length ? <Empty card kind="done" title="No receipts waiting">Each payment you enter puts its receipt here, to send straight away.</Empty> : null}
+  </>;
   return <>
     {head('To do', 'Your work for your buildings: messages to send on WhatsApp, numbers to fix and promises to follow up. Open a task to do it.')}
-    {live.length ? live.map(p => { const l = mine.filter(t => t.project === p.id); return <div className="card" key={p.id}><div className="card-row"><h3>{p.name} <small>{l.length} open{late(l) ? ` · ${late(l)} late` : ''}</small></h3><Go href={`/p/${p.id}/todo`} className="btn sm">Open building To do</Go></div><Table list={l} staff={staff} today={today} showWho={false} /></div>; })
+    {mgrTabs}
+    {rcpt.length ? <div className="strip" data-tone="green" style={{ ['--ta' as string]: '#16A34A' }}><span className="ic-tile t-green" aria-hidden="true"><Ic n="receipt" s={20} /></span>
+      <div className="strip-t"><b>{rcpt.length} receipt{rcpt.length === 1 ? '' : 's'} to send first</b><span>Customers who just paid are waiting for their receipt.</span></div>
+      <Go href="/tasks?v=receipts" className="btn sm wa"><Wa /> Send receipts</Go></div> : null}
+    {live.length ? live.map(p => { const l = rest.filter(t => t.project === p.id); return <div className="card" key={p.id}><div className="card-row"><h3>{p.name} <small>{l.length} open{late(l) ? ` · ${late(l)} late` : ''}</small></h3><Go href={`/p/${p.id}/todo`} className="btn sm">Open building To do</Go></div><Table list={l} staff={staff} today={today} showWho={false} /></div>; })
       : <div className="card allclear"><div className="big">No buildings assigned yet</div><p className="muted">Ask the Admin to assign your buildings.</p></div>}
   </>;
 }

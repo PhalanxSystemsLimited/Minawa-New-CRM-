@@ -1,5 +1,6 @@
-// Received payments (18 Nov 2026): every approved payment in the person's buildings, with who entered it, who
-// approved it and the customer it belongs to. Admin (all buildings) and Accountants; CSV export and print.
+// Received payments (18 Nov 2026): every payment in the person's buildings, with who entered it, who approved it
+// (since 19 Nov 2026 a payment counts from the moment it is entered; the Accountant's approval confirms the money)
+// and the customer it belongs to. Admin (all buildings) and Accountants; CSV export and print.
 import { requireRole, roleName } from '@/lib/session';
 import { liveProjects, load } from '@/lib/ops';
 import { receivedRows } from '@/lib/received';
@@ -22,7 +23,7 @@ export default async function Received({ searchParams }: { searchParams: Promise
   const qs = new URLSearchParams(Object.entries({ project: pid, month, via, who: sp.who || '' }).filter(([, v]) => v)).toString();
   return <>
     <div className="proj-head"><PageIc n="receipt" tone="green" /><div><div className="eyebrow-b">{roleName(me)}</div><div className="proj-title">Received payments</div></div><div className="crumb-path">Dashboard<span>/</span>Received payments</div></div>
-    <p className="muted" style={{ margin: 0 }}>Payments the Accountant has approved: only these count in balances and collections. Each shows who entered it and who approved it.</p>
+    <p className="muted" style={{ margin: 0 }}>Every payment received. A payment counts for the customer the moment it is entered, with its receipt; the Accountant&apos;s approval confirms the money reached him. Each shows who entered it and who approved it.</p>
     <form method="get" className="card no-print" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
       <div className="form-row" style={{ margin: 0 }}><label htmlFor="rv-p">Building</label><select id="rv-p" name="p" defaultValue={pid}><option value="">All your buildings</option>{all.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
       <div className="form-row" style={{ margin: 0 }}><label htmlFor="rv-m">Month</label><input id="rv-m" name="month" type="month" defaultValue={month} max={today.slice(0, 7)} /></div>
@@ -43,8 +44,8 @@ export default async function Received({ searchParams }: { searchParams: Promise
           {rows.map(r => <tr key={r.p.project + r.p.id}><td style={{ whiteSpace: 'nowrap' }}>{fds(r.p.d)} <span className="cell-sub">{t12(r.p.t)}</span></td>
             <td><Go href={`/p/${r.p.project}/apartments/${r.p.ownerId}?tab=payments`} className="link-btn"><b>{r.apt}</b></Go></td><td>{r.owner}</td>{pid ? null : <td>{r.pname}</td>}
             <td className="r num"><b>{rs(r.p.amount)}</b></td><td>{r.via === 'Cash' ? <span className="tag warn">Cash</span> : <span className="tag info">Bank</span>}{r.p.txn ? <div className="cell-sub">{r.p.txn}</div> : null}</td>
-            <td>{r.enteredBy}</td><td>{r.approvedBy}{r.p.approvedAt ? <div className="cell-sub">{fds(r.p.approvedAt.slice(0, 10))}</div> : null}</td><td>{r.p.receipt}{r.p.ref ? <div className="cell-sub">{r.p.ref}</div> : null}</td></tr>)}
-        </tbody></table></div> : <Empty kind="pay" title={`No approved payments in ${fm(month)}${via || sp.who ? ' with these filters' : ''}`} />}
+            <td>{r.enteredBy}</td><td>{r.approvedBy || <span className="tag warn">Waiting for the Accountant</span>}{r.p.approvedAt ? <div className="cell-sub">{fds(r.p.approvedAt.slice(0, 10))}</div> : null}</td><td>{r.p.receipt}{r.p.ref ? <div className="cell-sub">{r.p.ref}</div> : null}</td></tr>)}
+        </tbody></table></div> : <Empty kind="pay" title={`No payments in ${fm(month)}${via || sp.who ? ' with these filters' : ''}`} />}
       </div>
     </div>
   </>;

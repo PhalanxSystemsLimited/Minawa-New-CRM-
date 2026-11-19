@@ -104,9 +104,10 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
   }
   if (m.startsWith('cancelcash-')) {
     const pr = S.proofs.find(x => x.id === m.slice(11) && x.status === 'pending');
-    if (!pr || cur().role !== 'manager' || pr.byId !== S.staffId) return <ModalShell title="Cancel a cash entry"><div className="callout">This entry can&apos;t be cancelled (already confirmed, or not yours).</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
-    return <ModalShell title="Cancel a cash entry"><form action={cancelCashAction} style={col}>{hidden(o)}<input type="hidden" name="id" value={pr.id} />
-      <div className="callout">{rs(pr.amount)} cash entered on {fd(pr.d)} (receipt {pr.ref || '—'}) is still waiting for the Accountant. Cancelling it takes it off the Accountant&apos;s list; nothing changes on {o.name}&apos;s account.</div>
+    if (!pr || cur().role !== 'manager' || pr.byId !== S.staffId) return <ModalShell title="Cancel a payment entry"><div className="callout">This entry can&apos;t be cancelled (already confirmed, or not yours).</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    const pay = pr.payId ? S.payments.find(x => x.id === pr.payId && !x.reversed) : undefined, sent = !!pay && S.messages.some(x => x.kind === 'receipt' && x.pdf?.id === pay.id && x.status !== 'pending' && x.status !== 'skipped');
+    return <ModalShell title="Cancel a payment entry"><form action={cancelCashAction} style={col}>{hidden(o)}<input type="hidden" name="id" value={pr.id} />
+      <div className="callout">{rs(pr.amount)} {(pr.method || 'Cash') === 'Bank transfer' ? 'bank transfer' : 'cash'} entered on {fd(pr.d)} (receipt {pr.ref || '—'}) is still waiting for the Accountant. Cancelling it takes it off the Accountant&apos;s list{pay ? <> and takes the payment back: {o.name}&apos;s balance goes back up by {rs(pay.amount)}{sent ? <>. <b>Its receipt was already sent: tell {o.name}</b></> : ' and its receipt is not sent'}</> : <>; nothing changes on {o.name}&apos;s account</>}.</div>
       <div className="form-row"><label htmlFor="cc-r">Why? (optional)</label><input id="cc-r" name="reason" type="text" placeholder="e.g. Wrong amount; entering it again" /></div>
       <div className="m-actions"><CloseBtn /><Submit>Cancel this entry</Submit></div></form></ModalShell>;
   }
@@ -119,7 +120,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save due date' : 'Send for approval'}</Submit></div></form></ModalShell>;
     case 'recpay': if (cur().role === 'admin') return <ModalShell title="Record a payment"><div className="callout">Payments are entered by the building manager or the Accountant.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
       if (cur().role === 'manager') { const b = bankOf(cur().proj.bank); return <ModalShell title="Enter a payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">A payment {o.name} made to you in cash, or by bank transfer into Minawa&apos;s account. It goes to the Accountant to approve; {o.name}&apos;s balance changes once it is approved and the receipt is made. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <div className="callout">A payment {o.name} made to you in cash, or by bank transfer into Minawa&apos;s account. It counts at once: {o.name}&apos;s balance changes and the receipt opens for you to send on WhatsApp straight away. The Accountant then confirms he received the money. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <fieldset className="pay-via"><legend>Received as</legend>
         <label className="pay-via-o"><input type="radio" name="method" value="Cash" defaultChecked={via !== 'bank'} /> <span><b>Cash</b><small>given to you by hand</small></span></label>
         <label className="pay-via-o"><input type="radio" name="method" value="Bank transfer" defaultChecked={via === 'bank'} /> <span><b>Bank transfer</b><small>{b ? `into ${b.bank} A/C ${b.account}` : 'into Minawa\'s account'}</small></span></label>
@@ -135,7 +136,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave {via === 'bank' ? '(optional for a bank transfer)' : '(needed for cash)'}</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" /></div>
       <div className="form-row"><label htmlFor="rc-txn">Bank transaction ID (needed for a bank transfer)</label><input id="rc-txn" name="txn" type="text" maxLength={80} placeholder="e.g. FT2611180042 or the IBFT reference" /></div>
       <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
-      <div className="m-actions"><CloseBtn /><Submit>Send to the Accountant</Submit></div></form></ModalShell>; }
+      <div className="m-actions"><CloseBtn /><Submit>Save and send the receipt</Submit></div></form></ModalShell>; }
       return <ModalShell title="Record a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
       <div className="callout">Cash {o.name} paid at the office. It counts straight away and the receipt is made for the building manager to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>

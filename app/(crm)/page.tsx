@@ -135,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
         <NeedTile title="Building managers" icon="building" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
       </> : <>
-        <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? `${lateN(myT)} late` : 'All clear'} />
+        <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? (() => { const r = myT.filter(t => t.kind === 'receipt').length; return `${r ? `${r} receipt${r === 1 ? '' : 's'} to send first · ` : ''}${lateN(myT)} late`; })() : 'All clear'} />
         <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
         <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your requests waiting" href="/approvals" sub={apvWait.length ? apvKinds : 'Nothing waiting'} />
       </>}
@@ -178,12 +178,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <div className="bs-grid">{bs.map(b => <div className="card bs-card" key={b.pid}>
           <div className="bs-top"><BuildingArt seed={b.pid} />
             <div className="bs-name"><A href={`/p/${b.pid}`}>{b.name}</A><small>{b.active} customers{b.vacant ? ` · ${b.vacant} vacant` : ''}</small></div></div>
-          {(() => { const pc = b.billed ? Math.min(100, Math.round(100 * b.collected / b.billed)) : 0; return <div className="bs-prog" title="Collected (approved) this month, of what was billed this month">
+          {(() => { const pc = b.billed ? Math.min(100, Math.round(100 * b.collected / b.billed)) : 0; return <div className="bs-prog" title="Collected this month, of what was billed this month">
             <div className="bs-prog-h"><span>Collected of billed</span><b className="num">{b.billed ? `${pc}%` : '—'}</b></div>
             <div className={`bs-bar ${pc >= 50 ? 'g' : 'a'}`}><span style={{ width: `${pc}%` }}></span></div></div>; })()}
           {row('Billed', rs(b.billed), `${b.nBills} bill${b.nBills === 1 ? '' : 's'}`)}
-          {row('Collected (approved)', rs(b.collected), b.nPays ? `cash ${short(b.cash)} · bank ${short(b.bank)}` : 'none yet', 'good')}
-          {b.nPending ? row('Waiting for approval', rs(b.pending), `${b.nPending} entr${b.nPending === 1 ? 'y' : 'ies'}`, 'warn') : null}
+          {row('Collected', rs(b.collected), b.nPays ? `cash ${short(b.cash)} · bank ${short(b.bank)}` : 'none yet', 'good')}
+          {b.nPending ? row('Accountant to confirm', rs(b.pending), `of it · ${b.nPending} entr${b.nPending === 1 ? 'y' : 'ies'}`, 'warn') : null}
           {row('Still to collect', rs(b.toCollect), `${b.owing} customer${b.owing === 1 ? '' : 's'}`)}
           {row('Past due', rs(b.pastDue), `${b.nPastDue} customer${b.nPastDue === 1 ? '' : 's'}`, b.nPastDue ? 'bad' : '')}
           {b.elec ? row('Electricity', `${rs(b.elec.collected)} of ${rs(b.elec.billed)}`, `unpaid ${short(b.elec.unpaid)}`) : null}
