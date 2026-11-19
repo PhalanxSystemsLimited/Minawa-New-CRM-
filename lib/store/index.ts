@@ -38,6 +38,8 @@ export interface Store {
   paymentsSince(project: string, since: string): Promise<{ id: string; d: string; t: string }[]>;
   /** A number that changes whenever anything is saved: open screens compare it to know when to refresh. */
   revision(): Promise<number>;
+  /** Health check: one tiny read that throws if the database doesn't answer. */
+  ping(): Promise<void>;
   getCompany(): Promise<Company>;
   saveCompany(c: Company): Promise<void>;
   /** WhatsApp daily limit (20 Nov 2026): count this customer on this sending number, or refuse when it is full. */

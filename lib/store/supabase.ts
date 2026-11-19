@@ -87,6 +87,7 @@ export class SupabaseStore implements Store {
   }
   /** Marks that something changed, so every open screen refreshes on its next check. */
   private async bump() { try { await this.db.from('counters').upsert([{ k: '__rev', n: Date.now() }], { onConflict: 'k' }); } catch { /* only a hint for open screens */ } }
+  async ping() { const { error } = await this.db.from('counters').select('k').limit(1); if (error) throw new Error(error.message); }
   async revision() { const { data } = await this.db.from('counters').select('n').eq('k', '__rev').limit(1); return Number(data?.[0]?.n || 0); }
   async withLock<T>(fn: () => Promise<T>): Promise<T> {
     const holder = randomUUID();

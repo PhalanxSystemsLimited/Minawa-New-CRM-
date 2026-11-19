@@ -147,6 +147,7 @@ export class LocalStore implements Store {
   async saveImage(r: ImageRec) { (db().images ||= []).push(clone(r)); flush(); }
   async getImage(id: string) { const r = (db().images || []).find(x => x.id === id); return r ? clone(r) : null; }
   async linkImage(id: string, refId: string) { const r = (db().images || []).find(x => x.id === id); if (r) { r.refId = refId; flush(); } }
+  async ping() { db(); }
   async listStaff() { return clone(db().staff); }
   async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); db().counters.__rev = Date.now(); flush(); }
   async replaceProjectData(pid: string, s: State) {
