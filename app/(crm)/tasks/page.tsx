@@ -14,6 +14,7 @@ import { Go, Submit, PickSubmit } from '@/components/client';
 import { fd, fds, rs, todayPKT, diff, t12 } from '@/lib/fmt';
 import { PageIc, Empty } from '@/components/views/art';
 import { Ic, Wa } from '@/components/icons';
+import { PhotoLink } from '@/components/views/bits';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +93,7 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
             <div className="list">{list.map(({ p, o, s }) => <div className="li bulk-row" data-bulk-row key={p.id} id={`proof-${p.id}`}>
               <input type="checkbox" name="e" value={`${s.project}:${p.id}`} data-amt={p.amount} aria-label={`Approve ${o.apt}, ${rs(p.amount)}`} />
               <div className="t"><div className="a"><span className="apt-t">{o.apt}</span> · <span className="num">{rs(p.amount)}</span> {(p.method || 'Cash') === 'Bank transfer' ? <span className="tag info">Bank transfer</span> : <span className="tag warn">Cash</span>}{p.forWhat === 'electricity' ? <> <span className="tag">Electricity</span></> : null}</div>
-                <div className="b">{o.name} · {s.proj.name} · entered by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · receipt ${p.ref}` : ''}{p.txn ? ` · transaction ${p.txn}` : ''}{p.note ? ` · ${p.note}` : ''}</div></div>
+                <div className="b">{o.name} · {s.proj.name} · entered by <b>{p.byName}</b> {fd(p.d)}{p.paidOn ? `, paid ${fd(p.paidOn)}` : ''}{p.ref ? ` · receipt ${p.ref}` : ''}{p.txn ? ` · transaction ${p.txn}` : ''}{p.note ? ` · ${p.note}` : ''}{p.photoId ? <> · <PhotoLink pid={s.project} id={p.photoId} label="Photo of the payment" /></> : null}</div></div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input name={`reply-${p.id}`} type="text" placeholder="Why (for the manager)" aria-label="Why it wasn't received" style={{ width: 170 }} />
                 <PickSubmit action={rejectEntryAction} field="one" value={`${s.project}:${p.id}`}>Not received</PickSubmit>

@@ -1,6 +1,6 @@
 // The data store. With Supabase settings in the environment it uses Supabase (production); without them it
 // keeps everything in data/local-db.json, so the CRM runs on a laptop with the sample data and no setup.
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Role, Company, WaLog, WaTake, WaUse } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Role, Company, WaLog, WaTake, WaUse, ImageRec } from '../types';
 import { STATE_TABLES, KEY, type TableName } from './tables';
 
 export interface LoadOpts { today: string; by?: string; role?: Role }
@@ -46,6 +46,10 @@ export interface Store {
   waUsage(nums: { number: string; limit: number }[]): Promise<WaUse[]>;
   /** The Admin allows a number more chats for the next 24 hours. */
   waExtra(i: { number: string; amount: number; reason: string; byId: string; byName: string }): Promise<void>;
+  /** Photos (21 Nov 2026): the record of a stored photo (its link), and linking it to the payment or bill it belongs to. */
+  saveImage(r: ImageRec): Promise<void>;
+  getImage(id: string): Promise<ImageRec | null>;
+  linkImage(id: string, refId: string): Promise<void>;
 }
 export const DEFAULT_COMPANY: Company = { legalName: 'Minawa (Pvt) Ltd', address: '', ntn: '', phone: '', email: '' };
 

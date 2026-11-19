@@ -16,6 +16,14 @@ import { Ic, Wa } from '../icons';
 import * as act from '@/lib/actions';
 import { intl } from '@/lib/dispatch';
 import { waTestNumber } from '@/lib/whatsapp';
+import { PhotoField } from '../PhotoField';
+import { photoStore } from '@/lib/images';
+
+/** The photo of a payment at entry (21 Nov 2026), or a note when photo storage isn't set up on live yet. */
+function PayPhoto({ o, label, hint, always }: { o: Owner; label: string; hint: string; always?: boolean }) {
+  if (!photoStore()) return <div className="callout"><div><b>Photos aren&apos;t set up yet.</b> Once the Admin adds the Cloudinary settings, a photo of the transfer is taken here.</div></div>;
+  return <PhotoField pid={cur().project} owner={o.id} label={label} hint={hint} required={always} requiredWhen={always ? undefined : { name: 'method', value: 'Bank transfer' }} />;
+}
 
 export function DocView({ d }: { d: DocData }) {
   return (
@@ -34,6 +42,7 @@ export function DocView({ d }: { d: DocData }) {
       {d.fine ? <div className="fine">{d.fine}</div> : null}
       {d.foot ? <div className="rfoot">{d.foot}</div> : null}
       {d.org ? <div className="rfoot" style={{ borderTop: '1px solid var(--line)', paddingTop: 8 }}>{d.org}</div> : null}
+      {(d.photos || []).map(p => <div className="doc-photo" key={p.id}><b>{p.title}</b><a href={`/api/img/${p.id}`} target="_blank" rel="noopener"><img src={`/api/img/${p.id}`} alt={p.title} /></a></div>)}
       {d.counterfoil ? <div className="vch-cf"><div className="vch-cf-h">✂ Office copy · kept by the building manager</div><div className="kv">{d.counterfoil.map(([k, v]) => <div key={k}><span>{k}</span>{v || <i className="vch-line" />}</div>)}</div></div> : null}
     </div>
   );
@@ -102,6 +111,28 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="rv-r">Why is this payment wrong?</label><input id="rv-r" name="reason" type="text" required placeholder="e.g. Entered twice; the owner paid once (receipt 147)" /></div>
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Reverse payment' : 'Send for approval'}</Submit></div></form></ModalShell>;
   }
+  if (m.startsWith('elecpaid-')) {
+    // Oakwood electricity (21 Nov 2026): the customer says he paid this electricity bill. The building manager enters
+    // the payment with a photo of the bill receipt or the phone screen; it pays this bill first and counts at once.
+    const b = S.bills.find(x => x.id === m.slice(9) && x.ownerId === o.id && !x.months);
+    const left = b ? Math.max(0, b.net - b.paid) : 0, bk = bankOf(cur().proj.bank);
+    if (!b || cur().role !== 'manager' || left <= 0) return <ModalShell title="Electricity bill received"><div className="callout">{!b ? 'This electricity bill isn\'t there any more.' : left <= 0 ? 'This bill is already paid.' : 'Electricity payments are entered by the building manager.'}</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    return <ModalShell title={`Electricity bill received · ${o.apt}`}><form action={act.recordPaymentAction} style={col}>{hidden(o)}<input type="hidden" name="billId" value={b.id} /><input type="hidden" name="forWhat" value="electricity" />
+      <div className="callout">{o.name}&apos;s electricity bill for <b>{fm(b.period)}</b>: {rs(b.net)}{b.paid > 0 ? `, ${rs(b.paid)} already paid` : ''}, due {fd(b.dueDate)}. Saving marks it received: it pays this bill first, the balance changes at once and the receipt opens for you to send. The Accountant then confirms the money.</div>
+      <fieldset className="pay-via"><legend>Paid as</legend>
+        <label className="pay-via-o"><input type="radio" name="method" value="Cash" defaultChecked /> <span><b>Cash</b><small>given to you by hand</small></span></label>
+        <label className="pay-via-o"><input type="radio" name="method" value="Bank transfer" /> <span><b>Bank transfer</b><small>{bk ? `into ${bk.bank} A/C ${bk.account}` : 'into Minawa\'s account'}</small></span></label>
+      </fieldset>
+      <div className="grid2" style={{ gap: 10 }}>
+        <div className="form-row"><label htmlFor="ep-amt">Amount (Rs)</label><input id="ep-amt" name="amt" type="number" min="1" step="1" required defaultValue={left} /></div>
+        <div className="form-row"><label htmlFor="ep-d">Paid on</label><input id="ep-d" name="paidOn" type="date" required defaultValue={cur().today} max={cur().today} /></div>
+      </div>
+      <div className="form-row"><label htmlFor="ep-ref">Receipt number you gave (needed for cash)</label><input id="ep-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" /></div>
+      <div className="form-row"><label htmlFor="ep-txn">Bank transaction ID (needed for a bank transfer)</label><input id="ep-txn" name="txn" type="text" maxLength={80} placeholder="e.g. FT2611180042" /></div>
+      {PayPhoto({ o, always: true, label: 'Photo of the payment', hint: 'The bill receipt, or the customer\'s phone screen showing the payment. Take it with the camera or choose it from the phone; it is shrunk before saving.' })}
+      <div className="form-row"><label htmlFor="ep-n">Note (optional)</label><input id="ep-n" name="note" type="text" placeholder="e.g. Showed the bank app at the office" /></div>
+      <div className="m-actions"><CloseBtn /><Submit>Mark bill received</Submit></div></form></ModalShell>;
+  }
   if (m.startsWith('cancelcash-')) {
     const pr = S.proofs.find(x => x.id === m.slice(11) && x.status === 'pending');
     if (!pr || cur().role !== 'manager' || pr.byId !== S.staffId) return <ModalShell title="Cancel a payment entry"><div className="callout">This entry can&apos;t be cancelled (already confirmed, or not yours).</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
@@ -135,6 +166,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       </div>
       <div className="form-row"><label htmlFor="rc-ref">Receipt number you gave {via === 'bank' ? '(optional for a bank transfer)' : '(needed for cash)'}</label><input id="rc-ref" name="ref" type="text" placeholder="e.g. Book 3, No. 147" /></div>
       <div className="form-row"><label htmlFor="rc-txn">Bank transaction ID (needed for a bank transfer)</label><input id="rc-txn" name="txn" type="text" maxLength={80} placeholder="e.g. FT2611180042 or the IBFT reference" /></div>
+      {PayPhoto({ o, label: 'Photo of the bank transfer', hint: 'Take a photo of the transfer on the customer\'s phone screen (or of the bank slip). It is shrunk before saving; the Accountant and the Admin open it with the payment.' })}
       <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
       <div className="m-actions"><CloseBtn /><Submit>Save and send the receipt</Submit></div></form></ModalShell>; }
       return <ModalShell title="Record a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}

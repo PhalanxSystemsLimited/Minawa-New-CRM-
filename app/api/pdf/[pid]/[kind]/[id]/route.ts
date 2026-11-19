@@ -4,6 +4,7 @@ import { load } from '@/lib/ops';
 import { use, ownerById } from '@/lib/engine';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, historyDoc, aptHistoryDoc, type DocData } from '@/lib/docdata';
 import { renderPdf } from '@/lib/pdf';
+import { fillPhotos } from '@/lib/images';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ pid: strin
     return null;
   });
   if (!d) return new Response('not found', { status: 404 });
+  await fillPhotos([d]);
   const pdf = await renderPdf(d);
   return new Response(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${d.filename}"` } });
 }

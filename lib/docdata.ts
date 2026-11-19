@@ -22,6 +22,9 @@ export interface DocData {
   counterfoil?: [string, string][] | null;
   /** Multi-column tables (payment and apartment history, Phase 4). `right`: the columns aligned right; `total`: the last row is a total. */
   grids?: { title: string; cols: string[]; rows: string[][]; widths?: number[]; right?: number[]; total?: boolean; empty?: string }[];
+  /** Photos printed on the document (21 Nov 2026: the electricity bill photo). `src` (a data: URI) is filled in by the
+   *  PDF routes just before printing. */
+  photos?: { title: string; id: string; src?: string | null }[];
 }
 /** What a customer pays by the due date, and after it: the fine is added on what is unpaid then. */
 function voucherOf(o: Owner, no: string, due: string, total: number): NonNullable<DocData['voucher']> {
@@ -65,6 +68,7 @@ export function billDoc(b: Bill): DocData {
     kv: [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Owner', o.name], ['Billing date', fd(b.billDate)], ['Due date', fd(b.dueDate)]],
     tables,
     howToPay: howToPay(vno),
+    photos: b.photoId ? [{ title: 'Photo of the bill', id: b.photoId }] : undefined,
     fine: `If anything is still unpaid after ${fd(b.dueDate)}, a fine of ${feePct()}% of ${S().settings.rules.fineArrears ? 'all dues' : 'the unpaid bills'} is added. If dues remain unpaid by ${fd(b.finalDate)}, utilities may be disconnected.`
   };
 }

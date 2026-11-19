@@ -105,6 +105,8 @@ export interface Bill {
   fromCredit: number; prev: number; noticeSkipped: boolean; flagSkipped: boolean; reminders: number[]; lines: BillLine[]; bd: Breakdown | null;
   /** Phase 2: the days this bill covers (possession day to the day before its due date). finalDate = the late-warning date. */
   covFrom?: ISODate | null; covTo?: ISODate | null;
+  /** Electricity bills (21 Nov 2026): the photo of the bill the building manager took; printed on the bill PDF. */
+  photoId?: string | null;
 }
 
 /** A utility bill (electricity, water…) entered by the accountant for one flat and month; goes on the next bill. */
@@ -152,6 +154,8 @@ export interface Payment {
   /** 19 Nov 2026: the building manager's entry this payment came from (it counts, with its receipt, from the moment of
    *  entry; the entry stays open until the Accountant approves it, which only confirms the money reached him). */
   entryId?: string | null;
+  /** 21 Nov 2026: the photo of the bank transfer (or bill receipt) taken at entry, and the electricity bill it paid. */
+  photoId?: string | null; billId?: string | null;
 }
 /** Cash a building manager hands over to the Accountant (or cash paid at the office), followed to the bank deposit. */
 export interface Handover {
@@ -170,7 +174,17 @@ export interface Proof { id: string; ownerId: string; project: string; d: ISODat
   /** A bank transfer's transaction ID (method 'Bank transfer'). */
   txn?: string | null; forWhat?: 'maintenance' | 'electricity' | null;
   /** The payment recorded when the entry was made (19 Nov 2026). */
-  payId?: string | null }
+  payId?: string | null;
+  /** 21 Nov 2026: the photo taken at entry (bank transfer screen or bill receipt), and the electricity bill it is for. */
+  photoId?: string | null; billId?: string | null }
+/** A photo stored for the CRM (21 Nov 2026): in Cloudinary (private), with its link kept in Supabase. Staff open it
+ *  through the CRM; a customer only sees the photo printed on their own bill. */
+export interface ImageRec {
+  id: string; project: string; ownerId: string | null; kind: 'payment' | 'bill'; refId: string | null;
+  /** Where it is: the Cloudinary link (private, signed), or local:<file> on a laptop copy. */
+  url: string; publicId: string; format: string; bytes: number; width: number; height: number;
+  byId: string | null; byName: string; at: string;
+}
 /** Something a building manager has to follow up: a broken promise to pay, or (kind 'entry') a payment the Accountant
  *  did not receive, already taken back, to put right with the customer. */
 export interface Alert { id: string; ownerId: string; project: string; d: ISODate; text: string; done: boolean; kind?: 'promise' | 'entry' | null }

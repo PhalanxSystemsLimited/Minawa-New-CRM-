@@ -6,7 +6,7 @@ import { Ic } from '@/components/icons';
 import { Go, A, LiveSearch } from '@/components/client';
 import { projectPage, projHead, newPayments, payKey, paySeenCookie } from '@/components/views/project';
 import { PayRows, MarkPaymentsSeen } from '@/components/PayRows';
-import { when, viaHtml, ownerHref } from '@/components/views/bits';
+import { when, viaHtml, ownerHref, PhotoLink } from '@/components/views/bits';
 import { Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +52,7 @@ export default async function Payments({ params, searchParams }: { params: Promi
                     {item('Recorded', p.source === 'proof' ? `Confirmed: ${p.by}` : `By ${p.by}`)}
                     {item('Reference', p.ref)}
                     {item('Receipt', p.receipt)}
+                    {p.photoId ? item('Photo', <PhotoLink pid={p.project} id={p.photoId} label="Open the photo" />) : null}
                     {item('Owed before', rs(p.before))}
                     {item('Owed after', p.balAfter < 0 ? `${rs(-p.balAfter)} credit` : p.balAfter ? rs(p.balAfter) : 'Nothing, paid up')}
                   </div>

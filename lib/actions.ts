@@ -9,6 +9,8 @@ import { parseNumbers, fmtNumber, normNumber, validNumber, MAX_LIMIT } from './w
 import { requireStaff, requireRole, requireAdmin, roleName, staffName } from './session';
 import { mutate, load, staffLog } from './ops';
 import { getStore } from './store';
+import { photoFor } from './actions-photos';
+import { photoStore } from './images';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
   verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash } from './engine';
@@ -38,9 +40,16 @@ export async function recordPaymentAction(fdata: FormData) {
   if (staff.role === 'manager') {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
     const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
-    if (method === 'Cash' && !S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
-    if (method === 'Bank transfer' && !txn) go(ownerPath(pid, oid) + '?m=recpay-bank', 'Enter the bank transaction ID');
-    await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null), { send: false });
+    // "Bill received" from the Electricity bills screen (21 Nov 2026): pays that electricity bill first.
+    const billId = S(fdata, 'billId') || null, again = billId ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(billId)}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid) + `?m=recpay${method === 'Bank transfer' ? '-bank' : ''}`;
+    if (method === 'Cash' && !S(fdata, 'ref')) go(again, 'Enter the receipt number you gave the owner');
+    if (method === 'Bank transfer' && !txn) go(again, 'Enter the bank transaction ID');
+    // The photo of the transfer (or the bill receipt): needed for a bank transfer once photo storage is set up.
+    let photo: string | null = null;
+    try { photo = (await photoFor(S(fdata, 'photo'), pid, 'payment'))?.id || null; } catch (e) { go(again, (e as Error).message); }
+    if ((method === 'Bank transfer' || billId) && !photo && photoStore()) go(again, billId ? 'Add the photo of the payment (the bill receipt or the phone screen)' : 'Add the photo of the bank transfer (take it with the camera or choose it from the phone)');
+    const pr = await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, billId || S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null, { photoId: photo, billId }), { send: false });
+    if (photo) await (await getStore()).linkImage(photo, pr.payId || pr.id).catch(() => undefined);
     go(`/p/${pid}/send?type=queue&kind=receipt&ids=${encodeURIComponent(oid)}&go=1`, `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. Send the receipt now.`);
   }
   if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');

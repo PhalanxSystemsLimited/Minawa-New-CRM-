@@ -115,6 +115,10 @@ function DocPage({ d }: { d: DocData }) {
                 {r.map((c, k) => <Text key={k} style={{ flexGrow: g.widths?.[k] ?? 1, flexBasis: 0, fontSize: 8, textAlign: g.right?.includes(k) ? 'right' : 'left', paddingRight: 4, fontWeight: j === g.rows.length - 1 && g.total ? 700 : 400 }}>{c}</Text>)}
               </View>) : <Text style={st.rowSub}>{g.empty || 'None'}</Text>}
             </View>))}
+          {(d.photos || []).filter(p => p.src).map(p => <View key={p.id} wrap={false} style={{ marginTop: 6, marginBottom: 4 }}>
+            <Text style={{ fontWeight: 700, marginBottom: 4 }}>{p.title}</Text>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}<Image src={p.src!} style={{ maxHeight: 230, maxWidth: 320, objectFit: 'contain', borderWidth: 1, borderColor: LINE }} />
+          </View>)}
           {d.howToPay ? <View><Text style={{ fontWeight: 700 }}>How to pay</Text>{d.howToPay.map((h, i) => <Text key={i}>{h}</Text>)}</View> : null}
           {d.fine ? <Text style={st.fine}>{d.fine}</Text> : null}
           {d.foot ? <Text style={st.foot}>{d.foot}</Text> : null}

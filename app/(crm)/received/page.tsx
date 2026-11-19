@@ -8,6 +8,7 @@ import { Go, PrintBtn } from '@/components/client';
 import { fds, fm, rs, todayPKT, t12, prevMonth } from '@/lib/fmt';
 import { PageIc, KIc, Empty } from '@/components/views/art';
 import { Ic } from '@/components/icons';
+import { PhotoLink } from '@/components/views/bits';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export default async function Received({ searchParams }: { searchParams: Promise
         {rows.length ? <div className="tbl-wrap"><table><thead><tr><th>Date</th><th>Apartment</th><th>Customer</th>{pid ? null : <th>Building</th>}<th className="r">Amount</th><th>Received as</th><th>Entered by</th><th>Approved by</th><th>Receipt</th></tr></thead><tbody>
           {rows.map(r => <tr key={r.p.project + r.p.id}><td style={{ whiteSpace: 'nowrap' }}>{fds(r.p.d)} <span className="cell-sub">{t12(r.p.t)}</span></td>
             <td><Go href={`/p/${r.p.project}/apartments/${r.p.ownerId}?tab=payments`} className="link-btn"><b>{r.apt}</b></Go></td><td>{r.owner}</td>{pid ? null : <td>{r.pname}</td>}
-            <td className="r num"><b>{rs(r.p.amount)}</b></td><td>{r.via === 'Cash' ? <span className="tag warn">Cash</span> : <span className="tag info">Bank</span>}{r.p.txn ? <div className="cell-sub">{r.p.txn}</div> : null}</td>
+            <td className="r num"><b>{rs(r.p.amount)}</b></td><td>{r.via === 'Cash' ? <span className="tag warn">Cash</span> : <span className="tag info">Bank</span>}{r.p.txn ? <div className="cell-sub">{r.p.txn}</div> : null}{r.p.photoId ? <PhotoLink pid={r.p.project} id={r.p.photoId} /> : null}</td>
             <td>{r.enteredBy}</td><td>{r.approvedBy || <span className="tag warn">Waiting for the Accountant</span>}{r.p.approvedAt ? <div className="cell-sub">{fds(r.p.approvedAt.slice(0, 10))}</div> : null}</td><td>{r.p.receipt}{r.p.ref ? <div className="cell-sub">{r.p.ref}</div> : null}</td></tr>)}
         </tbody></table></div> : <Empty kind="pay" title={`No payments in ${fm(month)}${via || sp.who ? ' with these filters' : ''}`} />}
       </div>

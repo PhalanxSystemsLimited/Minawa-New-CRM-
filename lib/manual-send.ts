@@ -4,7 +4,7 @@
 // Everything here runs inside the engine (use(s, …)).
 import { bankOf } from './bank';
 import type { Message, Owner } from './types';
-import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer, utilKind } from './engine';
+import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer, utilKind, isUtilBill, elecDue } from './engine';
 import { rs, fd, fm, fill, addDays } from './fmt';
 import { intl } from './dispatch';
 import { docToken, type DocKind } from './doclink';
@@ -12,6 +12,9 @@ import { docToken, type DocKind } from './doclink';
 /** The CRM's public address, for the PDF links in messages (set by the action that writes them). */
 let DOC_BASE = '';
 export const setDocBase = (u: string) => { DOC_BASE = (u || '').replace(/\/$/, ''); };
+/** Whether photos can be added (set by the server before composing; see lib/images.ts photoStore). */
+let PHOTOS_ON = false;
+export const setPhotosOn = (on: boolean) => { PHOTOS_ON = on; };
 /** The PDF that goes with a message, as a link the owner can open without signing in. */
 function pdfLine(pdf: Message['pdf']) {
   if (!pdf || !DOC_BASE) return null;
@@ -32,6 +35,9 @@ export const SEND_TYPES: { key: SendType; label: string; hint: string }[] = [
 // A bill, reminder, final notice or dues message: only the newest one for an owner is worth sending.
 const DUES = new Set(['bill', 'reminder', 'notice', 'link']);
 const isDues = (m: Message) => DUES.has(m.kind) && m.tpl !== 'credit';
+/** About an electricity bill (its bill or its reminder, 21 Nov 2026): a track of its own, so a maintenance reminder
+ *  never hides a waiting electricity bill (and the other way round). */
+export const isElecMsg = (m: Message) => m.tpl === 'elec' || (m.pdf?.kind === 'bill' && cur().bills.some(b => b.id === m.pdf!.id && isUtilBill(b)));
 
 export interface SendItem {
   key: string; ownerId: string; apt: string; name: string; phone: string; to: string;
@@ -41,6 +47,8 @@ export interface SendItem {
   fine?: { pct: number; offer: number; added: number } | null;
   /** The staff member's WhatsApp number the chat was opened from (the daily limit, 20 Nov 2026). */
   from?: string | null;
+  /** Electricity bills and their reminders (21 Nov 2026): the bill and its photo (printed on the bill PDF). */
+  billPhoto?: { billId: string; id: string | null; photos: boolean } | null;
 }
 
 
@@ -140,9 +148,20 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     // An electricity (utility) bill (Phase 3): the readings, the amount and its own due date.
     const k = utilKind(b), lines0 = b.lines.filter(l => l.kind === 'utility');
     const text = lines(head(o, `⚡ ${k} bill · ${fm(b.period)}`, `Your ${k.toLowerCase()} bill for *${fm(b.period)}* is *${rs(b.net)}*, due by *${fd(b.dueDate)}*.`), details(o), '',
-      `*${k} bill*`, ...lines0.map(l => `• ${l.label.replace(`${k}, `, '')}: ${rs(l.amount)}`), RULE, bal > 0 ? `*Total to pay now: ${rs(bal)}*` : `*Paid from your advance credit${bal < 0 ? `; credit left ${rs(-bal)}` : ''}.*`,
+      `*${k} bill*`, ...lines0.map(l => `• ${l.label.replace(`${k}, `, '')}: ${rs(l.amount)}`), b.photoId ? '📷 _The photo of your bill is in the PDF below._' : null, RULE, bal > 0 ? `*Total to pay now: ${rs(bal)}*` : `*Paid from your advance credit${bal < 0 ? `; credit left ${rs(-bal)}` : ''}.*`,
       bal > 0 ? payBlock() : null, bal > 0 ? replyFoot() : foot());
-    return out('bill', `${k} bill · ${fm(b.period)}`, text, { kind: 'bill', id: b.id });
+    return { ...out('bill', `${k} bill · ${fm(b.period)}`, text, { kind: 'bill', id: b.id }), billPhoto: { billId: b.id, id: b.photoId || null, photos: PHOTOS_ON } };
+  }
+  if (type === 'reminder' && billId && b && isUtilBill(b)) {
+    // An electricity bill reminder (21 Nov 2026): separate from the maintenance reminders; the balance shown is the
+    // customer's whole balance (maintenance and electricity).
+    const k = utilKind(b), left = Math.max(0, b.net - b.paid), all = elecDue(o);
+    if (left <= 0) return null;
+    const text = lines(head(o, `⏰ ${k} bill reminder · ${fm(b.period)}`, b.dueDate < d ? `Your ${k.toLowerCase()} bill for *${fm(b.period)}* was due on *${fd(b.dueDate)}* and is still unpaid.` : `A reminder that your ${k.toLowerCase()} bill for *${fm(b.period)}* is due on *${fd(b.dueDate)}*.`), details(o), '',
+      `*${k} bill*`, `• ${fm(b.period)}: ${rs(b.net)}`, b.paid > 0 ? `• Paid so far: ${rs(b.paid)}` : null, `• *Still to pay: ${rs(left)}*`, all > left ? `• All ${k.toLowerCase()} bills unpaid: ${rs(all)}` : null, RULE,
+      `*Your total balance (maintenance and ${k.toLowerCase()}): ${rs(Math.max(0, bal))}*`, payBlock(),
+      '', '_If you have already paid, please show the payment to your building manager._', replyFoot());
+    return { ...out('reminder', `${k} reminder · ${fm(b.period)}`, text, { kind: 'bill', id: b.id }), billPhoto: { billId: b.id, id: b.photoId || null, photos: PHOTOS_ON } };
   }
   if (type === 'bill' && b && bal <= 0) {
     const text = lines(head(o, `🧾 Maintenance bill · ${periodLabel(b)}`, `Your maintenance bill for *${periodLabel(b)}* has been paid from your advance credit. Nothing is due.`), details(o), '',
@@ -178,7 +197,7 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
 export function pendingGroups(filter?: (m: Message) => boolean) {
   const S = cur(), by = new Map<string, Message[]>();
   for (const m of S.messages) if (m.status === 'pending' && m.from === 'biz' && (!filter || filter(m))) {
-    const k = isDues(m) ? `${m.ownerId}:dues` : m.id;
+    const k = isDues(m) ? `${m.ownerId}:${isElecMsg(m) ? 'elec' : 'dues'}` : m.id;
     by.set(k, [...(by.get(k) || []), m]);
   }
   return [...by.values()].map(list => {
@@ -213,7 +232,7 @@ export const pendingCount = () => new Set(pendingGroups().map(g => g.msg.ownerId
 export function composeQueued(m: Message, d: string, t: string): Omit<SendItem, 'key' | 'fromMsg' | 'replaces'> | null {
   const S = cur(), o = ownerById(m.ownerId);
   if (!o) return null;
-  if (isDues(m)) return compose(o, m.kind as 'bill' | 'reminder' | 'notice' | 'link', d, t, {}, m.kind === 'bill' ? m.pdf?.id : undefined);
+  if (isDues(m)) return compose(o, m.kind as 'bill' | 'reminder' | 'notice' | 'link', d, t, {}, m.kind === 'bill' || isElecMsg(m) ? m.pdf?.id : undefined);
   if (m.kind === 'bill') return compose(o, 'bill', d, t, {}, m.pdf?.id);   // a bill paid from credit
   if (m.kind === 'receipt') return { ...compose(o, 'receipt', d, t, {}, undefined, m.pdf?.id)!, kind: m.kind, title: m.title };
   // A maintenance notice: its title and text in the full layout, with this flat's details.

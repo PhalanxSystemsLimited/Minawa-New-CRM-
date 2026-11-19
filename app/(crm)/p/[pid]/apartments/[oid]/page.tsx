@@ -1,5 +1,5 @@
 // One apartment (the demo's viewOwner): the flat, its owner, and bills, payments, history, notes and messages.
-import { cur, ownerById, accountsOf, currentOf, balance, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator, instalmentStatus, anchorOf, billsOf, openingDue } from '@/lib/engine';
+import { cur, ownerById, accountsOf, currentOf, balance, elecDue, elecBills, ownerStatus, sortedPayments, unpaid, isAdmin, feePct, periodLabel, nextBillFor, sheetOf, hasGenerator, instalmentStatus, anchorOf, billsOf, openingDue } from '@/lib/engine';
 import { getStore } from '@/lib/store';
 import type { WaLog } from '@/lib/types';
 import { PLAN_LABEL } from '@/lib/types';
@@ -23,7 +23,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
     if (!sel) return <>{projHead('owners')}<div className="card allclear"><div className="big">Apartment not found</div><Go href={`/p/${pid}/apartments`} className="btn">← Apartments</Go></div></>;
     const accts = accountsOf(sel), o = currentOf(sel), ids = new Set(accts.map(x => x.id)), many = accts.length > 1;
     const who = (id: string) => many ? <div className="cell-sub">{ownerById(id)?.name || ''}</div> : null;
-    const bal = balance(o), st = ownerStatus(o), closed = o.status === 'closed';
+    const bal = balance(o), st = ownerStatus(o), closed = o.status === 'closed', elec = S.settings.rules.utilities.includes('Electricity') && elecBills(o).length > 0;
     const bills = S.bills.filter(b => ids.has(b.ownerId)).sort((a, b) => a.billDate < b.billDate ? 1 : -1);
     let run = 0;
     const led = S.entries.filter(e => ids.has(e.ownerId)).map(e => { run += e.amount; return { e, run }; }).reverse();
@@ -80,7 +80,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
                 return <div className="cell-sub" key={x.id}>{x.name} · {x.possessionKnown === false ? '' : fd(x.possession) + ' – '}{x.closedOn ? fd(x.closedOn) : ''}{c ? ` · cleared, ${c.no}` : ''}</div>; })}</div> : null}
             </div>
           </div>
-          <div className="bal"><div className="l">{bal < 0 ? 'Credit' : 'Owes'}</div><div className="v num" style={{ color: bal > 0 ? (st === 'flagged' ? 'var(--bad)' : 'var(--fg)') : 'var(--good)' }}>{rs(Math.abs(bal))}</div><div className="cell-sub">{bal < 0 ? 'Used for the next bills' : bal > 0 ? '' : 'All paid'}</div></div>
+          <div className="bal"><div className="l">{bal < 0 ? 'Credit' : 'Owes'}</div><div className="v num" style={{ color: bal > 0 ? (st === 'flagged' ? 'var(--bad)' : 'var(--fg)') : 'var(--good)' }}>{rs(Math.abs(bal))}</div><div className="cell-sub">{bal < 0 ? 'Used for the next bills' : bal > 0 ? (elec ? `maintenance ${rs(Math.max(0, bal - elecDue(o)))} · electricity ${rs(elecDue(o))}` : '') : 'All paid'}</div></div>
         </div>
         {closed ? null : <div className="actions">
           {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Enter payment' : 'Record cash payment'}</Go> : null}

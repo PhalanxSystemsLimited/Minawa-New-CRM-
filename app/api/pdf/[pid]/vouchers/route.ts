@@ -5,6 +5,7 @@ import { use, ownerById } from '@/lib/engine';
 import { billDoc, receiptDoc, statementDoc, type DocData } from '@/lib/docdata';
 import { voucherDocs } from '@/lib/vouchers';
 import { renderPdfMany } from '@/lib/pdf';
+import { fillPhotos } from '@/lib/images';
 import { todayPKT } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ pid: str
     const o = ownerById(x.id); return o ? statementDoc(o) : null;
   }).filter((d): d is DocData => !!d));
   if (!docs.length) return new Response('Nothing chosen to print', { status: 404 });
+  await fillPhotos(docs);
   const pdf = await renderPdfMany(docs, `Printed vouchers ${s.proj.name} ${todayPKT()}`);
   return new Response(new Uint8Array(pdf), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="Vouchers-${pid}-${todayPKT()}.pdf"` } });
 }

@@ -1,7 +1,7 @@
 // File store for running without Supabase: data/local-db.json, created from the sample on first use.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Rate, Company, WaLog, WaTake, WaUse } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Rate, Company, WaLog, WaTake, WaUse, ImageRec } from '../types';
 import { TEMPLATES, PROJECTS, defaultSettings } from '../defaults';
 import { STATE_TABLES, KEY, natSort, type TableName } from './tables';
 import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, useOf, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
@@ -11,6 +11,7 @@ interface DB {
   projects: Project[]; templates: Record<string, Template>; settings: Record<string, ProjectSettings>; counters: Record<string, number>;
   log: LogEntry[]; staff: Staff[]; company?: Company; walog?: WaLog[];
   waOpens?: { number: string; to_phone: string; staff_id: string; staff_name: string; project: string; owner_id: string; at: string }[];
+  images?: ImageRec[];
   waExtras?: { number: string; amount: number; reason: string; by_id: string; by_name: string; at: string }[];
   owners: object[]; bills: object[]; entries: object[]; messages: object[]; payments: object[]; handovers?: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
 }
@@ -143,6 +144,9 @@ export class LocalStore implements Store {
     const d = db(); (d.waExtras ||= []).push({ number: i.number, amount: i.amount, reason: i.reason, by_id: i.byId, by_name: i.byName, at: new Date().toISOString() });
     d.counters.__rev = Date.now(); flush();
   }
+  async saveImage(r: ImageRec) { (db().images ||= []).push(clone(r)); flush(); }
+  async getImage(id: string) { const r = (db().images || []).find(x => x.id === id); return r ? clone(r) : null; }
+  async linkImage(id: string, refId: string) { const r = (db().images || []).find(x => x.id === id); if (r) { r.refId = refId; flush(); } }
   async listStaff() { return clone(db().staff); }
   async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); db().counters.__rev = Date.now(); flush(); }
   async replaceProjectData(pid: string, s: State) {

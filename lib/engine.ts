@@ -52,6 +52,11 @@ export const billsOf = (o: Owner) => S.bills.filter(b => b.ownerId === o.id).sor
 export const balance = (o: Owner) => S.entries.reduce((s, e) => e.ownerId === o.id ? s + e.amount : s, 0);
 export const unpaidMaint = (b: Bill) => b.net - b.paid;
 export const unpaid = (b: Bill) => (b.net - b.paid) + (b.fine - b.finePaid);
+/** Electricity (utility) bills: bills with no maintenance months (Oakwood, 21 Nov 2026). */
+export const isUtilBill = (b: Bill) => !b.months && b.lines.some(l => l.kind === 'utility');
+export const elecBills = (o: Owner) => billsOf(o).filter(isUtilBill);
+/** What the customer still owes on electricity bills; the rest of the balance is maintenance (and earlier dues). */
+export const elecDue = (o: Owner) => elecBills(o).reduce((a, b) => a + Math.max(0, b.net - b.paid), 0);
 export const promiseOn = (o: Owner, d: string) => !!o.promiseUntil && d <= o.promiseUntil;
 export const isAdmin = () => S.role === 'admin';
 export const goLive = () => S.goLive;
@@ -440,7 +445,7 @@ function syncFee(o: Owner, d: string) {
   log(d, '11:00', 'fine', `Fine for ${o.apt} is now ${rs(target)}: ${feePct()}% of ${rs(dues)} owed`, o.id);
   return add;
 }
-function allocate(o: Owner, amt: number, prefer?: 'electricity'): Applied[] {
+function allocate(o: Owner, amt: number, prefer?: 'electricity', billId?: string | null): Applied[] {
   let left = amt;
   const out: Applied[] = [];
   const put = (kind: Applied['kind'], label: string, x: number, ref?: string) => { if (x <= 0) return; const r = out.find(y => y.label === label); if (r) r.amount += x; else out.push({ kind, label, amount: x, ...(ref ? { ref } : {}) }); };
@@ -455,7 +460,9 @@ function allocate(o: Owner, amt: number, prefer?: 'electricity'): Applied[] {
     if (late > 0) { o.openingLeft -= late; left -= late; put('dues', `${arrL}, late instalments`, late, 'arrears'); }
   } else if (o.openingLeft > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x, 'arrears'); }
   // A payment marked for electricity (Oakwood) pays the electricity bills first, oldest first.
-  const order = prefer === 'electricity' ? [...billsOf(o).filter(b => !b.months), ...billsOf(o).filter(b => b.months)] : billsOf(o);
+  let order = prefer === 'electricity' ? [...billsOf(o).filter(b => !b.months), ...billsOf(o).filter(b => b.months)] : billsOf(o);
+  // "Bill received" for one electricity bill (21 Nov 2026): that bill first.
+  if (billId) { const t = order.find(b => b.id === billId); if (t) order = [t, ...order.filter(b => b !== t)]; }
   for (const b of order) { if (left <= 0) break; const x = Math.min(left, b.net - b.paid); if (x > 0) { b.paid += x; left -= x; put('dues', `${b.months ? 'Maintenance' : utilKind(b)}, ${periodLabel(b)}`, x, b.id); } }
   if (o.instalments && o.openingLeft > 0 && left > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', `${arrL}, instalments ahead of time`, x, 'arrears'); }
   if (left > 0 && o.feeDue > 0) { const x = Math.min(left, o.feeDue); o.feeDue -= x; left -= x; put('fee', feeL, x, 'fee'); }
@@ -471,6 +478,14 @@ export function waive(o: Owner, amt: number, reason: string, d: string, t: strin
   return applied;
 }
 type MsgIn = Partial<Message> & { kind: string; title: string; text: string };
+/** Queue an electricity bill reminder (the daily run 3 days after the due date, or the building manager from the
+ *  Electricity bills screen). Returns false when the bill is paid or a reminder for it is already waiting. */
+export function elecReminder(o: Owner, b: Bill, d: string, t: string) {
+  if (b.net - b.paid <= 0 || S.messages.some(m => m.status === 'pending' && m.tpl === 'elec' && m.pdf?.id === b.id)) return false;
+  b.reminders = [...(b.reminders || []), 1];
+  pushMsg(o, d, t, { kind: 'reminder', title: `${utilKind(b)} reminder · ${fm(b.period)}`, tpl: 'elec', pdf: { kind: 'bill', id: b.id }, text: '' });
+  return true;
+}
 export function pushMsg(o: Owner, d: string, t: string, m: MsgIn) {
   const msg: Message = { id: 'M' + nid('msg'), ownerId: o.id, project: S.project, d, t, from: 'biz', tpl: null, vars: null, pdf: null,
     status: 'queued', waId: null, error: null, manual: false, shot: false, sentAt: null, ...m };
@@ -714,13 +729,25 @@ export function runDaily(d: string) {
     else if (x.bill) sendBill(o, x.bill, d);
     else if (x.statement) sendStatement(o, d);
   }
-  log(d, '11:00', 'job', `Daily run: ${c.statements ? `${c.statements} go-live statement(s), ` : ''}${c.bills} bill(s), ${c.notices} late warning(s)${c.paused ? `, ${c.paused} paused by promise` : ''}${c.alerts ? `, ${c.alerts} promise alert(s)` : ''}`);
+  // Electricity bills (21 Nov 2026): one reminder of its own, 3 days after the bill's due date if it is still unpaid
+  // (separate from the maintenance reminders and warnings). More can be sent from the Electricity bills screen.
+  for (const o of S.owners) {
+    if (o.status !== 'active') continue;
+    for (const b of elecBills(o)) {
+      if (b.net - b.paid <= 0 || (b.reminders || []).length || addDays(b.dueDate, 3) > d) continue;
+      if (promiseOn(o, d)) { c.paused++; continue; }
+      if (!elecReminder(o, b, d, '11:00')) continue;
+      c.reminders++;
+      log(d, '11:00', 'job', `${utilKind(b)} bill reminder for ${o.apt} (${fm(b.period)}, ${rs(b.net - b.paid)} unpaid) ready to send`, o.id);
+    }
+  }
+  log(d, '11:00', 'job', `Daily run: ${c.statements ? `${c.statements} go-live statement(s), ` : ''}${c.bills} bill(s), ${c.reminders ? `${c.reminders} electricity reminder(s), ` : ''}${c.notices} late warning(s)${c.paused ? `, ${c.paused} paused by promise` : ''}${c.alerts ? `, ${c.alerts} promise alert(s)` : ''}`);
   return c;
 }
 export function recordPayment(o: Owner, amt: number, method: string, ref: string | null, d: string, source: Payment['source'], t: string, by: string, extra?: Partial<Payment>) {
   const pid = 'PAY-' + (1000 + nid('pay')), before = balance(o);
   addEntry(o.id, d, 'payment', -amt, `Payment · ${method}`, { ref: ref || pid, pid });
-  const applied = allocate(o, amt, extra?.forWhat === 'electricity' ? 'electricity' : undefined);
+  const applied = allocate(o, amt, extra?.forWhat === 'electricity' ? 'electricity' : undefined, extra?.billId);
   const bal = balance(o);
   const p: Payment = { id: pid, ownerId: o.id, project: S.project, d, t, amount: amt, method, ref: ref || pid, source, by: by || 'Provider', before, applied, balAfter: bal,
     receipt: 'RC-' + d.slice(0, 4) + '-' + String(nid('rc' + d.slice(0, 4))).padStart(4, '0'), ...(extra || {}) };
@@ -778,7 +805,7 @@ export function verifyProof(p: Proof, d: string, t: string, by: string, amount?:
 function entryPayment(o: Owner, p: Proof, d: string, t: string) {
   const m = p.method || 'Cash', bank = m === 'Bank transfer';
   const pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, p.byName || 'Building manager',
-    { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: null, approvedAt: null, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id });
+    { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: null, approvedAt: null, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id, photoId: p.photoId || null, billId: p.billId || null });
   p.payId = pay.id;
   return pay;
 }
@@ -801,9 +828,9 @@ export function receiveCash(pays: Payment[], by: string, d: string, t: string) {
  *  customer straight away. The entry also waits for the Accountant, whose approval confirms the money reached him
  *  (verifyProof); "not received" takes the payment back (rejectProof). */
 export const MANAGER_METHODS = ['Cash', 'Bank transfer'];
-export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash', txn = '', forWhat: 'maintenance' | 'electricity' | null = null) {
+export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash', txn = '', forWhat: 'maintenance' | 'electricity' | null = null, more: { photoId?: string | null; billId?: string | null } = {}) {
   const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
-    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null, forWhat, payId: null };
+    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null, forWhat, payId: null, photoId: more.photoId || null, billId: more.billId || null };
   S.proofs.push(pr);
   const pay = entryPayment(o, pr, d, t);
   log(d, t, 'payment', `${rs(amount)} ${method === 'Cash' ? 'cash' : 'bank transfer'} for ${o.apt} entered by ${byName}${ref ? ` (receipt ${ref})` : ''}${txn ? ` (transaction ${txn})` : ''}, paid ${fd(paidOn)}. Receipt ${pay.receipt} ready to send; the Accountant confirms the money`, o.id);

@@ -9,6 +9,7 @@ import type { SendItem, SendType } from '@/lib/manual-send';
 import { Wa, Ic } from './icons';
 import { clearAwait, type WaAnswer } from './WaReturnPrompt';
 import { openWhatsApp, savedFrom, saveFrom } from './wa-open';
+import { PhotoField } from './PhotoField';
 import type { WaUse } from '@/lib/types';
 
 /** A sending number for the picker: its label and daily limit (20 Nov 2026). */
@@ -191,6 +192,9 @@ export function SendConsole({ pid, rows, blocks, types, start, ids, go, notice, 
       </div> : null}
       {it.pdfHref ? <div className="wa-att"><span className="pdf-ic" aria-hidden="true">PDF</span><div className="t"><b>{it.pdf?.kind === 'receipt' ? 'Receipt' : it.pdf?.kind === 'bill' ? 'Bill' : 'Statement'} PDF</b><span className="cell-sub">Optional: download it and attach it in the chat</span></div>
         <a className="btn sm" href={it.pdfHref} download><Ic n="download" s={14} /> Download</a></div> : null}
+      {it.billPhoto ? <div className="wa-att sc-photo">{it.billPhoto.id ? <a className="ph-thumb" href={`/api/img/${it.billPhoto.id}`} target="_blank" rel="noopener"><img src={`/api/img/${it.billPhoto.id}`} alt="Photo of the bill" /></a> : <span className="pdf-ic ph-ic" aria-hidden="true"><Ic n="camera" s={16} /></span>}
+        <div className="t"><b>Photo of the bill</b><span className="cell-sub">{it.billPhoto.id ? 'It is printed on the bill PDF the customer opens from the message.' : it.billPhoto.photos ? 'Not added yet: add it now and it is printed on the bill PDF the customer opens.' : 'Photos aren\'t set up yet (Cloudinary).'}</span></div>
+        {it.billPhoto.photos ? <PhotoField pid={pid} kind="bill" owner={it.ownerId} attach={{ billId: it.billPhoto.billId }} current={it.billPhoto.id} label="Photo of the bill" small /> : null}</div> : null}
       {done[it.key] === 'notsent' ? <div className="callout warn" style={{ marginTop: 10 }}><div>Saved as <b>not sent</b>. Open the chat again to send it, or Skip.</div></div>
         : !opened ? <p className="cell-sub" style={{ margin: '10px 0 0' }}>Open the chat, press Send in WhatsApp, then come back here: the CRM asks whether it went and records your answer.</p> : null}
       {err ? <div className="callout bad" style={{ marginTop: 10 }}><div>{err}</div></div> : null}

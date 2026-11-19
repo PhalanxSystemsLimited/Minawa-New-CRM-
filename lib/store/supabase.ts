@@ -1,7 +1,7 @@
 // Supabase store (production). Uses the service role on the server only; the browser never writes.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Company, WaLog, WaTake, WaUse } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Company, WaLog, WaTake, WaUse, ImageRec } from '../types';
 import { TEMPLATES, defaultSettings } from '../defaults';
 import { TABLES, STATE_TABLES, KEY, toCol, fromCol, natSort, type TableName } from './tables';
 import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, useOf, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
@@ -182,6 +182,9 @@ export class SupabaseStore implements Store {
     if (error) throw new Error(error.message);
     await this.bump();
   }
+  async saveImage(r: ImageRec) { const { error } = await this.db.from('images').insert(toRow(r as unknown as Record<string, unknown>)); if (error) throw new Error(error.message); }
+  async getImage(id: string) { const { data, error } = await this.db.from('images').select('*').eq('id', id).limit(1); if (error) throw new Error(error.message); return data?.[0] ? fromRow<ImageRec>(data[0]) : null; }
+  async linkImage(id: string, refId: string) { const { error } = await this.db.from('images').update({ ref_id: refId }).eq('id', id); if (error) throw new Error(error.message); }
   async getCompany() { const { data } = await this.db.from('company').select('*').eq('id', 1).limit(1); const r = data?.[0]; if (!r) return { ...DEFAULT_COMPANY }; const c = fromRow<Company & { id?: number }>(r); delete c.id; return { ...DEFAULT_COMPANY, ...c }; }
   async saveCompany(c: Company) { await this.upsert('company', [{ id: 1, ...toRow(c as unknown as Record<string, unknown>) }], 'id'); await this.bump(); }
 }
