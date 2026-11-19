@@ -6,7 +6,7 @@ import { Ic } from '@/components/icons';
 import { Go, A, LiveSearch } from '@/components/client';
 import { projectPage, projHead, newPayments, payKey, paySeenCookie } from '@/components/views/project';
 import { PayRows, MarkPaymentsSeen } from '@/components/PayRows';
-import { when, viaHtml, ownerHref, PhotoLink } from '@/components/views/bits';
+import { when, viaHtml, ownerHref, PhotoLink, byManager } from '@/components/views/bits';
 import { Empty } from '@/components/views/art';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,8 @@ export default async function Payments({ params, searchParams }: { params: Promi
                     {item('Paid on', `${fd(p.d)}, ${t12(p.t)}`)}
                     {item('Amount', rs(p.amount))}
                     {item('Method', p.method)}
-                    {item('Recorded', p.source === 'proof' ? `Confirmed: ${p.by}` : `By ${p.by}`)}
+                    {item(p.entryId ? 'Entered by' : 'Recorded', p.entryId ? `${p.enteredBy || p.by} (building manager)` : p.source === 'proof' ? `Confirmed: ${p.by}` : `By ${p.by}`)}
+                    {p.entryId ? item('Accountant', p.approvedBy ? `Confirmed by ${p.approvedBy}` : 'Waiting to confirm the money') : null}
                     {item('Reference', p.ref)}
                     {item('Receipt', p.receipt)}
                     {p.photoId ? item('Photo', <PhotoLink pid={p.project} id={p.photoId} label="Open the photo" />) : null}
@@ -59,7 +60,7 @@ export default async function Payments({ params, searchParams }: { params: Promi
                   {p.applied?.length ? <div className="pd-app"><div className="l">What it paid</div><ul>{p.applied.map((x, i) => <li key={i}><span>{x.label}</span><b className="num">{rs(x.amount)}</b></li>)}</ul></div> : null}
                   <div className="pd-act"><A href={qs({ doc: `receipt:${p.id}` })} className="btn sm">Receipt {p.receipt}</A><A href={ownerHref(o)} className="btn sm">Open apartment {o.apt}</A></div>
                 </div> }; })} />
-            <tfoot><tr><td></td><td colSpan={2}><strong>{rows.length} payment{rows.length === 1 ? '' : 's'}</strong></td><td className="r num"><strong>{rs(total)}</strong></td><td colSpan={2} className="cell-sub">{rows.filter(p => p.source === 'proof').length} entered by building managers</td></tr></tfoot></table></div>}
+            <tfoot><tr><td></td><td colSpan={2}><strong>{rows.length} payment{rows.length === 1 ? '' : 's'}</strong></td><td className="r num"><strong>{rs(total)}</strong></td><td colSpan={2} className="cell-sub">{(() => { const m = rows.filter(byManager), w = m.filter(p => !p.approvedBy).length; return `${m.length} entered by building manager${m.length === 1 ? '' : 's'}${w ? ` · ${w} waiting for the Accountant` : ''}`; })()}</td></tr></tfoot></table></div>}
       </div></div>
     </>;
   });

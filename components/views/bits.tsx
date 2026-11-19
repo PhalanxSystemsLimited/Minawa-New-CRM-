@@ -10,8 +10,15 @@ export const pill = (s: OwnerStatus) => <span className={`pill ${s}`}>{STATUS_LA
 export const when = (d: string, t: string) => { const S = cur(); return `${d === S.today ? 'Today' : d === addDays(S.today, -1) ? 'Yesterday' : fds(d)}, ${t12(t)}`; };
 export const P = (pid: string, sub = '') => `/p/${pid}${sub}`;
 export const ownerHref = (o: Owner, extra = '') => `/p/${o.project}/apartments/${o.id}${extra}`;
+/** Who entered a payment and whether the Accountant has confirmed it (21 Nov 2026: a building manager's entry is a
+ *  payment with `entryId`, counted at once and confirmed later). */
+export const byManager = (p: Payment) => !!p.entryId || p.source === 'proof';
+export function whoLine(p: Payment) {
+  if (p.entryId) return `Entered by ${p.enteredBy || p.by}${p.approvedBy ? ` · confirmed by ${p.approvedBy}` : ' · waiting for the Accountant'}`;
+  return p.source === 'proof' ? `Confirmed: ${p.by}` : `Recorded by ${p.by}`;
+}
 export function viaHtml(p: Payment) {
-  return <><span className="recv-by"><Ic n="bank" s={13} /> {p.method.replace(' (screenshot checked)', '')}</span><div className="cell-sub">{p.source === 'proof' ? `Confirmed: ${p.by}` : `Recorded by ${p.by}`}</div>{p.photoId ? <PhotoLink pid={p.project} id={p.photoId} /> : null}</>;
+  return <><span className="recv-by"><Ic n="bank" s={13} /> {p.method.replace(' (screenshot checked)', '')}</span><div className="cell-sub">{whoLine(p)}</div>{p.photoId ? <PhotoLink pid={p.project} id={p.photoId} /> : null}</>;
 }
 /** The photo taken when a payment was entered (21 Nov 2026): opens it with the payment's details. */
 export const PhotoLink = ({ pid, id, label = 'Photo' }: { pid: string; id: string; label?: string }) => <A href={`/p/${pid}/photo/${id}`} className="ph-link"><Ic n="image" s={13} /> {label}</A>;

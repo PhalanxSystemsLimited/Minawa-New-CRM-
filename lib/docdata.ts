@@ -86,7 +86,7 @@ export function receiptDoc(p: Payment): DocData {
       { head: ['This payment paid', 'Amount'], rows: [...(rows.length ? rows.map(r => ({ label: r.label, amount: rs(r.amount) })) : [{ label: 'Maintenance dues, oldest first', amount: rs(p.amount) }]), { label: 'Amount received', amount: rs(p.amount), tot: true }] },
       { rows: [...(p.before != null ? [{ label: 'Owed before this payment', amount: p.before < 0 ? `${rs(-p.before)} credit` : rs(p.before) }] : []), { label: 'Balance now', amount: bal, bold: true }] }
     ],
-    foot: `${p.source === 'proof' ? `Cash received by the building manager and confirmed by the Accountant (${p.by}).` : `Cash recorded in the CRM by ${p.by}.`} Dues are paid oldest first; the ${feePct()}% late fee is paid in proportion.`
+    foot: `${p.entryId ? `${/bank/i.test(p.method) ? 'Bank transfer' : 'Cash'} received by the building manager (${p.enteredBy || p.by})${p.approvedBy ? ` and confirmed by the Accountant (${p.approvedBy})` : ''}.` : p.source === 'proof' ? `Cash received by the building manager and confirmed by the Accountant (${p.by}).` : `${/bank/i.test(p.method) ? 'Payment' : 'Cash'} recorded in the CRM by ${p.by}.`} Dues are paid oldest first; the ${feePct()}% late fee is paid in proportion.`
   };
 }
 
