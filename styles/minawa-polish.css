@@ -635,3 +635,33 @@ html[data-theme=frost] .el-search input{background:rgba(255,255,255,.16);color:#
 .sc-combo{margin:0 0 12px}
 .sc-combo-l{display:flex;flex-direction:column;gap:2px;margin-top:6px;font-size:12.5px}
 .sc-combo-l a{font-weight:700;color:var(--rust)}
+
+/* ---- Update 111 (21 Nov 2026): wider forms on bigger screens (phones keep the bottom sheet) ---- */
+@media (min-width:768px){
+  #modal .m-card{width:min(600px,calc(100vw - 48px));overflow-x:hidden}
+  #modal .m-card.wide{width:min(820px,calc(100vw - 48px))}
+}
+@media (min-width:1200px){
+  #modal .m-card{width:min(680px,calc(100vw - 64px))}
+  #modal .m-card.wide{width:min(940px,calc(100vw - 64px))}
+}
+@media (min-width:1600px){
+  #modal .m-card{width:740px}
+  #modal .m-card.wide{width:1040px}
+}
+/* Staff form: name and email side by side; buildings in more columns as space allows. */
+.staff-form{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+.staff-form > *{grid-column:1/-1;min-width:0}
+.staff-form > .form-row.half{grid-column:auto}
+.staff-form .bld-pick{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+@media (max-width:767px){.staff-form{grid-template-columns:1fr}.staff-form > .form-row.half{grid-column:1/-1}}
+/* WhatsApp number rows fit the width they get (no sideways scrolling in a narrow form). */
+.wa-nums{container-type:inline-size;min-width:0}
+.wa-num{grid-template-columns:minmax(170px,1.7fr) minmax(130px,1fr) minmax(100px,.8fr) auto auto}
+.wa-num select,.wa-num input{width:100%;min-width:0}
+@container (max-width:620px){
+  .wa-num{grid-template-columns:1fr 1fr}
+  .wa-num .form-row:first-child{grid-column:1/-1}
+  .wa-num-on{grid-column:1;justify-self:start}
+  .wa-num-x{grid-column:2;justify-self:end}
+}

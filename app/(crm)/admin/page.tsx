@@ -75,20 +75,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
     <div className="card"><div className="card-row"><h3>Accountant activity <small>latest</small></h3><Go href="/log?who=accountants" className="btn sm">See all</Go></div>
       <ActivityList list={accActs} staff={staff} projects={projs} empty="Nothing yet. Everything an accountant does (payments, notes, utility bills, notices, fines) shows here." />
     </div>
-    {sp.add ? <ModalShell title="Add someone" closeKeys={keys}>
-      <form action={inviteAction} className="rules-form">
-        <div className="form-row"><label htmlFor="iv-n">Name</label><input id="iv-n" name="name" required /></div>
-        <div className="form-row"><label htmlFor="iv-e">Email (they sign in with it)</label><input id="iv-e" name="email" type="email" autoComplete="off" required /></div>
+    {sp.add ? <ModalShell title="Add someone" closeKeys={keys} wide>
+      <form action={inviteAction} className="rules-form staff-form">
+        <div className="form-row half"><label htmlFor="iv-n">Name</label><input id="iv-n" name="name" required /></div>
+        <div className="form-row half"><label htmlFor="iv-e">Email (they sign in with it)</label><input id="iv-e" name="email" type="email" autoComplete="off" required /></div>
         <StaffAccess prefix="iv" role="accountant" projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={[]} saving="create" />
         <WaNumbersField prefix="iv" initial={[]} />
         <div className="form-row"><label htmlFor="iv-p">Password (8+ characters)</label><PasswordInput id="iv-p" name="password" autoComplete="new-password" minLength={8} required /></div>
         <p className="cell-sub" style={{ margin: 0 }}>They can sign in straight away. Give them the email and password yourself.</p>
         <div className="m-actions"><CloseBtn keys={keys} /><Submit>Add</Submit></div>
       </form></ModalShell> : null}
-    {ed ? <ModalShell title={`Edit ${ed.name}`} closeKeys={keys}>
-      <form action={staffAction} className="rules-form"><input type="hidden" name="id" value={ed.id} />
-        <div className="form-row"><label htmlFor="ed-n">Name</label><input id="ed-n" name="name" defaultValue={ed.name} required /></div>
-        <div className="form-row"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
+    {ed ? <ModalShell title={`Edit ${ed.name}`} closeKeys={keys} wide>
+      <form action={staffAction} className="rules-form staff-form"><input type="hidden" name="id" value={ed.id} />
+        <div className="form-row half"><label htmlFor="ed-n">Name</label><input id="ed-n" name="name" defaultValue={ed.name} required /></div>
+        <div className="form-row half"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
         <StaffAccess key={ed.id} prefix="ed" role={ed.role} projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={ed.role === 'admin' ? [] : ed.projects || []} saving="save" />
         <WaNumbersField key={'n' + ed.id} prefix="ed" initial={ed.waNumbers || []} />
         <div className="form-row"><label htmlFor="ed-p">New password <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(leave empty to keep the current one)</span></label><PasswordInput id="ed-p" name="password" autoComplete="new-password" minLength={8} /></div>
