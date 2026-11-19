@@ -701,3 +701,7 @@ html[data-theme]:root .doc :is(b,strong){color:inherit}
 .cam-acts{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .cam-shot{min-width:130px}
 html[data-theme=frost] .cam-card{background:rgba(40,46,48,.92);color:#fff}
+
+/* ---- Update 117 (21 Nov 2026): plain links in a More menu look like the other menu items ---- */
+.menu > a:not(.btn){display:block;border:0;background:transparent;text-align:left;padding:9px 12px;border-radius:9px;font-weight:500;font-size:13.5px;line-height:1.4;color:var(--fg);text-decoration:none}
+.menu > a:not(.btn):hover{background:var(--surface-2);color:var(--accent,var(--ink))}

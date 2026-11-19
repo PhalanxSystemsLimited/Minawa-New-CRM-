@@ -88,8 +88,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <details className="more"><summary className="btn">More ▾</summary><div className="menu">
             {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
             <Go href={m('note')}>Add note</Go>
-            <a href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener">Payment history (PDF)</a>
-            <a href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener">Apartment history (PDF)</a>
+            <a className="menu-a" href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener">Payment history (PDF)</a>
+            <a className="menu-a" href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener">Apartment history (PDF)</a>
             {S.role !== 'accountant' ? <Go href={`${base}/leave`}>Customer left (hand back the keys)</Go> : null}
             {S.role !== 'accountant' ? o.flagged ? <Go href={m('discontinue')}>Resume maintenance{ask}</Go> : bal > 0 && billsOf(o).some(b => b.dueDate < S.today && b.net > b.paid) || (o.openingLeft > 0 && S.today > openingDue()) ? <Go href={m('discontinue')}>Discontinue maintenance{ask}</Go> : null : null}
             <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
