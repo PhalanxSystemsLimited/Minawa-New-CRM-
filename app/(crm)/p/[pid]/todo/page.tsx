@@ -64,7 +64,7 @@ export default async function Todo({ params, searchParams }: { params: Promise<{
               : <Go href={ownerHref(o, '?m=fix&from=todo')} className="btn sm">{o.noPhone ? 'Add number' : 'Fix number'}</Go>}</div>; })}</div>
       </div> : null}
       {al.length ? <div className="card"><h3>{al.every(a => a.kind === 'entry') ? 'Payments the Accountant didn\'t receive' : al.some(a => a.kind === 'entry') ? 'To follow up' : 'Promises not kept'}</h3>
-        <div className="list">{al.map(a => { const o = ownerById(a.ownerId); return <div className="li" key={a.id}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> {a.kind === 'entry' ? <span className="tag bad">Not received</span> : <span className="tag warn">Promise not kept</span>}</div><div className="b">{o.name} · {a.text}</div></div><div style={{ display: 'flex', gap: 6 }}><Go href={ownerHref(o)} className="btn sm">Open</Go><form action={alertDoneAction}>{hid(a.id)}<Submit className="btn sm ghost">Done</Submit></form></div></div>; })}</div>
+        <div className="list">{al.map(a => { const o = ownerById(a.ownerId); return <div className="li" key={a.id}><div className="t"><div className="a"><span className="apt-t">{o.apt}</span> {a.kind === 'entry' ? <span className="tag bad">Not received</span> : <span className="tag warn">Promise not kept</span>}</div><div className="b">{o.name} · {a.text}</div></div>{acts ? <div style={{ display: 'flex', gap: 6 }}><Go href={ownerHref(o)} className="btn sm">Open</Go><form action={alertDoneAction}>{hid(a.id)}<Submit className="btn sm ghost">Done</Submit></form></div> : <span className="tag warn">{mgrs.length ? `Waiting for ${mgrs[0]}` : 'No building manager yet'}</span>}</div>; })}</div>
       </div> : null}
     </>;
   });

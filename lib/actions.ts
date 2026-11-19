@@ -182,7 +182,8 @@ export async function rejectAction(fdata: FormData) {
   go(back || `/p/${pid}/todo`, kind === 'cash' ? 'Marked as not received. The building manager sees your note.' : 'Owner told on WhatsApp');
 }
 export async function alertDoneAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), id = S(fdata, 'id');
+  // A building manager's follow-up: only he marks it done (21 Nov 2026).
+  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), id = S(fdata, 'id');
   await mutate(pid, staff, s => { const a = s.alerts.find(x => x.id === id); if (a) a.done = true; return a; }, { send: false, what: (_s, a) => a ? `Alert for ${ownerById(a.ownerId)?.apt || 'an apartment'} marked done by ${staffName(staff)}: ${a.text.slice(0, 120)}` : null });
   go(`/p/${pid}/todo`);
 }

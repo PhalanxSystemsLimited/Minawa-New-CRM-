@@ -22,9 +22,6 @@ const status = (t: Task, today: string) => t.overdue
   ? <span className="tag bad">Late · {diff(today, t.deadline)} day{diff(today, t.deadline) === 1 ? '' : 's'}</span>
   : t.deadline === today ? <span className="tag warn">Due today</span> : <span className="tag info">Open</span>;
 
-/** Someone watching another person's task (the Admin, or the Accountant following a building manager) opens where
- *  they can see it, not the screen where it is done: sending is the building manager's, so it opens Messages. */
-const watchHref = (t: Task) => t.href.includes('/send') ? `/p/${t.project}/messages` : t.href.replace(/\?m=fix&from=todo$/, '');
 
 function Table({ list, staff, today, showWho }: { list: Task[]; staff: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['listStaff']>>; today: string; showWho: boolean }) {
   if (!list.length) return <Empty kind="done" small title="Nothing pending" />;
@@ -37,7 +34,8 @@ function Table({ list, staff, today, showWho }: { list: Task[]; staff: Awaited<R
       <td data-l="Since" style={{ whiteSpace: 'nowrap' }}>{fds(t.since)}</td>
       <td data-l="Deadline" style={{ whiteSpace: 'nowrap' }}>{fds(t.deadline)}</td>
       <td data-l="Status">{status(t, today)}</td>
-      <td className="r"><Go href={showWho ? watchHref(t) : t.href} className="btn sm">Open</Go></td>
+      {/* Someone else's task (21 Nov 2026): shown to follow up, but only the person responsible opens and does it. */}
+      <td className="r">{showWho ? <span className="tag" title="Done by the person responsible">{t.role === 'manager' ? 'Building manager\'s task' : 'Accountant\'s task'}</span> : <Go href={t.href} className="btn sm">Open</Go>}</td>
     </tr>)}
   </tbody></table></div>;
 }

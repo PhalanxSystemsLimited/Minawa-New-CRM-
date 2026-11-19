@@ -149,7 +149,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </> : staff.role === 'accountant' ? <>
         <NeedTile title="To do" icon="clip" tone="red" n={accT.length} label={accT.length === 1 ? 'payment to check' : 'payments to check'} href="/tasks" pulse sub={accT.length ? `${lateN(accT)} late` : 'All clear'} />
         <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
-        <NeedTile title="Building managers" icon="building" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
+        <NeedTile title="Building managers" icon="building" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks?v=managers" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
       </> : <>
         <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? (() => { const r = myT.filter(t => t.kind === 'receipt').length; return `${r ? `${r} receipt${r === 1 ? '' : 's'} to send first · ` : ''}${lateN(myT)} late`; })() : 'All clear'} />
         <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
