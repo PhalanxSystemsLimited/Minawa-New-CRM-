@@ -705,3 +705,10 @@ html[data-theme=frost] .cam-card{background:rgba(40,46,48,.92);color:#fff}
 /* ---- Update 117 (21 Nov 2026): plain links in a More menu look like the other menu items ---- */
 .menu > a:not(.btn){display:block;border:0;background:transparent;text-align:left;padding:9px 12px;border-radius:9px;font-weight:500;font-size:13.5px;line-height:1.4;color:var(--fg);text-decoration:none}
 .menu > a:not(.btn):hover{background:var(--surface-2);color:var(--accent,var(--ink))}
+
+/* ---- Update 119 (21 Nov 2026): no underlines on links that are buttons, chips, tabs, menu items or names ---- */
+html[data-theme] a,html[data-theme] a:hover,a,a:hover{text-decoration:none}
+/* A link inside a sentence (help text, notes) keeps a light underline, so it reads as a link. */
+:is(p,.callout) a:not(.btn):not(.chipbtn):not(.tag):not(.ph-link):not(.menu-a){text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:3px}
+/* Names in tables and lists (apartments, owners): underline only on hover. */
+:is(td,.li,.apt-a,.crumb-path) a:not(.btn):not(.chipbtn):not(.tag):hover,a.apt-a:hover{text-decoration:underline;text-underline-offset:3px}
