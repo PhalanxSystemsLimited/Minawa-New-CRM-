@@ -10,7 +10,8 @@
 // A notification that arrives while the window is hidden (another tab, minimised, or covered by another window) is
 // kept and slides in when you come back, so it is never missed. Each one slides in at the top right, shows a bar
 // counting down, stays while the mouse is over it, then slides out by itself.
-// 18 Nov 2026: a short two-note chime plays when notifications arrive (once per batch). Browsers only allow sound
+// 18 Nov 2026: a sound plays when notifications arrive (once per batch); since 21 Nov 2026 the bell in
+// public/sounds/notify.mp3 (the two-note chime is only the fallback if the file can't be loaded). Browsers only allow sound
 // after the person has clicked or typed on the page once, so until then the pop-up shows silently. The account menu
 // has a Sound on/off switch (remembered in this browser: localStorage 'minawa.sound').
 import { useEffect, useRef, useState } from 'react';
@@ -27,12 +28,15 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
   const [toasts, setToasts] = useState<Toast[]>([]), [more, setMore] = useState(0), [ask, setAsk] = useState(false);
   last.current = counts;
   useEffect(() => {
-    let busy = false, unseen = 0, lastPoll = 0, ctx: AudioContext | null = null;
-    const unlock = () => { try { if (!ctx) { const A = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext; if (A) ctx = new A(); } if (ctx && ctx.state === 'suspended') void ctx.resume(); } catch { /* no audio here */ } };
+    let busy = false, unseen = 0, lastPoll = 0, ctx: AudioContext | null = null, bell: AudioBuffer | null = null, loading = false;
+    // The bell sound is fetched and decoded once, after the first click or key press (when the browser allows sound).
+    const load = () => { if (!ctx || bell || loading) return; loading = true; fetch('/sounds/notify.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => ctx!.decodeAudioData(b)).then(x => { bell = x; }).catch(() => { /* the chime below plays instead */ }).finally(() => { loading = false; }); };
+    const unlock = () => { try { if (!ctx) { const A = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext; if (A) ctx = new A(); } if (ctx && ctx.state === 'suspended') void ctx.resume(); load(); } catch { /* no audio here */ } };
     const chime = () => {
       try { if (localStorage.getItem('minawa.sound') === 'off') return; } catch { /* private mode: play */ }
       if (!ctx || ctx.state !== 'running') return;
-      // A small bell: two strikes ("ding-dong"), each a fundamental with two bell overtones that die away.
+      if (bell) { const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.9; src.buffer = bell; src.connect(g); g.connect(ctx.destination); src.start(); return; }
+      // Fallback (the file not loaded yet or blocked): a small bell: two strikes ("ding-dong"), each a fundamental with two bell overtones that die away.
       const t0 = ctx.currentTime + 0.02;
       for (const [f, at] of [[1046.5, 0], [784, 0.28]] as const) {
         for (const [mult, vol, len] of [[1, 0.16, 1.1], [2.76, 0.05, 0.55], [5.4, 0.02, 0.3]] as const) {
