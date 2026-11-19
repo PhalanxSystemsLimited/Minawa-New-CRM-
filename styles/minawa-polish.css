@@ -665,3 +665,13 @@ html[data-theme=frost] .el-search input{background:rgba(255,255,255,.16);color:#
   .wa-num-on{grid-column:1;justify-self:start}
   .wa-num-x{grid-column:2;justify-self:end}
 }
+
+/* ---- Update 112 (21 Nov 2026): long screens stay smooth ---- */
+/* Only the first rows of a table slide in; the rest just appear. */
+.tbl-wrap tbody tr:nth-child(n+13){animation:none}
+/* No lifting rows on long tables (repainting hundreds of rows on hover). */
+.tbl-wrap:has(tbody > tr:nth-child(31)) tbody tr:hover{transform:none;box-shadow:none}
+/* "Showing 30 of 124 · Show 30 more · Show all" under a long table or list. */
+.cap-bar{position:sticky;left:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 4px 4px;font-size:13px;color:var(--px-mute)}
+.cap-bar span{margin-right:auto;font-weight:600}
+@media print{.cap-bar{display:none}}

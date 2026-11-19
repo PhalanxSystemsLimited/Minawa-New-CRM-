@@ -168,6 +168,38 @@ function fitText(root: ParentNode) {
   });
 }
 
+/** Long tables and lists (21 Nov 2026): only the first 30 rows show, with "Show 30 more" and "Show all" under them, so
+ *  long screens stay smooth. Done with CSS (rows past the limit aren't laid out), so it works on every screen and the
+ *  page's own code doesn't change. Lists people tick (checkboxes) and print are never cut. */
+const CAP = 30;
+function capRule(k: number) {
+  const id = 'cap-rules'; let el = document.getElementById(id) as HTMLStyleElement | null;
+  if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
+  const sel = `[data-cap="${k}"]`;
+  if (!el.textContent?.includes(sel)) el.textContent += `@media screen{.tbl-wrap${sel}>table>tbody>tr:nth-child(n+${k + 1}),.list${sel}>.li:nth-child(n+${k + 1}){display:none}}`;
+}
+function capLists(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>('.tbl-wrap, .list').forEach(box => {
+    if (box.closest('[data-nocap], .m-card, .doc, .menu, .bell-pop') || box.querySelector('input[type=checkbox], input[type=radio], textarea')) return;
+    const rows = box.classList.contains('tbl-wrap') ? box.querySelectorAll(':scope > table > tbody > tr') : box.querySelectorAll(':scope > .li');
+    const n = rows.length, have = box.querySelector<HTMLElement>(':scope > .cap-bar');
+    if (n <= CAP + 5) { if (have) have.remove(); if (box.dataset.cap) delete box.dataset.cap; return; }
+    const cur = box.dataset.cap === 'all' ? 'all' : String(Math.max(CAP, +(box.dataset.cap || CAP)));
+    if (box.dataset.cap !== cur) box.dataset.cap = cur;
+    if (cur !== 'all') capRule(+cur);
+    const shown = cur === 'all' ? n : Math.min(n, +cur), key = `${shown}/${n}`;
+    if (have && have.dataset.k === key) return;   // already right: change nothing (no endless loop)
+    const bar = have || document.createElement('div');
+    bar.className = 'cap-bar'; bar.dataset.k = key;
+    bar.innerHTML = '';
+    const t = document.createElement('span'); t.textContent = shown < n ? `Showing ${shown} of ${n}` : `Showing all ${n}`; bar.appendChild(t);
+    const btn = (label: string, to: string) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn sm'; x.textContent = label; x.onclick = () => { box.dataset.cap = to; if (to !== 'all') capRule(+to); capLists(box.parentElement || box); }; bar.appendChild(x); };
+    if (shown < n) { if (n - shown > CAP) btn(`Show ${CAP} more`, String(shown + CAP)); btn(`Show all ${n}`, 'all'); }
+    else btn('Show fewer', String(CAP));
+    if (!have) box.appendChild(bar);
+  });
+}
+
 export function LiveEffects() {
   const path = usePathname();
   // Per page: count-ups and the tab highlight.
@@ -176,10 +208,12 @@ export function LiveEffects() {
     const sh = document.querySelector<HTMLElement>('.shell');
     if (sh && sh.scrollHeight > sh.clientHeight && getComputedStyle(sh).overflowY !== 'visible') sh.scrollTop = 0;
     const main = document.getElementById('main') || document.body;
-    tagFigures(main); tagCards(main); sizeBars(main);
+    tagFigures(main); tagCards(main); sizeBars(main); capLists(main);
     let stopCount = countUp(main); tagHeads(main);
     const stopReveal = reveal(main);
-    const mo = new MutationObserver(() => { tagFigures(main); tagCards(main); sizeBars(main); stopCount(); stopCount = countUp(main); tagHeads(main); });
+    // Changes come in bursts (a list refreshing): handle them once per frame, not once per change.
+    let raf = 0;
+    const mo = new MutationObserver(() => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; tagFigures(main); tagCards(main); sizeBars(main); capLists(main); stopCount(); stopCount = countUp(main); tagHeads(main); }); });
     mo.observe(main, { childList: true, subtree: true });
     const stopInk = reduced() ? () => {} : tabInk();
     try { if (!document.querySelector('.proj-tabs')) sessionStorage.removeItem('minawa.tabInk'); } catch { /* ignore */ }
@@ -191,7 +225,7 @@ export function LiveEffects() {
     const ro = new ResizeObserver(fit); ro.observe(main);
     const mo2 = new MutationObserver(fit); mo2.observe(main, { childList: true, subtree: true, characterData: true });
     window.addEventListener('resize', fit);
-    return () => { mo.disconnect(); stopCount(); stopInk(); stopReveal(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
+    return () => { mo.disconnect(); cancelAnimationFrame(raf); stopCount(); stopInk(); stopReveal(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
   }, [path]);
   // Once: pointer light, tilt and button ripple (delegated, so it works for every page).
   useEffect(() => {
