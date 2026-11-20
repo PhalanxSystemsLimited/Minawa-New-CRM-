@@ -717,3 +717,11 @@ html[data-theme] a,html[data-theme] a:hover,a,a:hover{text-decoration:none}
 p.empty:not(td > p){padding-left:50px!important;min-width:0;overflow-wrap:anywhere}
 td > p.empty,.cell-sub.empty{padding-left:0!important}
 @media (max-width:480px){p.empty:not(td > p){font-size:12.5px}}
+
+/* Payments screen (update 122): filter chips and the form under them. */
+.pay-filters{display:flex;flex-direction:column;gap:12px}
+.pay-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pay-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.pay-form select{min-width:150px}
+tr.pay-tot td{background:var(--surface-2,transparent);border-top:2px solid var(--line-strong)}
+@media (max-width:640px){.pay-form>.btn,.pay-form>.form-row{flex:1 1 100%}.pay-form>span[style]{display:none}}

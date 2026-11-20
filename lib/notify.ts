@@ -46,10 +46,10 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
     // Cash hand-overs: the Accountant hears about new ones; the building manager hears the answer.
     for (const h of s.handovers || []) {
       if (staff.role === 'accountant' && h.status === 'pending')
-        out.push({ id: `ho:${s.project}:${h.id}`, at: `${h.d} ${h.t}`, tone: 'info', title: 'Cash handed over', text: `${h.fromName} · ${s.proj.name} · ${rs(h.amount)}: count it and confirm`, href: '/cash#receive' });
+        out.push({ id: `ho:${s.project}:${h.id}`, at: `${h.d} ${h.t}`, tone: 'info', title: 'Cash handed over', text: `${h.fromName} · ${s.proj.name} · ${rs(h.amount)}: count it and confirm`, href: '/payments?via=Cash#receive' });
       if (staff.role === 'manager' && h.fromId === staff.id && h.status !== 'pending' && (h.receivedD || '') >= since)
         out.push({ id: `hod:${s.project}:${h.id}:${h.status}`, at: `${h.receivedD} 23:58`, tone: h.status === 'received' ? 'good' : 'bad',
-          title: h.status === 'received' ? 'Cash received' : 'Hand-over sent back', text: `${s.proj.name} · ${rs(h.amount)}${h.status === 'received' ? ` received by ${h.receivedBy}` : `: ${h.reply || ''}`}`, href: '/cash' });
+          title: h.status === 'received' ? 'Cash received' : 'Hand-over sent back', text: `${s.proj.name} · ${rs(h.amount)}${h.status === 'received' ? ` received by ${h.receivedBy}` : `: ${h.reply || ''}`}`, href: '/payments?via=Cash' });
     }
     // Payments received.
     for (const p of s.payments) if (p.d >= since && !(p.entryId && s.proofs.some(x => x.id === p.entryId && x.byId === staff.id)))

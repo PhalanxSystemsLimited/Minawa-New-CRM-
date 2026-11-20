@@ -96,11 +96,11 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
                 <input name={`reply-${p.id}`} type="text" placeholder="Why (for the manager)" aria-label="Why it wasn't received" style={{ width: 170 }} />
                 <PickSubmit action={rejectEntryAction} field="one" value={`${s.project}:${p.id}`}>Not received</PickSubmit>
               </div></div>)}</div>
-            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving confirms you have the money: nothing new goes to the customer (the receipt went when the payment was entered). Approved cash is then with you, ready for the bank deposit on the Cash page.</p></>
+            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving confirms you have the money: nothing new goes to the customer (the receipt went when the payment was entered). Approved cash is then with you, ready for the bank deposit on the Payments page.</p></>
             : <Empty kind="inbox" small title={`Nothing to approve${f || b ? ' with these filters' : ''}`} />}
         </form>;
       })()}
-      {(() => { const cash = cashT; return cash.length ? <div className="card"><div className="card-row"><h3>Cash to receive and deposit <small>{cash.length} open{late(cash) ? ` · ${late(cash)} late` : ''}</small></h3><Go href="/cash" className="btn sm">Open Cash</Go></div><Table list={cash} staff={staff} today={today} showWho={false} /></div> : null; })()}
+      {(() => { const cash = cashT; return cash.length ? <div className="card"><div className="card-row"><h3>Cash to receive and deposit <small>{cash.length} open{late(cash) ? ` · ${late(cash)} late` : ''}</small></h3><Go href="/payments?via=Cash#deposit" className="btn sm">Open Payments</Go></div><Table list={cash} staff={staff} today={today} showWho={false} /></div> : null; })()}
     </>;
   }
 

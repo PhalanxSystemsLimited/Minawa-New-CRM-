@@ -41,7 +41,7 @@ export async function cancelCashAction(fdata: FormData) {
 export async function handOverAction(fdata: FormData) {
   const staff = await requireRole('manager'), pid = S(fdata, 'pid');
   const r = await attempt(() => mutate(pid, staff, s => handOver(staff.id, staffName(staff), S(fdata, 'note'), s.today, at(15)), { send: false }));
-  go('/cash', failed(r) ? r.error : `Hand-over ${r.id} of Rs ${r.amount.toLocaleString('en-US')} sent. The Accountant confirms it once the cash is counted.`);
+  go('/payments?via=Cash', failed(r) ? r.error : `Hand-over ${r.id} of Rs ${r.amount.toLocaleString('en-US')} sent. The Accountant confirms it once the cash is counted.`);
 }
 
 /** The Accountant receives a hand-over (counted, all there) or sends it back with a note. */
@@ -50,20 +50,20 @@ export async function receiveHandoverAction(fdata: FormData) { return answerHand
 export async function returnHandoverAction(fdata: FormData) { return answerHandover(fdata, false); }
 async function answerHandover(fdata: FormData, ok: boolean) {
   const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), id = S(fdata, 'id'), reply = S(fdata, 'reply');
-  if (!ok && !reply) go('/cash', 'Write what is wrong (for example how much was short)');
+  if (!ok && !reply) go('/payments?via=Cash', 'Write what is wrong (for example how much was short)');
   const r = await attempt(() => mutate(pid, staff, s => {
     const h = s.handovers.find(x => x.id === id); if (!h) throw new Error('Hand-over not found');
     receiveHandover(h, ok, staffName(staff), reply, s.today, at(15)); return h;
   }, { send: false }));
-  go('/cash', failed(r) ? r.error : ok ? `Received Rs ${r.amount.toLocaleString('en-US')} from ${r.fromName}` : `Sent back to ${r.fromName} with your note`);
+  go('/payments?via=Cash', failed(r) ? r.error : ok ? `Received Rs ${r.amount.toLocaleString('en-US')} from ${r.fromName}` : `Sent back to ${r.fromName} with your note`);
 }
 
 /** The Accountant deposits received cash in the bank: one slip can cover hand-overs from several buildings. */
 export async function depositAction(fdata: FormData) {
   const staff = await requireRole('accountant'), slip = S(fdata, 'slip'), d = S(fdata, 'd');
   const picked = fdata.getAll('h').map(String).filter(Boolean);
-  if (!slip || !/^\d{4}-\d{2}-\d{2}$/.test(d)) go('/cash', 'Enter the deposit slip number and the date');
-  if (!picked.length) go('/cash', 'Tick the hand-overs that went into the bank');
+  if (!slip || !/^\d{4}-\d{2}-\d{2}$/.test(d)) go('/payments?via=Cash', 'Enter the deposit slip number and the date');
+  if (!picked.length) go('/payments?via=Cash', 'Tick the hand-overs that went into the bank');
   const by = new Map<string, string[]>();
   for (const x of picked) { const [pid, id] = x.split(':'); by.set(pid, [...(by.get(pid) || []), id]); }
   const allowed = new Set((await liveProjects(staff)).map(p => p.id));
@@ -73,7 +73,7 @@ export async function depositAction(fdata: FormData) {
     const list = await mutate(pid, staff, s => depositHandovers(ids, slip, d, staffName(staff), s.today, at(15)), { send: false });
     total += list.reduce((a, h) => a + h.amount, 0); n += list.length;
   }
-  go('/cash', n ? `Rs ${total.toLocaleString('en-US')} deposited, slip ${slip} (${n} hand-over${n === 1 ? '' : 's'})` : 'Nothing to deposit');
+  go('/payments?via=Cash', n ? `Rs ${total.toLocaleString('en-US')} deposited, slip ${slip} (${n} hand-over${n === 1 ? '' : 's'})` : 'Nothing to deposit');
 }
 
 

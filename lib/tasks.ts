@@ -84,18 +84,18 @@ export function projectTasks(s: State): Task[] {
     for (const [id, h] of held) {
       const deadline = addDays(h.oldest, 1);
       out.push({ id: `cashho:${s.project}:${id}:${h.n}`, role: 'manager', project: s.project, pname: s.proj.name, what: `Hand over ${rs(h.amt)} cash to the Accountant`,
-        detail: `${h.n} confirmed payment${h.n === 1 ? '' : 's'} since ${h.oldest}`, since: h.oldest, deadline, overdue: late(deadline), href: '/cash', forId: id, forName: h.name });
+        detail: `${h.n} confirmed payment${h.n === 1 ? '' : 's'} since ${h.oldest}`, since: h.oldest, deadline, overdue: late(deadline), href: '/payments?via=Cash', forId: id, forName: h.name });
     }
     for (const h of s.handovers.filter(x => x.status === 'pending')) {
       const deadline = addDays(h.d, 1);
       out.push({ id: `cashrc:${s.project}:${h.id}`, role: 'accountant', project: s.project, pname: s.proj.name, what: `Receive ${rs(h.amount)} cash from ${h.fromName}`,
-        detail: `${h.id} · ${h.paymentIds.length} payment${h.paymentIds.length === 1 ? '' : 's'}: count it and confirm`, since: h.d, deadline, overdue: late(deadline), href: '/cash#receive' });
+        detail: `${h.id} · ${h.paymentIds.length} payment${h.paymentIds.length === 1 ? '' : 's'}: count it and confirm`, since: h.d, deadline, overdue: late(deadline), href: '/payments?via=Cash#receive' });
     }
     const bank = s.handovers.filter(x => x.status === 'received' && !x.depositSlip);
     if (bank.length) {
       const since = bank.map(h => h.receivedD || h.d).sort()[0], deadline = addDays(since, 2), amt = bank.reduce((a, h) => a + h.amount, 0);
       out.push({ id: `cashdp:${s.project}:${bank.length}`, role: 'accountant', project: s.project, pname: s.proj.name, what: `Deposit ${rs(amt)} cash in the bank`,
-        detail: `${bank.length} received hand-over${bank.length === 1 ? '' : 's'} not deposited yet`, since, deadline, overdue: late(deadline), href: '/cash#deposit' });
+        detail: `${bank.length} received hand-over${bank.length === 1 ? '' : 's'} not deposited yet`, since, deadline, overdue: late(deadline), href: '/payments?via=Cash#deposit' });
     }
     return out;
   });
