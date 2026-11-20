@@ -7,14 +7,17 @@
 //    on WhatsApp. The customer's balance includes maintenance and electricity; electricity reminders go on their own.
 import { cur, ownerById, balance, elecDue, isUtilBill, utilKind, awaitingApproval, apartments, aptOrder } from '@/lib/engine';
 import type { Bill, Payment, Owner } from '@/lib/types';
-import { rs, fd, fds, fm, addDays, prevMonth } from '@/lib/fmt';
+import { rs, fd, fds, fm, addDays, prevMonth, ord } from '@/lib/fmt';
 import { Go, GoSelect, Submit, ModalShell, CloseBtn } from '@/components/client';
 import { PhotoField } from '@/components/PhotoField';
 import { Ic } from '@/components/icons';
 import { Empty, KIc } from '@/components/views/art';
 import { projectPage, projHead } from '@/components/views/project';
 import { elecReminderAction } from '@/lib/actions-photos';
-import { addElecBillAction, editElecBillAction } from '@/lib/actions-elec';
+import { addElecBillAction, editElecBillAction, readingAction, elecFineAction } from '@/lib/actions-elec';
+import { meterMode, unitRate, lastReading, readDay, fineOfferFor, hasFine, fineSteps } from '@/lib/meter';
+import { pendingFor } from '@/lib/approvals';
+import { MeterGrid, type MeterRow } from '@/components/MeterGrid';
 import { elecLocked, elecCharge } from '@/lib/elec';
 import { custId } from '@/lib/people';
 import { photoStore } from '@/lib/images';
@@ -27,7 +30,7 @@ export default async function Electricity({ params, searchParams }: { params: Pr
   return projectPage(pid, sp, () => {
     const S = cur(), mgr = S.role === 'manager', photos = !!photoStore(), base = `/p/${pid}/electricity`;
     if (!S.settings.rules.utilities.includes('Electricity')) return <>{projHead('electricity')}<Empty card kind="done" title="No electricity bills here">Electricity is billed only where it is switched on in Settings (Oakwood).</Empty></>;
-    const tab = sp.tab === 'add' && mgr ? 'add' : 'bills';
+    const tab = sp.tab === 'add' && mgr ? 'add' : 'bills', meter = meterMode(), rate = unitRate(S.today);
     const all = S.bills.filter(b => isUtilBill(b) && ownerById(b.ownerId)).sort((a, b) => b.period.localeCompare(a.period) || ownerById(a.ownerId).apt.localeCompare(ownerById(b.ownerId).apt, 'en', { numeric: true }));
     const left = (b: Bill) => Math.max(0, b.net - b.paid);
     const paysFor = (b: Bill): Payment[] => S.payments.filter(p => !p.reversed && p.applied.some(a => a.ref === b.id)).sort((x, y) => (y.d + y.t).localeCompare(x.d + x.t));
@@ -36,7 +39,7 @@ export default async function Electricity({ params, searchParams }: { params: Pr
     const ch = (b: Bill) => elecCharge(b);
     const top = <div className="seg-tabs no-print" role="tablist" aria-label="Electricity bills">
       <Go href={base} className="seg-tab" current={tab === 'bills' ? 'true' : 'false'}><Ic n="receipt" s={16} /> Bills</Go>
-      {mgr ? <Go href={`${base}?tab=add`} className="seg-tab" current={tab === 'add' ? 'true' : 'false'}><Ic n="plus" s={16} /> Add electricity bills</Go> : null}
+      {mgr ? <Go href={`${base}?tab=add`} className="seg-tab" current={tab === 'add' ? 'true' : 'false'}><Ic n={meter ? 'gauge' : 'plus'} s={16} /> {meter ? 'Enter readings' : 'Add electricity bills'}</Go> : null}
     </div>;
 
     // ---------- the bill windows (enter one, or correct one) ----------
@@ -66,13 +69,77 @@ export default async function Electricity({ params, searchParams }: { params: Pr
         : <form action={editElecBillAction} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input type="hidden" name="pid" value={pid} /><input type="hidden" name="bill" value={b.id} /><input type="hidden" name="from" value={tab} /><input type="hidden" name="period" value={sp.period || ''} />
           <div className="callout warn"><div>{o.name}&apos;s {fm(b.period)} bill ({b.id}), {rs(b.net)}. Nothing has been paid on it yet, so it can still be corrected; {o.name.split(' ')[0]} is sent the corrected bill. Once paid, it can&apos;t be changed.</div></div>
-          <div className="grid2" style={{ gap: 10 }}>
+          {meter && c.prevReading != null ? <><input type="hidden" name="meter" value="1" />
+            <div className="grid2" style={{ gap: 10 }}>
+              <div className="form-row"><label htmlFor="ee-p">Previous reading</label><input id="ee-p" name="prev" type="number" min="0" step="1" required defaultValue={c.prevReading} /><div className="cell-sub">From the last bill or the possession reading; change it only if it was wrong.</div></div>
+              <div className="form-row"><label htmlFor="ee-r">Reading</label><input id="ee-r" name="reading" type="number" min="0" step="1" required defaultValue={c.curReading ?? ''} /><div className="cell-sub">Units × {rs(unitRate(b.billDate))} (the rate on the bill date).</div></div>
+              <div className="form-row"><label htmlFor="ee-d">Due date</label><input id="ee-d" name="due" type="date" required defaultValue={b.dueDate} /></div>
+            </div></>
+          : <div className="grid2" style={{ gap: 10 }}>
             <div className="form-row"><label htmlFor="ee-a">Bill amount (Rs)</label><input id="ee-a" name="amount" type="number" min="1" step="1" required defaultValue={c.amount} /></div>
             <div className="form-row"><label htmlFor="ee-u">Units</label><input id="ee-u" name="units" type="number" min="0" step="1" required defaultValue={c.units ?? ''} /></div>
             <div className="form-row"><label htmlFor="ee-r">Meter reading on the bill</label><input id="ee-r" name="reading" type="number" min="0" step="1" required defaultValue={c.curReading ?? ''} /></div>
             <div className="form-row"><label htmlFor="ee-d">Due date</label><input id="ee-d" name="due" type="date" required defaultValue={b.dueDate} /></div>
-          </div>
+          </div>}
           <div className="m-actions"><CloseBtn keys={['m']} /><Submit>Save the corrected bill</Submit></div></form>}</ModalShell>;
+    } else if (mgr && meter && sp.m === 'reading' && sp.oid) {
+      const o = ownerById(sp.oid), period = /^\d{4}-\d{2}$/.test(sp.period || '') ? sp.period! : S.today.slice(0, 7), last = o ? lastReading(o, period) : null;
+      modal = o ? <ModalShell title={`Meter reading · ${o.apt}`} closeKeys={['m', 'oid']}><form action={readingAction} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><input type="hidden" name="period" value={period} />{sp.q ? <input type="hidden" name="q" value={sp.q} /> : null}
+        <div className="callout">{o.name} ({custId(o)}), {o.apt}: {fm(period)}. Units since the last reading × {rs(rate)} a unit; the bill waits in Send on WhatsApp.</div>
+        <div className="grid2" style={{ gap: 10 }}>
+          <div className="form-row"><label htmlFor="rd-p">Last reading</label>{last ? <><input id="rd-p" type="text" value={last.value} readOnly /><div className="cell-sub">{last.from}</div></> : <><input id="rd-p" name="prev" type="number" min="0" step="1" required /><div className="cell-sub">None on file: enter the previous reading.</div></>}</div>
+          <div className="form-row"><label htmlFor="rd-c">Reading now <span className="req"> required</span></label><input id="rd-c" name="cur" type="number" min={last?.value ?? 0} step="1" required inputMode="numeric" /></div>
+        </div>
+        {photos ? <PhotoField pid={pid} kind="bill" owner={o.id} label="Photo of the meter" hint="Optional. Printed on the bill the customer gets on WhatsApp." /> : null}
+        <div className="m-actions"><CloseBtn keys={['m', 'oid']} /><Submit>Save and bill {o.apt}</Submit></div></form></ModalShell> : null;
+    } else if (sp.m?.startsWith('elecfine-') && (mgr || S.role === 'admin')) {
+      const b = S.bills.find(x => x.id === sp.m!.slice(9)), o = b ? ownerById(b.ownerId) : null, f = b ? fineOfferFor(b, S.today) : null, asked = o ? pendingFor(o).some(a => a.kind === 'elecfine' && a.change.billId === b!.id) : false;
+      modal = <ModalShell title={o ? `Late fine · ${o.apt}` : 'Late fine'} closeKeys={['m']}>{!b || !o || !f ? <><div className="callout">This bill isn&apos;t there any more.</div><div className="m-actions"><CloseBtn keys={['m']} label="Close" /></div></>
+        : asked ? <><div className="callout warn"><div>A late fine for this bill is already waiting for the Admin.</div></div><div className="m-actions"><CloseBtn keys={['m']} label="Close" /></div></>
+        : hasFine(b) ? <><div className="callout">This bill already has a late fine.</div><div className="m-actions"><CloseBtn keys={['m']} label="Close" /></div></>
+        : !f.pct ? <><div className="callout">{f.late > 0 ? `${f.late} day${f.late === 1 ? '' : 's'} late: no fine applies yet.` : 'The bill isn\'t late yet.'} {fineSteps().length ? `The Admin's steps: ${fineSteps().map(x => `${x.pct}% from ${x.days} days late`).join(', ')}.` : 'The Admin hasn\'t set a late fine (Settings › Electricity).'}</div><div className="m-actions"><CloseBtn keys={['m']} label="Close" /></div></>
+        : <form action={elecFineAction} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="bill" value={b.id} />
+          <div className="callout warn"><div>{o.name}&apos;s {fm(b.period)} electricity bill was due {fd(b.dueDate)}: <b>{f.late} days late</b>, {rs(f.left)} unpaid. The Admin&apos;s fine now is <b>{f.pct}%</b> = <b>{rs(f.amount)}</b>, added to this bill{S.role === 'admin' ? '.' : ' once the Admin approves it.'}</div></div>
+          <div className="form-row"><label htmlFor="ef-r">Why fine {o.name.split(' ')[0]} now{S.role === 'admin' ? ' (optional)' : ' (for the Admin)'}</label><input id="ef-r" name="reason" type="text" required={S.role !== 'admin'} placeholder="e.g. Reminded three times, no reply" /></div>
+          <div className="m-actions"><CloseBtn keys={['m']} /><Submit>{S.role === 'admin' ? `Add the fine (${rs(f.amount)})` : 'Ask the Admin to approve'}</Submit></div></form>}</ModalShell>;
+    }
+
+    // ---------- Sub-meters: Enter readings (every customer, this month's reading) ----------
+    if (tab === 'add' && meter) {
+      const period = /^\d{4}-\d{2}$/.test(sp.period || '') && sp.period! <= S.today.slice(0, 7) ? sp.period! : S.today.slice(0, 7), q = (sp.q || '').trim().toLowerCase();
+      const months: [string, string][] = []; for (let m = S.today.slice(0, 7), i = 0; i < 12; m = prevMonth(m), i++) months.push([m, fm(m)]);
+      const cust = apartments().filter(o => o.status === 'active').sort(aptOrder);
+      const billOf = (o: Owner) => all.find(b => b.ownerId === o.id && b.period === period && ch(b));
+      const list = cust.filter(o => !q || `${o.apt} ${o.name} ${custId(o)} ${o.phone}`.toLowerCase().includes(q));
+      const done = cust.filter(o => billOf(o)).length, shown = shownOf(sp.n, list.length), page = list.slice(0, shown);
+      const href = (k: Record<string, string>) => `${base}?${new URLSearchParams(Object.entries({ tab: 'add', period, q: sp.q || '', ...k }).filter(([, v]) => v))}`;
+      const rows: MeterRow[] = page.map(o => { const b = billOf(o) || null, c = b ? ch(b) : null, last = lastReading(o, period);
+        const past = S.charges.filter(x => x.ownerId === o.id && x.kind === 'Electricity' && x.units != null && x.period < period).slice(-6), avg = past.length ? past.reduce((a, x) => a + (x.units || 0), 0) / past.length : null;
+        return { oid: o.id, apt: o.apt, sub: [o.block && `Block ${o.block}`, o.floor].filter(Boolean).join(' · '), name: o.name, cid: custId(o), prev: last?.value ?? null, prevFrom: last?.from || '', avg,
+          billed: b ? { net: rs(b.net), units: c?.units ?? null, cur: c?.curReading ?? null, locked: !!elecLocked(b), editHref: href({ m: `elecedit-${b.id}`, n: sp.n || '' }) } : null, photoHref: href({ m: 'reading', oid: o.id, n: sp.n || '' }) }; });
+      return <>
+        {projHead('electricity')}
+        <div className="page-head"><div><h2>Electricity bills</h2><p>Enter each flat&apos;s sub-meter reading. The bill is the units used since the last reading × <b>{rate ? `${rs(rate)} a unit` : 'the unit rate'}</b> (set by the Admin); it waits in <b>Send on WhatsApp</b> and is due {S.settings.rules.elecDueDays ?? 15} days after it is made. Readings are taken on the {ord(readDay())} of each month. A bill can be corrected until it is paid.</p></div></div>
+        {top}
+        {!rate ? <div className="callout bad"><div><b>The unit rate isn&apos;t set.</b> The Admin sets it in Settings › Electricity; readings can be entered after that.</div></div> : null}
+        <div className="kpis">
+          <div className="kpi"><KIc n="users" tone="blue" /><div className="l">Customers</div><div className="v num">{cust.length}</div><div className="cell-sub">active in {S.proj.name}</div></div>
+          <div className="kpi"><KIc n="okc" tone="green" /><div className="l">Read for {fm(period)}</div><div className="v num">{done}</div><div className="cell-sub">{rs(sum(all.filter(b => b.period === period && ch(b)), b => b.net))} billed</div></div>
+          <div className="kpi"><KIc n="gauge" tone="amber" /><div className="l">Still to read</div><div className="v num">{cust.length - done}</div><div className="cell-sub">for {fm(period)}</div></div>
+          <div className="kpi"><KIc n="bolt" tone="violet" /><div className="l">Unit rate</div><div className="v num">{rate ? rs(rate) : '—'}</div><div className="cell-sub">set by the Admin</div></div>
+        </div>
+        <div className="card">
+          <div className="toolbar el-tools">
+            <GoSelect name="period" value={period} ariaLabel="Month" style={{ width: 'auto' }} options={months} />
+            <form action={base} className="el-search"><input type="hidden" name="tab" value="add" /><input type="hidden" name="period" value={period} />
+              <input type="search" name="q" defaultValue={sp.q || ''} placeholder="Apartment, name or customer ID" aria-label="Search customers" /></form>
+          </div>
+          {rate ? (rows.length ? <><MeterGrid pid={pid} period={period} periodLabel={fm(period)} rate={rate} rows={rows} q={sp.q || ''} /><MoreBar shown={shown} total={list.length} noun="customer" href={n => href({ n })} /></>
+            : <Empty kind="search" small title={q ? `No customer matches "${sp.q}"` : 'No active customers here'} />) : null}
+        </div>
+        {modal}
+      </>;
     }
 
     // ---------- Add electricity bills: every customer, enter or correct this month's bill ----------
@@ -132,7 +199,7 @@ export default async function Electricity({ params, searchParams }: { params: Pr
     const photo = (b: Bill) => mgr && photos
       ? <PhotoField pid={pid} kind="bill" owner={b.ownerId} attach={{ billId: b.id }} current={b.photoId || null} label="Photo of the bill" small />
       : b.photoId ? <a className="ph-thumb" href={`/api/img/${b.photoId}`} target="_blank" rel="noopener" title="Photo of the bill"><img src={`/api/img/${b.photoId}`} alt="Photo of the bill" /></a> : <span className="cell-sub">No photo</span>;
-    const billCell = (b: Bill) => { const c = ch(b); return <>{utilKind(b)} · {fm(b.period)}<div className="cell-sub">{rs(b.net)}{c?.units != null ? ` · ${c.units} units` : ''}{c?.curReading != null ? ` · meter ${c.curReading}` : ''}{b.paid > 0 && left(b) > 0 ? ` · ${rs(b.paid)} paid` : ''}</div></>; };
+    const billCell = (b: Bill) => { const c = ch(b); return <>{utilKind(b)} · {fm(b.period)}<div className="cell-sub">{rs(b.net)}{c?.units != null ? ` · ${c.units} units` : ''}{c?.prevReading != null && c?.curReading != null ? ` · meter ${c.prevReading} → ${c.curReading}` : c?.curReading != null ? ` · meter ${c.curReading}` : ''}{b.paid > 0 && left(b) > 0 ? ` · ${rs(b.paid)} paid` : ''}</div></>; };
     return <>
       {projHead('electricity')}
       <div className="page-head"><div><h2>Electricity bills</h2><p>Who has paid their electricity bill and who hasn&apos;t. {mgr ? <>Correct an unpaid bill with <b>Edit</b>; when a customer pays, press <b>Bill received</b> and add a photo. Paid bills are the history and can&apos;t be changed. New bills are entered under <b>Add electricity bills</b>.</> : 'The building manager enters the bills, corrects unpaid ones and marks them received. Paid bills are the history and can\'t be changed.'} Customers&apos; balances include maintenance and electricity.</p></div></div>
@@ -169,6 +236,8 @@ export default async function Electricity({ params, searchParams }: { params: Pr
                 <td className="r" style={{ whiteSpace: 'nowrap' }}>{mgr ? <div className="el-acts">
                   <Go href={`${base}?${new URLSearchParams({ ...(month ? { period: month } : {}), m: `elecpaid-${b.id}`, oid: o.id })}`} className="btn sm primary"><Ic n="tick" s={15} /> Bill received</Go>
                   {!lock && ch(b) ? <Go href={href({ m: `elecedit-${b.id}`, n: sp.n || '' })} className="btn sm"><Ic n="edit" s={15} /> Edit</Go> : null}
+                  {b.dueDate < S.today && !hasFine(b) && fineSteps().length ? pendingFor(o).some(a => a.kind === 'elecfine' && a.change.billId === b.id) ? <span className="tag info">Fine waiting for approval</span>
+                    : <Go href={href({ m: `elecfine-${b.id}`, n: sp.n || '' })} className="btn sm"><Ic n="flag" s={15} /> Fine{fineOfferFor(b, S.today).pct ? ` ${fineOfferFor(b, S.today).pct}%` : ''}</Go> : null}
                   {waiting(b) ? <span className="tag warn">Reminder waiting</span> : <form action={elecReminderAction} style={{ display: 'inline' }}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="ids" value={b.id} /><Submit className="btn sm ghost" pendingText="…">Remind</Submit></form>}</div>
                   : <span className="tag warn">Not paid</span>}</td>
               </tr>; })}

@@ -221,7 +221,7 @@ export async function discontinueAction(fdata: FormData) {
  *  building manager asks; the Admin approves (an Admin's own is done at once). */
 export async function leaveAction(fdata: FormData) {
   const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), date = S(fdata, 'date'), reading = S(fdata, 'reading'), reason = S(fdata, 'reason');
-  const back = `/p/${pid}/apartments/${oid}/leave?d=${encodeURIComponent(date)}`;
+  const back = `/p/${pid}/apartments/${oid}/leave?d=${encodeURIComponent(date)}${/^\d+$/.test(reading) ? `&r=${reading}` : ''}`;
   if (staff.role !== 'admin' && !reason) go(back, 'Write a note for the Admin (for example: keys handed back on the leaving date)');
   let r = '';
   try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'leave', { date, reading: reading === '' ? null : Math.round(+reading) }, reason || 'Keys handed back').text; }, { send: false }); }

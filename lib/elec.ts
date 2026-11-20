@@ -7,6 +7,7 @@ import type { Bill, Charge } from './types';
 export function elecLocked(b: Bill): string | null {
   const s = cur();
   if (b.paid > 0 || b.finePaid > 0) return 'It has been paid (fully or in part), so it is history now';
+  if (b.lines.some(l => l.label.startsWith('Late fine'))) return 'A late fine has been added to it';
   if (s.payments.some(p => !p.reversed && p.applied.some(a => a.ref === b.id))) return 'A payment has reached it, so it is history now';
   if (s.proofs.some(p => p.status === 'pending' && p.billId === b.id)) return 'A payment for it is waiting for the Accountant';
   return null;

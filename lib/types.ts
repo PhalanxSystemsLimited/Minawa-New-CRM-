@@ -34,6 +34,10 @@ export interface Rules {
   /** Phase 2 (18 Nov 2026): the bill (and the building manager's "send bill" To do) is made this many days before each
    *  due date (15), and the late-payment warning this many days after it if still unpaid (15). */
   billLead: number; warnAfter: number;
+  /** Electricity (21 Nov 2026). 'bill': entered from the paper bill (Oakwood); 'meter': sub-meters, units used x the
+   *  Admin's unit rate (Country Club). Reading day of the month, due N days after the bill, reminder days relative to
+   *  the due date (negative = before), and the late-fine steps (from N days late, P% of the unpaid bill). */
+  elecMode?: 'bill' | 'meter'; elecReadDay?: number; elecDueDays?: number; elecRemind?: number[]; elecFine?: { days: number; pct: number }[];
 }
 export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null, billLead: 15, warnAfter: 15 };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
@@ -253,7 +257,7 @@ export interface State {
  *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
  *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
  *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue' | 'leave';
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue' | 'leave' | 'elecfine';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'changes';
 export interface Approval {
   id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;

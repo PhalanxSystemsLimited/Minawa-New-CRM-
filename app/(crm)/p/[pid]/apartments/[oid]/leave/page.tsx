@@ -5,6 +5,7 @@
 // report is here, printable and as CSV.
 import { cur, ownerById, currentOf, leaveFigures, billsOf, sortedPayments, periodLabel, isAdmin, balance } from '@/lib/engine';
 import { pendingFor } from '@/lib/approvals';
+import { meterMode, finalElec, lastReading } from '@/lib/meter';
 import { leaveAction } from '@/lib/actions-desk';
 import { projectPage, projHead } from '@/components/views/project';
 import { Go, Submit, PrintBtn } from '@/components/client';
@@ -48,11 +49,15 @@ export default async function Leave({ params, searchParams }: { params: Promise<
     }
 
     const L = /^\d{4}-\d{2}-\d{2}$/.test(sp.d || '') && sp.d! <= S.today ? sp.d! : S.today;
-    const f = leaveFigures(o, L), waiting = pendingFor(o).find(a => a.kind === 'leave');
+    // Sub-meters (Country Club): the reading at leaving bills the units since the last reading (shown here, billed when
+    // the leaving is approved), so it is part of what must be paid first.
+    const meter = meterMode(), rd = /^\d+$/.test(sp.r || '') ? +sp.r! : null, last = meter ? lastReading(o) : null, fe = finalElec(o, rd, L);
+    const f0 = leaveFigures(o, L), f = { ...f0, due: f0.due + fe.amount }, waiting = pendingFor(o).find(a => a.kind === 'leave');
     const unpaidBills = bills.filter(b => b.net - b.paid > 0);
     return <>{head}
       <form method="get" className="card no-print" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div className="form-row" style={{ margin: 0 }}><label htmlFor="lv-d">Leaving date (keys handed back)</label><input id="lv-d" name="d" type="date" defaultValue={L} max={S.today} min={o.possessionKnown ? o.possession : undefined} /></div>
+        {meter ? <div className="form-row" style={{ margin: 0 }}><label htmlFor="lv-mr">Meter reading at leaving</label><input id="lv-mr" name="r" type="number" min={last?.value ?? 0} step="1" required defaultValue={rd ?? ''} placeholder={last ? `last: ${last.value}` : 'e.g. 15890'} /></div> : null}
         <button type="submit" className="btn">Check the charges</button>
       </form>
       <div className="rpt">
@@ -61,6 +66,7 @@ export default async function Leave({ params, searchParams }: { params: Promise<
           <div className="tbl-wrap"><table><tbody>
             <tr><td>Balance now (bills, earlier dues and fines, less payments)</td><td className="r num">{rs(f.balance)}</td></tr>
             {f.unbilled ? <tr><td>Maintenance from {f.uFrom ? fds(f.uFrom) : ''} to {f.uTo ? fds(f.uTo) : ''} not billed yet</td><td className="r num">+ {rs(f.unbilled)}</td></tr> : null}
+            {meter ? <tr><td>Electricity: meter {fe.prev ?? last?.value ?? '—'} → {rd ?? '?'}{rd != null ? `, ${fe.units} units × ${rs(fe.rate)}` : ' (enter the reading at leaving above)'}</td><td className="r num">{rd != null ? `+ ${rs(fe.amount)}` : '—'}</td></tr> : null}
             {f.unused.map(u => <tr key={u.b.id}><td>Credit: {u.days} day{u.days === 1 ? '' : 's'} of the {periodLabel(u.b)} bill after leaving</td><td className="r num">− {rs(u.amount)}</td></tr>)}
             <tr><td><b>{f.due > 0 ? 'Still to pay before leaving' : f.due < 0 ? 'Advance to refund' : 'Nothing to pay'}</b></td><td className="r num"><b>{rs(Math.abs(f.due))}</b></td></tr>
           </tbody></table></div></div>
@@ -71,6 +77,7 @@ export default async function Leave({ params, searchParams }: { params: Promise<
               {o.openingLeft > 0 ? <tr><td>Earlier dues (office list)</td><td>—</td><td className="r num">{rs(o.opening)}</td><td className="r num">{rs(o.opening - o.openingLeft)}</td><td className="r num">{rs(o.openingLeft)}</td></tr> : null}
               {unpaidBills.map(b => <tr key={b.id}><td>{periodLabel(b)}</td><td>{fds(b.dueDate)}</td><td className="r num">{rs(b.net)}</td><td className="r num">{rs(b.paid)}</td><td className="r num">{rs(b.net - b.paid)}</td></tr>)}
               {o.feeDue > 0 ? <tr><td>Fine</td><td>—</td><td className="r num">{rs(o.feeDue)}</td><td></td><td className="r num">{rs(o.feeDue)}</td></tr> : null}
+              {fe.amount ? <tr><td>Final electricity ({fe.units} units)</td><td>—</td><td className="r num">{rs(fe.amount)}</td><td></td><td className="r num">{rs(fe.amount)}</td></tr> : null}
               {f.unbilled ? <tr><td>Maintenance up to the leaving date</td><td>—</td><td className="r num">{rs(f.unbilled)}</td><td></td><td className="r num">{rs(f.unbilled)}</td></tr> : null}
             </tbody></table></div></div>
           <div className="card"><div className="card-row"><h3>Payments made</h3></div>{payTable}</div>
@@ -78,7 +85,8 @@ export default async function Leave({ params, searchParams }: { params: Promise<
           : S.role === 'accountant' ? <div className="callout good"><div><b>All charges are cleared.</b> The building manager records the customer leaving; the Admin approves it.</div></div>
           : <form action={leaveAction} className="card no-print"><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><input type="hidden" name="date" value={L} />
             <div className="callout good" style={{ marginBottom: 12 }}><div><b>All charges are cleared up to {fd(L)}.</b> {f.due < 0 ? `${rs(-f.due)} is an advance to refund. ` : ''}Once {isAdmin() ? 'you confirm' : 'the Admin approves'}, {o.apt} becomes vacant and isn&apos;t billed until the next possession; the Dues Clearance certificate is issued.</div></div>
-            {elec ? <div className="form-row"><label htmlFor="lv-r">Electricity meter reading at leaving</label><input id="lv-r" name="reading" type="number" min={o.meterIn?.reading ?? 0} step="1" required placeholder={o.meterIn ? `at possession: ${o.meterIn.reading}` : 'e.g. 15890'} /></div> : null}
+            {meter ? <><input type="hidden" name="reading" value={rd ?? ''} />{rd == null ? <div className="callout warn"><div>Enter the meter reading at leaving above and press Check the charges first.</div></div> : null}</>
+              : elec ? <div className="form-row"><label htmlFor="lv-r">Electricity meter reading at leaving</label><input id="lv-r" name="reading" type="number" min={o.meterIn?.reading ?? 0} step="1" required placeholder={o.meterIn ? `at possession: ${o.meterIn.reading}` : 'e.g. 15890'} /></div> : null}
             <div className="form-row"><label htmlFor="lv-n">Note{isAdmin() ? ' (optional)' : ' for the Admin'}</label><input id="lv-n" name="reason" type="text" required={!isAdmin()} placeholder="e.g. Keys handed back to the site office" /></div>
             <div className="m-actions"><Submit>{isAdmin() ? 'Confirm: customer left' : 'Send for approval'}</Submit></div>
           </form>}

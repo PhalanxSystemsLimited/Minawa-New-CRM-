@@ -84,7 +84,7 @@ export const GEN_FEE = 'Generator charges';
 export const genType = (type: string) => type + GEN;
 export const isGenType = (type: string) => type.endsWith(GEN) || type === GEN_FEE;
 /** The apartment types (no generator rows). */
-export const baseTypes = () => rateTypes().filter(t => !isGenType(t));
+export const baseTypes = () => rateTypes().filter(t => !isGenType(t) && t !== 'Electricity per unit');
 /** Whether this project charges for the generator (and so has a Generator Charges List). */
 export const hasGenerator = () => S.rates.some(r => isGenType(r.type) && r.amount > 0);
 /** The generator charge a month on day d (for a flat of this type, for the old "+ generator" cards). */
@@ -347,7 +347,7 @@ export function setTargetOption(key: 'disc' | 'exempt', id: string | null, on: b
   return t;
 }
 
-function addEntry(ownerId: string, d: string, kind: string, amount: number, desc: string, extra?: { ref?: string; pid?: string }) {
+export function addEntry(ownerId: string, d: string, kind: string, amount: number, desc: string, extra?: { ref?: string; pid?: string }) {
   S.entries.push({ id: 'E' + nid('e'), ownerId, project: S.project, d, kind, amount, desc, ref: extra?.ref || null, pid: extra?.pid || null });
 }
 
@@ -505,9 +505,10 @@ export function waive(o: Owner, amt: number, reason: string, d: string, t: strin
 type MsgIn = Partial<Message> & { kind: string; title: string; text: string };
 /** Queue an electricity bill reminder (the daily run 3 days after the due date, or the building manager from the
  *  Electricity bills screen). Returns false when the bill is paid or a reminder for it is already waiting. */
-export function elecReminder(o: Owner, b: Bill, d: string, t: string) {
+export function elecReminder(o: Owner, b: Bill, d: string, t: string, tag = 0) {
   if (b.net - b.paid <= 0 || S.messages.some(m => m.status === 'pending' && m.tpl === 'elec' && m.pdf?.id === b.id)) return false;
-  b.reminders = [...(b.reminders || []), 1];
+  // tag: which of the Admin's reminder days this is (1, 2…); 0 for one sent by hand (21 Nov 2026).
+  b.reminders = [...(b.reminders || []), tag];
   pushMsg(o, d, t, { kind: 'reminder', title: `${utilKind(b)} reminder · ${fm(b.period)}`, tpl: 'elec', pdf: { kind: 'bill', id: b.id }, text: '' });
   return true;
 }
@@ -754,14 +755,17 @@ export function runDaily(d: string) {
     else if (x.bill) sendBill(o, x.bill, d);
     else if (x.statement) sendStatement(o, d);
   }
-  // Electricity bills (21 Nov 2026): one reminder of its own, 3 days after the bill's due date if it is still unpaid
-  // (separate from the maintenance reminders and warnings). More can be sent from the Electricity bills screen.
+  // Electricity bills: reminders of their own on the Admin's days relative to the due date (Settings › Electricity;
+  // first rule: 3 days after), while unpaid, separate from the maintenance reminders and warnings. One a day at most;
+  // more can be sent from the Electricity bills screen.
+  const offs = (() => { const l = Array.isArray(R().elecRemind) ? R().elecRemind!.map(Number).filter(n => Number.isFinite(n) && n >= -30 && n <= 90) : [3]; return [...new Set(l.length ? l : [3])].sort((a, b) => a - b); })();
   for (const o of S.owners) {
     if (o.status !== 'active') continue;
     for (const b of elecBills(o)) {
-      if (b.net - b.paid <= 0 || (b.reminders || []).length || addDays(b.dueDate, 3) > d) continue;
+      const due = offs.filter(n => addDays(b.dueDate, n) <= d).length, sent = (b.reminders || []).filter(x => x > 0).length;
+      if (b.net - b.paid <= 0 || sent >= due) continue;
       if (promiseOn(o, d)) { c.paused++; continue; }
-      if (!elecReminder(o, b, d, '11:00')) continue;
+      if (!elecReminder(o, b, d, '11:00', sent + 1)) continue;
       c.reminders++;
       log(d, '11:00', 'job', `${utilKind(b)} bill reminder for ${o.apt} (${fm(b.period)}, ${rs(b.net - b.paid)} unpaid) ready to send`, o.id);
     }

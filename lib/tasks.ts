@@ -8,7 +8,8 @@
 import type { State, Staff } from './types';
 import { use, ownerById, failedList, instalmentStatus, awaitingApproval } from './engine';
 import { toDoGroups, pendingGroups } from './manual-send';
-import { addDays, rs } from './fmt';
+import { addDays, rs, fm } from './fmt';
+import { meterMode, readDay } from './meter';
 import { voucherRows, DUES } from './vouchers';
 
 export type TaskRole = 'manager' | 'accountant';
@@ -96,6 +97,16 @@ export function projectTasks(s: State): Task[] {
       const since = bank.map(h => h.receivedD || h.d).sort()[0], deadline = addDays(since, 2), amt = bank.reduce((a, h) => a + h.amount, 0);
       out.push({ id: `cashdp:${s.project}:${bank.length}`, role: 'accountant', project: s.project, pname: s.proj.name, what: `Deposit ${rs(amt)} cash in the bank`,
         detail: `${bank.length} received hand-over${bank.length === 1 ? '' : 's'} not deposited yet`, since, deadline, overdue: late(deadline), href: '/payments?via=Cash#deposit' });
+    }
+    // Sub-meters (Country Club, 21 Nov 2026): from the Admin's reading day, the flats still to read this month.
+    if (meterMode()) {
+      const p = s.today.slice(0, 7), since = `${p}-${String(readDay()).padStart(2, '0')}`;
+      if (s.today >= since) {
+        const left = s.owners.filter(o => o.status === 'active' && !o.exempt && !s.charges.some(c => c.ownerId === o.id && c.kind === 'Electricity' && c.period === p && c.billId)).length;
+        if (left) { const deadline = addDays(since, 3);
+          out.push({ id: `meter:${s.project}:${p}`, role: 'manager', project: s.project, pname: s.proj.name, what: `Enter the meter readings for ${fm(p)}`,
+            detail: `${left} flat${left === 1 ? '' : 's'} still to read; each bill is units used × the unit rate`, since, deadline, overdue: late(deadline), href: `${P}/electricity?tab=add&period=${p}` }); }
+      }
     }
     return out;
   });

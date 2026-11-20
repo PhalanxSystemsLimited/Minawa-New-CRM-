@@ -16,6 +16,7 @@ import {
   verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock, GEN, GEN_FEE } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { normCnic, keepCustIds, staffNos, nextCustId } from './people';
+import { finalElec, billFinal } from './meter';
 import { normPhone } from './importer';
 import { blankOwner } from './seed';
 import { use } from './engine';
@@ -114,6 +115,10 @@ export async function transferAction(fdata: FormData) {
   const nidOut = await mutate(pid, staff, s => {
     const o = needOwner(s, oid), t = at(15), d = S(fdata, 'd') || s.today;
     if (balance(o) > 0) throw new Error('Dues are outstanding; record the payment first.');
+    // Sub-meters: the seller's units since the last bill are billed now and must be paid (from advance) first.
+    const fe = finalElec(o, +reading, d);
+    if (fe.amount && balance(o) + fe.amount > 0) throw new Error(`Final electricity for ${o.apt} is ${rs(fe.amount)} (${fe.units} units since the last reading ${fe.prev}). Collect it first, then transfer.`);
+    if (fe.amount) billFinal(o, +reading, d, staffName(staff));
     o.status = 'closed'; o.closedOn = d;
     let c = s.clearances.find(x => x.ownerId === o.id);
     if (!c) { c = { no: 'DC-' + s.today.slice(0, 4) + '-' + String(nid('dc')).padStart(3, '0'), ownerId: o.id, project: pid, d: s.today, by: staffName(staff) }; s.clearances.push(c); }

@@ -13,7 +13,7 @@ export interface ApprovalView { a: Approval; apt: string; owner: string; pname: 
 const STATUS: Record<Approval['status'], [string, string, string]> = {
   pending: ['Waiting for approval', 'warn', 'clock'], approved: ['Approved', 'good', 'check'], rejected: ['Rejected', 'bad', 'x'], withdrawn: ['Withdrawn', 'muted', 'x'], changes: ['Changes asked', 'info', 'clock']
 };
-const KIND_TONE: Record<Approval['kind'], string> = { discount: 'good', generator: 'info', plan: 'accent', rate: 'accent', adjust: 'warn', rates: 'accent', rules: 'info', fine: 'bad', announce: 'wa', possession: 'good', instalments: 'accent', due: 'info', posdate: 'info', reverse: 'bad', discontinue: 'bad', leave: 'warn' };
+const KIND_TONE: Record<Approval['kind'], string> = { elecfine: 'bad', discount: 'good', generator: 'info', plan: 'accent', rate: 'accent', adjust: 'warn', rates: 'accent', rules: 'info', fine: 'bad', announce: 'wa', possession: 'good', instalments: 'accent', due: 'info', posdate: 'info', reverse: 'bad', discontinue: 'bad', leave: 'warn' };
 
 export function ApprovalItem({ v, admin, meId, back, showOwner = true }: { v: ApprovalView; admin: boolean; meId: string; back: string; showOwner?: boolean }) {
   const { a } = v, [sl, st, si] = STATUS[a.status];

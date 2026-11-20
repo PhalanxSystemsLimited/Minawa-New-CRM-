@@ -875,3 +875,13 @@ html .tab-b,html[data-theme] .tab-b,html .proj-tabs button[aria-current="page"] 
   main details.cm-more[open] > .cm-menu > *{display:flex!important;flex-direction:column;align-items:stretch!important;min-height:0!important;padding:0!important;font-size:inherit!important}
   main details.cm-more[open] > .cm-menu .cm-item{min-height:52px!important;padding:8px!important}
 }
+/* Electricity settings (update 128). */
+.elec-form .pay-via{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.fine-steps{display:flex;flex-direction:column;gap:6px}
+.fine-step{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fine-step input{width:90px}
+/* Enter readings (update 128). */
+.meter-tbl .mtr-in{width:120px;max-width:100%;text-align:right;font-variant-numeric:tabular-nums}
+.meter-tbl tr.m-bad td{background:color-mix(in srgb,var(--bad,#b0241c) 6%,transparent)}
+.meter-bar{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--surface);box-shadow:0 -6px 18px -12px rgba(16,24,40,.35);border:1px solid var(--line)}
+@media (max-width:640px){.meter-tbl .mtr-in{width:100%}.meter-bar .btn{flex:1}}

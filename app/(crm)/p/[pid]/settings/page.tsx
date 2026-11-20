@@ -12,6 +12,8 @@ import { ratesAction, rulesAction, fineAction, projectBankAction } from '@/lib/a
 import { bankOf } from '@/lib/bank';
 import { waTestNumber } from '@/lib/whatsapp';
 import { flatList, isFree } from '@/lib/people';
+import { elecSettingsAction } from '@/lib/actions-elec';
+import { ELEC_RATE, unitRate, readDay, elecDueDays, remindDays, fineSteps, remindLabel, meterMode, elecOn } from '@/lib/meter';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +95,33 @@ export default async function Settings({ params, searchParams }: { params: Promi
             : <p className="empty">No bank account set: customers are asked to pay in cash. The Admin sets it here.</p>}
         </div>; })()}
       </div>
+      {(() => { const mode = !elecOn() ? 'off' : meterMode() ? 'meter' : 'bill', rate = unitRate(S.today), steps = fineSteps(), nextRate = S.rates.filter(x => x.type === ELEC_RATE && x.from > S.today).sort((a, b) => a.from.localeCompare(b.from))[0];
+        return <div className="card" id="elec"><div className="card-row"><h3 data-hic="bolt" data-tone="amber">Electricity <small>{mode === 'off' ? 'not billed here' : mode === 'meter' ? `sub-meters · ${rate ? `${rs(rate)} a unit` : 'unit rate not set'}` : 'from the paper bill'}</small></h3></div>
+          {ad ? <form action={elecSettingsAction} className="rules-form elec-form">{hid}
+            <fieldset className="pay-via"><legend>How electricity is billed</legend>
+              <label className="pay-via-o"><input type="radio" name="mode" value="off" defaultChecked={mode === 'off'} /> <span><b>Not billed</b><small>no electricity bills here</small></span></label>
+              <label className="pay-via-o"><input type="radio" name="mode" value="bill" defaultChecked={mode === 'bill'} /> <span><b>From the paper bill</b><small>the building manager enters each bill&apos;s amount (Oakwood)</small></span></label>
+              <label className="pay-via-o"><input type="radio" name="mode" value="meter" defaultChecked={mode === 'meter'} /> <span><b>Sub-meters</b><small>units used × the unit rate below</small></span></label>
+            </fieldset>
+            <div className="grid2" style={{ gap: 10 }}>
+              <div className="form-row"><label htmlFor="el-r">Unit rate (Rs per unit)</label><input id="el-r" name="rate" type="number" min="1" step="1" defaultValue={nextRate?.amount || rate || ''} placeholder="e.g. 45" /><div className="cell-sub">{rate ? `Now ${rs(rate)} a unit.` : 'Not set yet.'}{nextRate ? ` ${rs(nextRate.amount)} from ${fd(nextRate.from)}.` : ''} Bills keep the rate of the day they were made.</div></div>
+              <div className="form-row"><label htmlFor="el-rf">Rate starts on</label><input id="el-rf" name="rateFrom" type="date" defaultValue={nextRate?.from || S.today} /></div>
+              <div className="form-row"><label htmlFor="el-rd">Reading day (each month)</label><input id="el-rd" name="readDay" type="number" min="1" max="28" step="1" defaultValue={readDay()} /><div className="cell-sub">The building manager&apos;s To do asks for the readings from this day.</div></div>
+              <div className="form-row"><label htmlFor="el-dd">Bill due (days after the bill)</label><input id="el-dd" name="dueDays" type="number" min="1" max="60" step="1" defaultValue={elecDueDays()} /></div>
+            </div>
+            <div className="form-row"><label htmlFor="el-rm">Reminder days, from the due date</label><input id="el-rm" name="remind" type="text" defaultValue={remindDays().join(', ')} placeholder="-2, 0, 3, 7" /><div className="cell-sub">Negative = before the due date, 0 = on it, positive = after it. Now: {remindDays().map(remindLabel).join(', ')}. Reminders go while the bill is unpaid, one a day at most, and wait in Send on WhatsApp.</div></div>
+            <div className="form-row"><label>Late fine (the building manager asks for it; you approve)</label>
+              <div className="fine-steps">{[0, 1, 2].map(i => <div className="fine-step" key={i}><span className="cell-sub">From</span><input name="fineDays" type="number" min="1" max="365" step="1" defaultValue={steps[i]?.days ?? ''} aria-label={`Step ${i + 1}: days late`} /><span className="cell-sub">days late:</span><input name="finePct" type="number" min="0" max="50" step="0.5" defaultValue={steps[i]?.pct ?? ''} aria-label={`Step ${i + 1}: %`} /><span className="cell-sub">% of the unpaid bill</span></div>)}</div>
+              <div className="cell-sub">For example: from 7 days late 5%, from 30 days late 10%. Leave empty for no fine.</div></div>
+            <div className="m-actions"><Submit>Save electricity settings</Submit></div>
+          </form> : <div className="list">
+            <div className="li"><div className="t"><div className="a">How it is billed</div><div className="b">{mode === 'off' ? 'Not billed here' : mode === 'meter' ? 'Sub-meters: units used × the unit rate' : 'From the paper bill'}</div></div></div>
+            {mode === 'meter' ? <><div className="li"><div className="t"><div className="a">Unit rate</div><div className="b">{rate ? `${rs(rate)} a unit` : 'not set'}{nextRate ? ` · ${rs(nextRate.amount)} from ${fd(nextRate.from)}` : ''}</div></div></div>
+              <div className="li"><div className="t"><div className="a">Readings and due date</div><div className="b">readings on the {ord(readDay())} · due {elecDueDays()} days after the bill</div></div></div></> : null}
+            {mode !== 'off' ? <><div className="li"><div className="t"><div className="a">Reminders</div><div className="b">{remindDays().map(remindLabel).join(', ')} the due date</div></div></div>
+              <div className="li"><div className="t"><div className="a">Late fine</div><div className="b">{steps.length ? steps.map(x => `${x.pct}% from ${x.days} days late`).join(', ') : 'none'}</div></div></div></> : null}
+            <p className="cell-sub" style={{ margin: '8px 0 0' }}>Only the Admin changes these.</p></div>}
+        </div>; })()}
       {(() => { const fl = flatList(), free = fl.filter(isFree).length; return <div className="card" id="flats"><div className="card-row"><h3 data-hic="building" data-tone="blue">Apartments <small>{fl.length} in {S.proj.name} · {fl.length - free} possessed or booked · {free} available</small></h3><Go href={`/apartments?p=${pid}`} className="btn sm">Open Apartments</Go></div>
         <p className="cell-sub" style={{ margin: 0 }}>{ad ? 'Add apartments and change their details on the Apartments screen (left menu). New possessions pick from the available ones.' : 'The Admin adds apartments and changes their details on the Apartments screen.'}</p></div>; })()}
       <details className="card rules-card"><summary>How the system works</summary><ul className="rules">

@@ -9,11 +9,12 @@ import { PLAN_LABEL } from './types';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
-  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf, leaveFigures, finalizeLeave, unitOf } from './engine';
+  sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf, leaveFigures, finalizeLeave, unitOf, periodLabel, isUtilBill } from './engine';
 import { fd, fm, rs, ord, addDays, diff } from './fmt';
 import { keepCustIds, nextCustId, flatByApt } from './people';
+import { finalElec, billFinal, meterMode, hasFine, addElecFine } from './meter';
 
-export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
+export const KIND_LABEL: Record<ApprovalKind, string> = { elecfine: 'Electricity late fine', discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
   rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance', leave: 'Customer left' };
 /** Changes for the whole project (not one owner). */
 export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announce', 'possession'];
@@ -68,6 +69,8 @@ function describeRaw(o: Owner | null, kind: ApprovalKind, c: Record<string, unkn
     case 'instalments': { const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0);
       return { summary: `Old arrears of ${rs(tot)} in ${plural(it.length, 'instalment')}: ${it.map(x => `${rs(num(x.amount))} by ${fd(x.due)}`).join(', ')}`,
         before: o ? (o.instalments ? `A plan of ${plural(o.instalments.items.length, 'instalment')} (${rs(o.instalments.total)})` : `${rs(o.openingLeft || 0)} old arrears, due in full`) : '' }; }
+    case 'elecfine': { const b = S.bills.find(x => x.id === String(c.billId));
+      return { summary: `Late fine on the ${b ? fm(b.period) : ''} electricity bill: ${num(c.pct)}% = ${rs(num(c.amount))} (${num(c.days)} days late)`, before: b ? `${rs(Math.max(0, b.net - b.paid))} unpaid, due ${fd(b.dueDate)}` : '' }; }
     case 'leave': { const L = String(c.date), f = o ? leaveFigures(o, L) : null;
       return { summary: `${o?.name} leaves ${o?.apt} on ${fd(L)}${c.reading != null && c.reading !== '' ? `, meter ${c.reading}` : ''}: all charges cleared${f && f.due < 0 ? ` (${rs(-f.due)} to refund)` : ''}; the apartment becomes vacant`, before: `In possession since ${o?.possessionKnown ? fd(o.possession) : 'before the office list'}` }; }
     case 'discontinue': return c.on
@@ -131,8 +134,16 @@ function check(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>) 
     const L = String(c.date);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(L) || L > cur().today) throw new Error('Pick the day the customer left (today or earlier)');
     if (o.possessionKnown && L < o.possession) throw new Error('The leaving date is before the possession date');
-    const f = leaveFigures(o, L);
-    if (f.due > 0) throw new Error(`Charges are not cleared. Please clear all charges first: ${rs(f.due)} still to pay.`);
+    const f = leaveFigures(o, L), fe = finalElec(o, c.reading != null && c.reading !== '' ? num(c.reading) : null, L);
+    if (meterMode() && (c.reading == null || c.reading === '')) throw new Error('Enter the meter reading at leaving');
+    if (f.due + fe.amount > 0) throw new Error(`Charges are not cleared. Please clear all charges first: ${rs(f.due + fe.amount)} still to pay${fe.amount ? ` (incl. ${rs(fe.amount)} final electricity)` : ''}.`);
+  }
+  if (kind === 'elecfine' && o) {
+    const b = cur().bills.find(x => x.id === String(c.billId) && x.ownerId === o.id);
+    if (!b || !isUtilBill(b)) throw new Error('That electricity bill isn\'t there any more');
+    if (hasFine(b)) throw new Error('This bill already has a late fine');
+    if (b.net - b.paid <= 0) throw new Error('This bill is paid; no fine');
+    if (!(num(c.amount) > 0)) throw new Error('No fine is due for this bill yet');
   }
   if (kind === 'discontinue' && c.on && o && balance(o) <= 0) throw new Error('Nothing is owed, so maintenance can\'t be discontinued');
   if (kind === 'reverse') { const p = cur().payments.find(x => x.id === String(c.pid)); if (!p || (o && p.ownerId !== o.id)) throw new Error('That payment was not found'); if (!String(c.reason || '').trim()) throw new Error('Write why this payment is wrong'); }
@@ -229,7 +240,16 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       log(d, t, 'admin', `${o.apt} billing plan changed by ${who}: ${PLAN_LABEL[was]} → ${PLAN_LABEL[plan]}`, o.id);
       return `Billing plan changed to ${PLAN_LABEL[plan].toLowerCase()}`;
     }
+    case 'elecfine': {
+      const b = S.bills.find(x => x.id === String(c.billId));
+      if (!b) throw new Error('That electricity bill isn\'t there any more');
+      // The fine follows the bill: recomputed on what is unpaid now, at the % asked for.
+      const amt = Math.min(num(c.amount), Math.round(Math.max(0, b.net - b.paid) * num(c.pct) / 100));
+      addElecFine(b, num(c.pct), amt, num(c.days), who);
+      return `Late fine of ${rs(amt)} added to ${o!.apt}'s ${fm(b.period)} electricity bill`;
+    }
     case 'leave': {
+      if (c.reading != null && c.reading !== '') billFinal(o!, num(c.reading), String(c.date), who);
       const r = finalizeLeave(o!, String(c.date), c.reading != null && c.reading !== '' ? Number(c.reading) : null, cur().today, at(15), who);
       return `${o!.apt} is vacant: all charges cleared, clearance ${r.clearance}${r.refund ? `; ${rs(r.refund)} advance to refund` : ''}`;
     }
