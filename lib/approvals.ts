@@ -11,6 +11,7 @@ import { normPhone } from './importer';
 import { cur, log, at, nid, ownerById, balance, nextPeriodFor, rateOf, cardRate, billDateOf, hasGenerator, waive, rateTypes, rateFor, resyncFines,
   sendDues, pushMsg, nextBillFor, anchorOf, reversePayment, correctCurrentBill, dueDayOf, leaveFigures, finalizeLeave, unitOf } from './engine';
 import { fd, fm, rs, ord, addDays, diff } from './fmt';
+import { keepCustIds, nextCustId, flatByApt } from './people';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
   rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance', leave: 'Customer left' };
@@ -63,7 +64,7 @@ function describeRaw(o: Owner | null, kind: ApprovalKind, c: Record<string, unkn
       return { summary: `Monthly fees from ${fd(from)}: ${(ch.length ? ch : list).map(([ty, v]) => `${ty} ${rs(v)}`).join(', ')}`,
         before: (ch.length ? ch : list).map(([ty]) => `${ty} ${rateFor(ty, from) ? rs(rateFor(ty, from)) : 'no rate'}`).join(', ') };
     }
-    case 'possession': return { summary: `New possession: ${String(c.apt)} (${String(c.type)}) to ${String(c.name)} on ${fd(String(c.possession))}, ${PLAN_LABEL[(c.plan as Plan) || 'monthly'].toLowerCase()} billing`, before: 'Not possessed: not billed' };
+    case 'possession': return { summary: `New possession: ${String(c.apt)} (${String(c.type)}) to ${String(c.name)}${c.cnic ? ` (CNIC ${String(c.cnic)}${c.cnicExpiry ? `, expires ${fd(String(c.cnicExpiry))}` : ''})` : ''} on ${fd(String(c.possession))}, ${PLAN_LABEL[(c.plan as Plan) || 'monthly'].toLowerCase()} billing`, before: 'Not possessed: not billed' };
     case 'instalments': { const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0);
       return { summary: `Old arrears of ${rs(tot)} in ${plural(it.length, 'instalment')}: ${it.map(x => `${rs(num(x.amount))} by ${fd(x.due)}`).join(', ')}`,
         before: o ? (o.instalments ? `A plan of ${plural(o.instalments.items.length, 'instalment')} (${rs(o.instalments.total)})` : `${rs(o.openingLeft || 0)} old arrears, due in full`) : '' }; }
@@ -163,6 +164,8 @@ function checkPossession(c: Record<string, unknown>) {
   const apt = String(c.apt || '').toUpperCase();
   if (!apt || !String(c.name || '').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(String(c.possession)) || !c.type) throw new Error('Fill in the apartment, type, owner and possession date');
   if (cur().owners.some(o => o.status === 'active' && o.apt.toUpperCase() === apt)) throw new Error(`${apt} already has an owner. For a sale, use Transfer on that apartment.`);
+  // 21 Nov 2026: only a flat of this building (one a customer had, or one the Admin added).
+  if (!flatByApt(apt)) throw new Error(`${apt} isn't one of this building's flats. The Admin adds flats in Settings › Flats.`);
   if (!rateTypes().includes(String(c.type))) throw new Error(`${String(c.type)} has no rate yet. An admin adds it in Settings › Monthly fees.`);
 }
 
@@ -398,12 +401,17 @@ export function addPossession(c: Record<string, unknown>, who: string) {
   // A vacant apartment (its last customer left): the new customer takes over the same apartment record.
   const prev = S.owners.filter(x => x.status === 'closed' && x.apt.toUpperCase() === apt).sort((a, b) => (b.closedOn || '').localeCompare(a.closedOn || ''))[0];
   const rd = c.reading != null && String(c.reading) !== '' && Number.isFinite(Number(c.reading)) ? { d: possession, reading: Number(c.reading) } : null;
-  const o = blankOwner({ id: 'O' + nid('o'), project: S.project, apt: prev ? prev.apt : apt, block: String(c.block || '') || prev?.block || apt.split(/[-\s]/)[0], type: String(c.type), name: String(c.name), phone: phone ? normPhone(phone) : '', email: String(c.email || ''),
+  // The customer's ID: the next in this building (the customers without a stored ID keep theirs from now on too).
+  keepCustIds();
+  const cid = nextCustId(), added = flatByApt(apt);
+  const o = blankOwner({ id: 'O' + nid('o'), project: S.project, apt: prev ? prev.apt : added?.apt || apt, block: String(c.block || '') || prev?.block || added?.block || apt.split(/[-\s]/)[0], type: String(c.type), name: String(c.name), phone: phone ? normPhone(phone) : '', email: String(c.email || ''),
+    customerId: cid, cnic: c.cnic ? String(c.cnic) : null, cnicExpiry: /^\d{4}-\d{2}-\d{2}$/.test(String(c.cnicExpiry || '')) ? String(c.cnicExpiry) : null, cnicAddress: c.cnicAddress ? String(c.cnicAddress) : null,
+    ...(!prev && (c.floor || added?.floor) ? { floor: String(c.floor || added?.floor || '') } : {}),
     possession, possessionKnown: true, firstBill: addDays(possession, S.settings.rules.graceDays ?? 25), plan, invalidPhone: !phone, noPhone: !phone,
     ...(prev ? { unit: unitOf(prev), prevOwnerId: prev.id, floor: prev.floor } : {}), meterIn: rd,
     notes: [{ d: S.today, by: who, text: `Possession handed over on ${fd(possession)}.${c.note ? ' ' + String(c.note) : ''}` }] });
   S.owners.push(o);
   const next = nextBillFor(o);
-  log(S.today, at(15), 'admin', `New possession: ${apt} (${String(c.type)}) handed over to ${String(c.name)} on ${fd(possession)}, recorded by ${who}. ${PLAN_LABEL[plan]} billing; first bill on ${fd(next)}`, o.id);
-  return { id: o.id, apt, next };
+  log(S.today, at(15), 'admin', `New possession: ${apt} (${String(c.type)}) handed over to ${String(c.name)} (customer ${cid}${c.cnic ? `, CNIC ${String(c.cnic)}` : ''}) on ${fd(possession)}, recorded by ${who}. ${PLAN_LABEL[plan]} billing; first bill on ${fd(next)}`, o.id);
+  return { id: o.id, apt, next, cid };
 }

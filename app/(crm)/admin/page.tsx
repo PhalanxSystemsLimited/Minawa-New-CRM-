@@ -13,6 +13,9 @@ import { ActivityList, lastSeen, roleTag } from '@/components/views/activity';
 import { projects as listProjects } from '@/lib/ops';
 import { waTestNumber } from '@/lib/whatsapp';
 import { PageIc } from '@/components/views/art';
+import { PersonFields, IdBox } from '@/components/PersonFields';
+import { staffNos, cnicState, cnicNote } from '@/lib/people';
+import { todayPKT, fd } from '@/lib/fmt';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +29,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && !['signin', 'signout'].includes(e.kind)).slice(0, 8);
   const rank = { admin: 0, accountant: 1, manager: 2 } as const, sorted = [...staff].sort((a, b) => (rank[a.role] - rank[b.role]) || a.name.localeCompare(b.name));
   const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add', 'extra'];
+  const nos = staffNos(staff), today = todayPKT();
   // WhatsApp numbers (20 Nov 2026): every number on someone's details, who uses it, and its use in the last 24 hours.
   const numRows = new Map<string, { number: string; limit: number; people: string[]; labels: Set<string>; on: boolean }>();
   for (const x of staff) for (const n of x.waNumbers || []) if (validNumber(n.number)) {
@@ -40,9 +44,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   return <>
     <div className="proj-head"><PageIc n="users" tone="blue" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
     <div className="card"><div className="card-row"><h3>Staff <small>who can sign in</small></h3><Go href="/admin?add=1" className="btn primary sm">+ Add someone</Go></div>
-      <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
+      <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Employee</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
-          <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}</td>
+          <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}<div className="cell-sub num">{nos.map.get(s.id)}{s.cnic ? ` · CNIC ${s.cnic}` : ''}{s.phone ? ` · ${s.phone}` : ''}</div>
+            {!s.cnic ? <span className="tag warn">CNIC not on file</span> : cnicState(s.cnicExpiry, today) === 'expired' ? <span className="tag bad">{cnicNote(s.cnicExpiry, today)}</span> : cnicState(s.cnicExpiry, today) === 'soon' ? <span className="tag warn">{cnicNote(s.cnicExpiry, today)}</span> : null}</td>
           <td className="cell-sub">{s.email}{(s.waNumbers || []).length ? <div className="wa-nums-cell">{(s.waNumbers || []).map(n => <span key={n.id} className="num" style={{ whiteSpace: 'nowrap' }}><Wa inl /> {fmtNumber(n.number)} <small>{n.label}{n.active ? '' : ', not in use'}</small></span>)}</div> : s.role === 'manager' ? <div><span className="tag warn">No WhatsApp number</span></div> : null}</td>
           <td>{roleTag(s.role)}{s.role !== 'admin' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || <span className="tag warn">No building ticked{s.role === 'accountant' ? ': sees every building until you tick them' : ''}</span>}</div> : null}</td>
           <td>{s.active ? <span className="tag good">Can sign in</span> : <span className="tag bad">Turned off</span>}</td>
@@ -77,8 +82,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
     </div>
     {sp.add ? <ModalShell title="Add someone" closeKeys={keys} wide>
       <form action={inviteAction} className="rules-form staff-form">
-        <div className="form-row half"><label htmlFor="iv-n">Name</label><input id="iv-n" name="name" required /></div>
-        <div className="form-row half"><label htmlFor="iv-e">Email (they sign in with it)</label><input id="iv-e" name="email" type="email" autoComplete="off" required /></div>
+        <IdBox label="Employee ID" value={nos.next} note="Given to them when you press Add." />
+        <PersonFields prefix="iv" today={today} />
+        <div className="form-row"><label htmlFor="iv-e">Email (they sign in with it)</label><input id="iv-e" name="email" type="email" autoComplete="off" required /></div>
         <StaffAccess prefix="iv" role="accountant" projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={[]} saving="create" />
         <WaNumbersField prefix="iv" initial={[]} />
         <div className="form-row"><label htmlFor="iv-p">Password (8+ characters)</label><PasswordInput id="iv-p" name="password" autoComplete="new-password" minLength={8} required /></div>
@@ -87,8 +93,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
       </form></ModalShell> : null}
     {ed ? <ModalShell title={`Edit ${ed.name}`} closeKeys={keys} wide>
       <form action={staffAction} className="rules-form staff-form"><input type="hidden" name="id" value={ed.id} />
-        <div className="form-row half"><label htmlFor="ed-n">Name</label><input id="ed-n" name="name" defaultValue={ed.name} required /></div>
-        <div className="form-row half"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
+        <IdBox label="Employee ID" value={nos.map.get(ed.id) || '—'} />
+        <PersonFields key={'p' + ed.id} prefix="ed" today={today} required={false} values={{ name: ed.name, cnic: ed.cnic, cnicExpiry: ed.cnicExpiry, cnicAddress: ed.cnicAddress, phone: ed.phone }} />
+        <div className="form-row"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
         <StaffAccess key={ed.id} prefix="ed" role={ed.role} projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={ed.role === 'admin' ? [] : ed.projects || []} saving="save" />
         <WaNumbersField key={'n' + ed.id} prefix="ed" initial={ed.waNumbers || []} />
         <div className="form-row"><label htmlFor="ed-p">New password <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(leave empty to keep the current one)</span></label><PasswordInput id="ed-p" name="password" autoComplete="new-password" minLength={8} /></div>

@@ -9,6 +9,7 @@ import { fd, fds, fm, rs, waDigits } from './fmt';
 import { blankOwner } from './seed';
 import { normPhone } from './importer';
 import { changeOrRequest, addPossession, requestChange } from './approvals';
+import { normCnic, flatByApt, possessionWaiting } from './people';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
 const go = (path: string, toast?: string): never => redirect(path + (path.includes('?') ? '&' : '?') + (toast ? 't=' + encodeURIComponent(toast) : ''));
@@ -124,24 +125,40 @@ export async function sendNoticeAction(fdata: FormData) {
 
 /* ---------- new possession ---------- */
 export async function possessionAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), back = `/p/${pid}/apartments`;
-  const c = { apt: S(fdata, 'apt').toUpperCase(), block: S(fdata, 'block'), type: S(fdata, 'type'), name: S(fdata, 'name'), phone: S(fdata, 'phone'), email: S(fdata, 'email'),
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), b0 = S(fdata, 'back');
+  // Back to the screen it was started from (the Apartments screen, an apartment, or the building's list).
+  const back = /^\/(apartments|p\/)/.test(b0) && !b0.startsWith('//') ? b0.replace(/[?&]m=possession\b.*$/, '') : `/p/${pid}/apartments`;
+  const c = { apt: S(fdata, 'apt').toUpperCase(), block: S(fdata, 'block'), floor: S(fdata, 'floor'), type: S(fdata, 'type'), name: S(fdata, 'name').replace(/\s+/g, ' '), phone: S(fdata, 'phone'), email: S(fdata, 'email'),
+    cnic: normCnic(S(fdata, 'cnic')) || '', cnicExpiry: S(fdata, 'cnicExpiry'), cnicAddress: S(fdata, 'cnicAddress').replace(/\s+/g, ' '),
     possession: S(fdata, 'possession'), plan: S(fdata, 'plan') || 'monthly', note: S(fdata, 'note'), reading: S(fdata, 'reading') };
-  if (!c.apt || !c.name || !/^\d{4}-\d{2}-\d{2}$/.test(c.possession) || !c.type) go(back + '?m=possession', 'Fill in the apartment, type, owner and possession date');
-  if (c.phone && waDigits(c.phone).length < 10) go(back + '?m=possession', 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
+  const again = `${back}${back.includes('?') ? '&' : '?'}m=possession${/^\/apartments\/?(\?|$)/.test(back) && !/[?&]p=/.test(back) ? `&p=${pid}` : ''}&pp=${encodeURIComponent(back)}${c.apt ? `&flat=${encodeURIComponent(c.apt)}` : ''}`;
+  if (!c.apt) go(again, 'Choose the apartment from the list of available apartments');
+  if (!c.name || !/^\d{4}-\d{2}-\d{2}$/.test(c.possession) || !c.type) go(again, 'Fill in the type, the customer\'s full name and the possession date');
+  if (!c.cnic) go(again, 'Enter the CNIC number: 13 digits, e.g. 12345-1234567-1');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(c.cnicExpiry)) go(again, 'Enter the CNIC expiry date');
+  if (!c.cnicAddress) go(again, 'Enter the address on the CNIC');
+  if (!c.phone) go(again, 'Enter the customer\'s WhatsApp number');
+  if (waDigits(c.phone).length < 10) go(again, 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
+  if (!/^\d+$/.test(c.reading)) go(again, 'Enter the meter reading now (numbers only)');
   // An Admin records it at once. A building manager's (or accountant's) possession waits for an Admin's approval:
   // until then the flat isn't billed.
-  let out: { id?: string; next?: string; requested?: boolean } | null = null, err = '';
+  let out: { id?: string; next?: string; cid?: string; requested?: boolean } | null = null, err = '';
   try {
     out = await mutate(pid, staff, s => {
+      // Only an empty flat (nobody has it, nothing waiting for it), checked again here.
+      const f = flatByApt(c.apt);
+      if (!f) throw new Error(`${c.apt} isn't one of this building's apartments. The Admin adds apartments on the Apartments screen.`);
+      if (f.status === 'occupied') throw new Error(`${f.apt} is already possessed (${f.owner?.name}). Choose an available apartment.`);
+      if (possessionWaiting(f.apt)) throw new Error(`${f.apt} is already booked: a possession is waiting for the Admin's approval.`);
+      Object.assign(c, { apt: f.apt, block: c.block || f.block, floor: c.floor || f.floor });
       if (s.role === 'admin') return addPossession(c, staffName(staff));
       requestChange(null, 'possession', c, c.note || 'New possession handed over');
       return { requested: true };
     }, { send: false });
   } catch (e) { err = (e as Error).message; }
-  if (!out) go(back + '?m=possession', err || 'Not saved');
-  if (out!.requested) go(back, `Sent to the Admin for approval: ${c.apt} to ${c.name} from ${fd(c.possession)}. It is billed once approved.`);
-  go(`/p/${pid}/apartments/${out!.id}`, `Possession recorded. First bill on ${fd(out!.next!)}.`);
+  if (!out) go(again, err || 'Not saved');
+  if (out!.requested) go(back, `Sent to the Admin for approval: ${c.apt} to ${c.name} from ${fd(c.possession)}. ${c.apt} shows as booked until then, and is billed once approved.`);
+  go(`/customers/${pid}/${out!.id}`, `Possession recorded: ${out!.cid} ${c.name} in ${c.apt}. First bill on ${fd(out!.next!)}.`);
 }
 
 /* ---------- adjustments (manual corrections) ---------- */

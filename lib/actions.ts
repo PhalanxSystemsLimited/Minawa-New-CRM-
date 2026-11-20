@@ -15,6 +15,8 @@ import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
   verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
+import { normCnic, keepCustIds, staffNos, nextCustId } from './people';
+import { normPhone } from './importer';
 import { blankOwner } from './seed';
 import { use } from './engine';
 import { changeOrRequest, type ChangeResult } from './approvals';
@@ -99,15 +101,25 @@ export async function clearanceAction(fdata: FormData) {
   redirect(`${ownerPath(pid, oid)}?doc=clearance:${no}`);
 }
 export async function transferAction(fdata: FormData) {
-  const staff = await requireAdmin(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), name = S(fdata, 'name'), phone = S(fdata, 'phone');
-  if (!name || !phone) go(ownerPath(pid, oid), 'Enter the buyer\'s name and WhatsApp number');
+  const staff = await requireAdmin(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), name = S(fdata, 'name').replace(/\s+/g, ' '), phone = S(fdata, 'phone');
+  // The buyer's details from their CNIC, and the meter reading on the day (21 Nov 2026).
+  const cnic = normCnic(S(fdata, 'cnic')), cnicExpiry = S(fdata, 'cnicExpiry'), cnicAddress = S(fdata, 'cnicAddress').replace(/\s+/g, ' '), reading = S(fdata, 'reading'), again = ownerPath(pid, oid) + '?m=transfer';
+  if (!name || !phone) go(again, 'Enter the buyer\'s full name and WhatsApp number');
+  if (waDigits(phone).length < 10) go(again, 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
+  if (!cnic) go(again, 'Enter the buyer\'s CNIC number: 13 digits, e.g. 12345-1234567-1');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cnicExpiry)) go(again, 'Enter the CNIC expiry date');
+  if (!cnicAddress) go(again, 'Enter the address on the CNIC');
+  if (!/^\d+$/.test(reading)) go(again, 'Enter the meter reading now (numbers only)');
   const nidOut = await mutate(pid, staff, s => {
     const o = needOwner(s, oid), t = at(15), d = S(fdata, 'd') || s.today;
     if (balance(o) > 0) throw new Error('Dues are outstanding; record the payment first.');
     o.status = 'closed'; o.closedOn = d;
     let c = s.clearances.find(x => x.ownerId === o.id);
     if (!c) { c = { no: 'DC-' + s.today.slice(0, 4) + '-' + String(nid('dc')).padStart(3, '0'), ownerId: o.id, project: pid, d: s.today, by: staffName(staff) }; s.clearances.push(c); }
-    const n = blankOwner({ id: 'O' + nid('o'), project: pid, unit: unitOf(o), apt: o.apt, block: o.block, type: o.type, name, phone, possession: d, prevOwnerId: o.id, rate: o.rate, generator: !!o.generator });
+    keepCustIds();
+    const n = blankOwner({ id: 'O' + nid('o'), project: pid, unit: unitOf(o), apt: o.apt, block: o.block, type: o.type, name, phone: normPhone(phone), possession: d, prevOwnerId: o.id, rate: o.rate, generator: !!o.generator,
+      floor: o.floor, customerId: nextCustId(), cnic, cnicExpiry, cnicAddress, meterIn: { d, reading: +reading } });
+    if (!o.meterOut) o.meterOut = { d, reading: +reading };
     s.owners.push(n);
     log(s.today, t, 'admin', `${o.apt} transferred: ${o.name}'s account closed (clearance ${c.no}); new account for ${name}, billed on the ${ord(+d.slice(8))}`, n.id);
     if (isBillingDay(n, s.today)) { const b = createBill(n, s.today); sendBill(n, b, s.today); }
@@ -145,6 +157,17 @@ export async function editOwnerAction(fdata: FormData) {
     if (name && name !== o.name) { ch.push(`name ${o.name} → ${name}`); o.name = name; }
     if (phone !== o.phone) { ch.push(`WhatsApp ${o.phone || 'none'} → ${phone || 'none'}`); o.phone = phone; o.noPhone = !phone; o.invalidPhone = !phone; }
     if (email !== o.email) o.email = email;
+    // CNIC details (21 Nov 2026): optional here (customers from before may not have given them yet), checked when given.
+    if (fdata.has('cnic')) {
+      const raw = S(fdata, 'cnic'), cnic = raw ? normCnic(raw) : null, exp = S(fdata, 'cnicExpiry'), addr = S(fdata, 'cnicAddress').replace(/\s+/g, ' ');
+      if (raw && !cnic) throw new Error('The CNIC number needs 13 digits, e.g. 12345-1234567-1');
+      if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) throw new Error('Check the CNIC expiry date');
+      if ((cnic || null) !== (o.cnic || null)) ch.push(`CNIC ${o.cnic || 'none'} → ${cnic || 'none'}`);
+      if ((exp || null) !== (o.cnicExpiry || null)) ch.push(`CNIC expiry ${o.cnicExpiry ? fd(o.cnicExpiry) : 'none'} → ${exp ? fd(exp) : 'none'}`);
+      if ((addr || null) !== (o.cnicAddress || null)) ch.push('address on CNIC changed');
+      o.cnic = cnic; o.cnicExpiry = exp || null; o.cnicAddress = addr || null;
+      if (!o.customerId) keepCustIds();
+    }
     o.abroad = fdata.get('abroad') === 'on';
     if (staff.role === 'admin') { const ex = fdata.get('exempt') === 'on'; if (ex !== o.exempt) { ch.push(ex ? 'now exempt' : 'no longer exempt'); o.exempt = ex; if (!ex) o.exemptWhy = null; } }
     if (ch.length) log(s.today, at(15), 'admin', `${o.apt} edited by ${staffName(staff)}: ${ch.join('; ')}`, o.id);
@@ -298,12 +321,25 @@ export async function staffAction(fdata: FormData) {
   try { waNumbers = parseNumbers(S(fdata, 'waNumbers'), st!.waNumbers || []); } catch (e) { bad = (e as Error).message; }
   if (bad) go(back, bad);
   if (numsText(st!.waNumbers || []) !== numsText(waNumbers)) ch.push(`WhatsApp numbers: ${numsText(waNumbers) || 'none'}`);
+  // CNIC details and phone (21 Nov 2026): checked when given.
+  const rawC = S(fdata, 'cnic'), cnic = rawC ? normCnic(rawC) : null, cnicExpiry = S(fdata, 'cnicExpiry') || null, cnicAddress = S(fdata, 'cnicAddress').replace(/\s+/g, ' ') || null, rawP = S(fdata, 'phone');
+  if (rawC && !cnic) go(back, 'The CNIC number needs 13 digits, e.g. 12345-1234567-1');
+  if (cnicExpiry && !/^\d{4}-\d{2}-\d{2}$/.test(cnicExpiry)) go(back, 'Check the CNIC expiry date');
+  if (rawP && waDigits(rawP).length < 10) go(back, 'Enter the phone number with the country code, e.g. +92 3xx xxx xxxx');
+  const phone = rawP ? normPhone(rawP) : null;
+  if ((cnic || null) !== (st!.cnic || null)) ch.push(`CNIC ${st!.cnic || 'none'} → ${cnic || 'none'}`);
+  if ((cnicExpiry || null) !== (st!.cnicExpiry || null)) ch.push(`CNIC expiry ${st!.cnicExpiry || 'none'} → ${cnicExpiry || 'none'}`);
+  if ((cnicAddress || null) !== (st!.cnicAddress || null)) ch.push('address on CNIC changed');
+  if ((phone || null) !== (st!.phone || null)) ch.push(`phone ${st!.phone || 'none'} → ${phone || 'none'}`);
+  // Employee IDs: everyone without a stored one keeps theirs from now on (so the numbers never move).
+  const nos = staffNos(list), staffNo = st!.staffNo || nos.map.get(st!.id) || null;
+  for (const x of list) if (!x.staffNo && x.id !== st!.id) await store.saveStaff({ ...x, staffNo: nos.map.get(x.id) || null });
   if (!ch.length) go('/admin', 'Nothing changed');
   if (store.kind === 'supabase' && (email !== st!.email || password)) {
     const { error } = await (await authAdmin()).updateUserById(id, { ...(email !== st!.email ? { email, email_confirm: true } : {}), ...(password ? { password } : {}) });
     if (error) go(back, `Couldn't update the login: ${error.message}`);
   } else if (password) go(back, 'Local mode has one shared password (LOCAL_PASSWORD). Connect Supabase to give each person their own.');
-  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers });
+  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers, staffNo, cnic, cnicExpiry, cnicAddress, phone });
   // A new password or login, or sign-in turned off: sign them out on every device at once (18 Nov 2026).
   let ended = false;
   if (store.kind === 'supabase' && (password || email !== st!.email || (!active && st!.active)) && st!.id !== me.id) ended = await endSessions(st!.id);
@@ -321,8 +357,18 @@ export async function inviteAction(fdata: FormData) {
   let waNumbers: WaNumber[] = [], bad = '';
   try { waNumbers = parseNumbers(S(fdata, 'waNumbers')); } catch (e) { bad = (e as Error).message; }
   if (bad) go('/admin?add=1', bad);
+  // 21 Nov 2026: their CNIC details and phone (an expired CNIC only warns on the form).
+  const cnic = normCnic(S(fdata, 'cnic')), cnicExpiry = S(fdata, 'cnicExpiry'), cnicAddress = S(fdata, 'cnicAddress').replace(/\s+/g, ' '), phone = S(fdata, 'phone');
+  if (!cnic) go('/admin?add=1', 'Enter the CNIC number: 13 digits, e.g. 12345-1234567-1');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cnicExpiry)) go('/admin?add=1', 'Enter the CNIC expiry date');
+  if (!cnicAddress) go('/admin?add=1', 'Enter the address on the CNIC');
+  if (waDigits(phone).length < 10) go('/admin?add=1', 'Enter their phone number with the country code, e.g. +92 3xx xxx xxxx');
   const store = await getStore(), list = await store.listStaff();
   if (list.some(x => x.email.toLowerCase() === email)) go('/admin', `${email} is already on the staff list. Use Edit to change their details.`);
+  // Employee IDs: the people already there keep theirs from now on; this person gets the next one.
+  const nos = staffNos(list);
+  for (const x of list) if (!x.staffNo) await store.saveStaff({ ...x, staffNo: nos.map.get(x.id) || null });
+  const staffNo = nos.next;
   let id = 'local-' + Date.now();
   if (store.kind === 'supabase') {
     const auth = await authAdmin();
@@ -330,10 +376,10 @@ export async function inviteAction(fdata: FormData) {
     if (error || !data.user) go('/admin?add=1', `Couldn't add: ${error?.message}`);
     id = data.user!.id;
   }
-  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers });
+  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers, staffNo, phone: normPhone(phone), cnic, cnicExpiry, cnicAddress });
   const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : `an accountant (${projects.join(', ')})`;
-  await staffLog(me, `${name} (${email}) added as ${as} by ${staffName(me)}${waNumbers.length ? `; WhatsApp numbers: ${numsText(waNumbers)}` : ''}`);
-  go('/admin', `${name} can now sign in as ${as}`);
+  await staffLog(me, `${name} (${staffNo}, CNIC ${cnic}, ${email}) added as ${as} by ${staffName(me)}${waNumbers.length ? `; WhatsApp numbers: ${numsText(waNumbers)}` : ''}`);
+  go('/admin', `${name} (${staffNo}) can now sign in as ${as}`);
 }
 
 /* ---------- WhatsApp daily limit (20 Nov 2026) ---------- */

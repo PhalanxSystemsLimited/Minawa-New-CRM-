@@ -6,6 +6,9 @@ import { PLAN_LABEL, NEW_PLANS } from '@/lib/types';
 import { FixNumberForm } from '@/components/ResendChat';
 import { toggleGeneratorAction } from '@/lib/actions-generator';
 import { possessionAction, adjustAction, instalmentAction, dueAction, discontinueAction } from '@/lib/actions-desk';
+import { flatList, emptyFlats, nextCustId, custId } from '@/lib/people';
+import { FlatPicker } from '@/components/FlatPicker';
+import { PersonFields, IdBox } from '@/components/PersonFields';
 import { reverseAction, cancelCashAction } from '@/lib/actions-cash';
 import { bankOf } from '@/lib/bank';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
@@ -216,16 +219,20 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       if (!isAdmin()) return <ModalShell title="Transfer flat"><div className="callout">Only admins (the CEO and directors) can transfer a flat.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
       if (bal > 0) return <ModalShell title="Transfer flat"><div className="callout bad">{rs(bal)} is outstanding. The seller has to clear all dues before the transfer NOC. Record the payment first.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
       return <ModalShell title="Transfer flat"><form action={act.transferAction} style={col}>{hidden(o)}
-        <div className="callout good">Dues cleared. {o.name}&apos;s account will be closed with a final statement, and the buyer gets a new account billed from the transfer date.</div>
-        <div className="form-row"><label htmlFor="tr-n">Buyer&apos;s name</label><input id="tr-n" name="name" type="text" required /></div>
-        <div className="form-row"><label htmlFor="tr-p">Buyer&apos;s WhatsApp number</label><input id="tr-p" name="phone" type="tel" required placeholder="+92 3xx xxx xxxx" /></div>
-        <div className="form-row"><label htmlFor="tr-d">Transfer and possession date</label><input id="tr-d" name="d" type="date" required defaultValue={S.today} min={addDays(S.today, -90)} max={S.today} /></div>
+        <div className="callout good">Dues cleared. {o.name} becomes a past customer (with all their history) and the buyer is a new customer with their own account, billed from the transfer date.</div>
+        <h4 className="form-h">The buyer</h4>
+        <IdBox label="Buyer's customer ID" value={nextCustId()} note="Given to the buyer when you save." />
+        <PersonFields prefix="tr" today={S.today} phoneLabel="Buyer's WhatsApp number" />
+        <div className="grid2" style={{ gap: 10 }}>
+          <div className="form-row"><label htmlFor="tr-d">Transfer and possession date</label><input id="tr-d" name="d" type="date" required defaultValue={S.today} min={addDays(S.today, -90)} max={S.today} /></div>
+          <div className="form-row"><label htmlFor="tr-mr">Meter reading now <span className="req"> required</span></label><input id="tr-mr" name="reading" type="number" min="0" step="1" required inputMode="numeric" placeholder="e.g. 12450" /></div>
+        </div>
         <div className="m-actions"><CloseBtn /><Submit>Transfer and open buyer account</Submit></div></form></ModalShell>;
     case 'disconnect': return <ModalShell title="Record disconnection"><form action={act.disconnectAction} style={col}>{hidden(o)}<div className="form-row"><label htmlFor="ds">Service disconnected</label><select id="ds" name="service">{SERVICES.map(s => <option key={s}>{s}</option>)}</select></div><div className="callout">Recorded against {o.apt} with today&apos;s date. Restoration is recorded once dues are paid.</div><div className="m-actions"><CloseBtn /><Submit className="btn danger">Record disconnection</Submit></div></form></ModalShell>;
     case 'fix': return <ModalShell title={o.noPhone ? 'Add WhatsApp number' : 'Fix WhatsApp number'}><FixNumberForm pid={o.project} oid={o.id} name={o.name} phone={o.phone} noPhone={o.noPhone} owes={bal > 0} /></ModalShell>;
     case 'edit': return <ModalShell title={`Edit apartment ${o.apt}`}><form action={act.editOwnerAction} style={col}>{hidden(o)}
-      <div className="form-row"><label htmlFor="eo-n">Owner&apos;s name</label><input id="eo-n" name="name" required defaultValue={o.name} /></div>
-      <div className="form-row"><label htmlFor="eo-p">WhatsApp number</label><input id="eo-p" name="phone" type="tel" defaultValue={o.phone} placeholder="+92 3xx xxx xxxx" /></div>
+      <IdBox label="Customer ID" value={custId(o)} />
+      <PersonFields prefix="eo" today={cur().today} required={false} nameLabel="Full name (as on the CNIC)" phoneLabel="WhatsApp number" values={{ name: o.name, cnic: o.cnic, cnicExpiry: o.cnicExpiry, cnicAddress: o.cnicAddress, phone: o.phone }} />
       <div className="form-row"><label htmlFor="eo-e">Email</label><input id="eo-e" name="email" type="email" defaultValue={o.email} /></div>
       <div className="form-row"><label htmlFor="eo-ps">Possession date (billing day)</label><input id="eo-ps" name="possession" type="date" required defaultValue={o.possessionKnown ? o.possession : ''} /></div>
       <div className="form-row"><label htmlFor="eo-pl">Billing plan (owner&apos;s choice)</label><select id="eo-pl" name="plan" defaultValue={o.plan || 'monthly'}>{Object.entries(PLAN_LABEL).filter(([k]) => k !== 'quarterly' || o.plan === 'quarterly').map(([k, l]) => <option key={k} value={k}>{l}{k === 'quarterly' ? ' (every 3 months, kept for this customer)' : k === 'sixmonthly' ? ' (due every 6 months on the possession day)' : k === 'annual' ? ' (due once a year on the possession day)' : ' (due every month on the possession day)'}</option>)}</select></div>
@@ -327,30 +334,31 @@ export function TargetOpts(where: string) {
 }
 export { sortedPayments };
 
-/** New possession: a flat handed over to its first owner. Billing starts from the possession date. */
-export function PossessionModal() {
-  const S = cur(), types = baseTypes(), blocks = [...new Set(S.owners.map(o => o.block).filter(Boolean))].sort();
-  const g = S.settings.rules.graceDays ?? 25, ex = addDays(S.today, g);
-  return <ModalShell title="New possession"><form action={possessionAction} style={col}><input type="hidden" name="pid" value={S.project} />
-    <div className="callout">For a flat handed over to its first owner. Billing starts on the possession date: the first month is charged from that day. The first bill goes out {g} days after possession and then on that date every month, quarter or year (possession today: first bill {fd(ex)}, due on the {ord(S.settings.rules.dueDays)} of the month after).</div>
-    {isAdmin() ? null : <div className="callout warn"><div>The Admin approves the possession first. Until then the flat isn&apos;t billed and gets no reminders.</div></div>}
-    <div className="grid2" style={{ gap: 10 }}>
-      <div className="form-row"><label htmlFor="np-a">Apartment</label><input id="np-a" name="apt" type="text" required placeholder="e.g. C-302" /></div>
-      <div className="form-row"><label htmlFor="np-b">Block</label><input id="np-b" name="block" type="text" list="np-blocks" placeholder="e.g. C" /><datalist id="np-blocks">{blocks.map(b => <option key={b} value={b} />)}</datalist></div>
-    </div>
-    <div className="form-row"><label htmlFor="np-t">Type</label><select id="np-t" name="type" required>{types.map(t => <option key={t} value={t}>{t} · {rs(rateFor(t, S.today))} a month</option>)}</select></div>
-    <div className="form-row"><label htmlFor="np-n">Owner&apos;s name</label><input id="np-n" name="name" type="text" required /></div>
-    <div className="grid2" style={{ gap: 10 }}>
-      <div className="form-row"><label htmlFor="np-p">WhatsApp number</label><input id="np-p" name="phone" type="tel" placeholder="+92 3xx xxx xxxx" /></div>
-      <div className="form-row"><label htmlFor="np-e">Email (optional)</label><input id="np-e" name="email" type="email" /></div>
-    </div>
+/** New possession (21 Nov 2026): the customer takes an EMPTY flat picked from the building's list (a small window
+ *  with a search box), with their details from the CNIC. Billing starts from the possession date. */
+export function PossessionModal({ preset = '', back = '' }: { preset?: string; back?: string } = {}) {
+  const S = cur(), types = baseTypes(), g = S.settings.rules.graceDays ?? 25, ex = addDays(S.today, g);
+  const all = flatList(), empty = emptyFlats().map(f => ({ apt: f.apt, block: f.block, floor: f.floor, type: f.type, plan: f.plan || '', status: f.status === 'new' ? 'new' as const : 'vacant' as const,
+    note: f.status === 'new' ? 'never possessed' : `${f.lastName ? `${f.lastName} left` : 'empty'}${f.leftOn ? ` on ${fd(f.leftOn)}` : ''}` }));
+  const pre = empty.find(f => f.apt.toUpperCase() === preset.toUpperCase()) || null;
+  const closeKeys = ['m', 'flat', 'pp'];
+  return <ModalShell title={`New possession · ${S.proj.name}`} wide closeKeys={closeKeys}><form action={possessionAction} style={col}><input type="hidden" name="pid" value={S.project} />{back ? <input type="hidden" name="back" value={back} /> : null}
+    <div className="callout">The customer takes an available apartment. Billing starts on the possession date: the first month is charged from that day. The first bill goes out {g} days after possession and then on that date every month, 6 months or year (possession today: first bill {fd(ex)}, due on the {ord(S.settings.rules.dueDays)} of the month after).</div>
+    {isAdmin() ? null : <div className="callout warn"><div>The Admin approves the possession first. Until then the apartment shows as booked, isn&apos;t billed and gets no reminders.</div></div>}
+    <h4 className="form-h">1 · The apartment</h4>
+    <FlatPicker flats={empty} total={all.length} admin={isAdmin()} initial={pre} types={types.map(t => [t, `${t} · ${rs(rateFor(t, S.today))} a month`] as [string, string])} />
+    <h4 className="form-h">2 · The customer</h4>
+    <IdBox label="Customer ID" value={nextCustId()} note={isAdmin() ? 'Given to this customer when you save.' : 'The next free ID; confirmed when the Admin approves.'} />
+    <PersonFields prefix="np" today={S.today} phoneLabel="WhatsApp number" />
+    <div className="form-row"><label htmlFor="np-e">Email (optional)</label><input id="np-e" name="email" type="email" /></div>
+    <h4 className="form-h">3 · Possession</h4>
     <div className="grid2" style={{ gap: 10 }}>
       <div className="form-row"><label htmlFor="np-d">Possession date</label><input id="np-d" name="possession" type="date" required defaultValue={S.today} /></div>
-      <div className="form-row"><label htmlFor="np-pl">Billing plan</label><select id="np-pl" name="plan" defaultValue="monthly">{NEW_PLANS.map(k => <option key={k} value={k}>{PLAN_LABEL[k]}</option>)}</select></div>
-      {cur().settings.rules.utilities.includes('Electricity') ? <div className="form-row"><label htmlFor="np-mr">Electricity meter reading at possession</label><input id="np-mr" name="reading" type="number" min="0" step="1" placeholder="e.g. 12450" /></div> : null}
+      <div className="form-row"><label htmlFor="np-pl">Billing plan (maintenance)</label><select id="np-pl" name="plan" defaultValue={pre?.plan || 'monthly'}>{NEW_PLANS.map(k => <option key={k} value={k}>{PLAN_LABEL[k]}</option>)}</select></div>
+      <div className="form-row"><label htmlFor="np-mr">Meter reading now <span className="req"> required</span></label><input id="np-mr" name="reading" type="number" min="0" step="1" required inputMode="numeric" placeholder="e.g. 12450" /><div className="cell-sub">The electricity meter&apos;s current reading, on the day of possession.</div></div>
     </div>
-    <div className="form-row"><label htmlFor="np-x">Note (optional)</label><input id="np-x" name="note" type="text" placeholder="e.g. Keys and meter reading handed over" /></div>
-    <div className="m-actions"><CloseBtn keys={['m']} /><Submit>{isAdmin() ? 'Record possession' : 'Send for approval'}</Submit></div></form></ModalShell>;
+    <div className="form-row"><label htmlFor="np-x">Note (optional)</label><input id="np-x" name="note" type="text" placeholder="e.g. Keys handed over" /></div>
+    <div className="m-actions"><CloseBtn keys={closeKeys} /><Submit>{isAdmin() ? 'Record possession' : 'Send for approval'}</Submit></div></form></ModalShell>;
 }
 
 /** An instalment plan for an owner's old arrears: equal parts a month apart to start with, every amount and date

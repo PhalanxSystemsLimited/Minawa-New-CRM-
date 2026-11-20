@@ -50,9 +50,10 @@ export const SERVICES = ['Water supply', 'Lift access', 'Parking access'];
 // Projects whose electricity (and other utility) bills the accountant enters each month.
 export const UTILITY_PROJECTS: Record<string, string[]> = { cc: ['Electricity'], ow: ['Electricity'] };
 export function defaultSettings(pid: string, saved?: Partial<ProjectSettings> | null): ProjectSettings {
-  const base: ProjectSettings = { project: pid, rules: { ...DEFAULT_RULES, utilities: UTILITY_PROJECTS[pid] || [] }, tgInc: { disc: [], exempt: [] }, targets: {}, lastRun: null };
+  const base: ProjectSettings = { project: pid, rules: { ...DEFAULT_RULES, utilities: UTILITY_PROJECTS[pid] || [] }, tgInc: { disc: [], exempt: [] }, targets: {}, lastRun: null, flats: [] };
   const out = { ...base, ...(saved || {}) } as ProjectSettings;
   out.rules = normRules({ ...base.rules, ...((saved?.rules || {}) as object) });
+  if (!Array.isArray(out.flats)) out.flats = [];
   return out;
 }
 // Ready-made maintenance notices staff can start from (then edit before sending).

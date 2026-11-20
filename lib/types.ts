@@ -88,7 +88,15 @@ export interface Owner {
   /** Their own due day (day of the month after the bill), approved by an Admin; null = the project's rule. */
   dueDay?: number | null;
   floor: string;            // e.g. LGF, GF (Oakwood); empty where the sheet has none
+  /** 21 Nov 2026: the customer's ID (building code + number, e.g. CC-00012) and their CNIC details. */
+  customerId?: string | null; cnic?: string | null; cnicExpiry?: ISODate | null; cnicAddress?: string | null;
 }
+
+/** A flat the Admin added in Settings (one that has never had a customer in the CRM). Flats that have had a customer
+ *  are known from their customer records. */
+export interface FlatDef { apt: string; block: string; floor: string; type: string; d: ISODate; by: string;
+  /** The maintenance billing plan a new customer starts on (they can still choose another at possession). */
+  plan?: Plan | null; note?: string | null; editedBy?: string | null; editedD?: ISODate | null }
 
 /** Old arrears split into parts, each with its own due date. Payments still go to old arrears first (one balance,
  *  never counted twice); a part is paid once the arrears have come down by the parts before it plus itself. */
@@ -215,7 +223,9 @@ export interface Target {
   own: number; ownN: number; excluded: number; exOut: number; exOn: number; exOnN: number; types: TargetType[];
 }
 
-export interface ProjectSettings { project: string; rules: Rules; tgInc: { disc: string[]; exempt: string[] }; targets: Record<string, Target>; lastRun?: ISODate | null }
+export interface ProjectSettings { project: string; rules: Rules; tgInc: { disc: string[]; exempt: string[] }; targets: Record<string, Target>; lastRun?: ISODate | null;
+  /** The building's flats added by the Admin (21 Nov 2026), for New possession's flat list. */
+  flats?: FlatDef[] }
 
 // Everything the engine and a project's screens need, loaded for one project.
 export interface State {
@@ -260,7 +270,9 @@ export interface Company { legalName: string; address: string; ntn: string; phon
 /** `projects`: for a building manager, the buildings (project ids) they may open; the Admin assigns them. */
 export interface Staff { id: string; email: string; name: string; role: Role; active: boolean; projects?: string[];
   /** 20 Nov 2026: the WhatsApp numbers this person sends from (set by the Admin), each with its own daily limit. */
-  waNumbers?: WaNumber[] | null }
+  waNumbers?: WaNumber[] | null;
+  /** 21 Nov 2026: employee ID (EMP-0001), phone and CNIC details. */
+  staffNo?: string | null; phone?: string | null; cnic?: string | null; cnicExpiry?: string | null; cnicAddress?: string | null }
 /** A WhatsApp number staff send from. The limit counts different customers in any 24 hours, per number (a number on
  *  two people's details has one count). */
 export interface WaNumber { id: string; number: string; label: 'Personal' | 'Company'; limit: number; active: boolean }

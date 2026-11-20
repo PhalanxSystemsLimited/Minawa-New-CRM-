@@ -9,7 +9,7 @@ type Kind = 'dash' | 'project' | 'apt' | 'form' | 'list';
 const kindOf = (p: string): Kind =>
   p === '/' ? 'dash'
   : /^\/p\/[^/]+\/?$/.test(p) ? 'project'
-  : /^\/p\/[^/]+\/apartments\/[^/]+/.test(p) ? 'apt'
+  : /^\/p\/[^/]+\/apartments\/[^/]+/.test(p) || /^\/(customers|apartments)\/[^/]+\/[^/]+/.test(p) ? 'apt'
   : /^\/p\/[^/]+\/(settings|setup)/.test(p) || /^\/admin\/?$/.test(p) ? 'form'
   : 'list';
 

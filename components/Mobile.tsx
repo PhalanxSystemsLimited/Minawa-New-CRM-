@@ -57,6 +57,8 @@ export function MobileTables() {
     const run = () => {
       if (!isPhone()) return;
       main.querySelectorAll<HTMLTableElement>('.tbl-wrap > table:not(.m-keep)').forEach(t => {
+        // A table still streaming in (React hasn't taken it over yet) is done on the next pass (update 124).
+        if (!Object.keys(t).some(k => k.startsWith('__reactFiber$'))) { cancelAnimationFrame(q); q = requestAnimationFrame(run); return; }
         const heads: string[] = [];
         t.querySelectorAll('thead th').forEach(th => { const span = (th as HTMLTableCellElement).colSpan || 1; const txt = (th.textContent || '').replace(/[^\p{L}\p{N}\s()&'.,/%-]/gu, '').trim(); for (let i = 0; i < span; i++) heads.push(txt); });
         t.setAttribute('data-m', 'stack');
@@ -71,8 +73,8 @@ export function MobileTables() {
       const row = tab?.parentElement;
       if (tab && row && row.scrollWidth > row.clientWidth) row.scrollLeft = tab.offsetLeft - (row.clientWidth - tab.offsetWidth) / 2;
     };
-    run();
     let q = 0;
+    run();
     const mo = new MutationObserver(() => { cancelAnimationFrame(q); q = requestAnimationFrame(run); });
     mo.observe(main, { childList: true, subtree: true });
     return () => { mo.disconnect(); cancelAnimationFrame(q); };

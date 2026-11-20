@@ -11,6 +11,7 @@ import { pendingProject } from '@/lib/approvals';
 import { ratesAction, rulesAction, fineAction, projectBankAction } from '@/lib/actions';
 import { bankOf } from '@/lib/bank';
 import { waTestNumber } from '@/lib/whatsapp';
+import { flatList, isFree } from '@/lib/people';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,6 +92,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
             : <p className="empty">No bank account set: customers are asked to pay in cash. The Admin sets it here.</p>}
         </div>; })()}
       </div>
+      {(() => { const fl = flatList(), free = fl.filter(isFree).length; return <div className="card" id="flats"><div className="card-row"><h3 data-hic="building" data-tone="blue">Apartments <small>{fl.length} in {S.proj.name} · {fl.length - free} possessed or booked · {free} available</small></h3><Go href={`/apartments?p=${pid}`} className="btn sm">Open Apartments</Go></div>
+        <p className="cell-sub" style={{ margin: 0 }}>{ad ? 'Add apartments and change their details on the Apartments screen (left menu). New possessions pick from the available ones.' : 'The Admin adds apartments and changes their details on the Apartments screen.'}</p></div>; })()}
       <details className="card rules-card"><summary>How the system works</summary><ul className="rules">
         {r.startOn ? <li>Go-live on {fd(r.startOn)}: every customer with a balance gets a statement for it, due on the {ord(r.dueDays)} of the next month. Monthly charges start in {fm(S.goLive.slice(0, 7))}; the months before are in the opening balances.</li> : null}
         <li>Customers pay in cash to the building manager against the bill voucher, or by bank transfer into Minawa&apos;s account above. The building manager enters each payment (receipt number for cash, transaction ID for a transfer); the owner&apos;s balance changes once the Accountant confirms it, and the receipt goes to the building manager&apos;s To do to send on WhatsApp. The Accountant can also record cash paid at the office. Every message tells the owner to pay in cash to the building manager.</li>
