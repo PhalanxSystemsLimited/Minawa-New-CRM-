@@ -5,12 +5,13 @@
 // dues of their own: what is owed belongs to the customer.
 import { requireStaff, roleName } from '@/lib/session';
 import { liveProjects, load } from '@/lib/ops';
-import { use, rateTypes, rateFor } from '@/lib/engine';
+import { use, baseTypes, rateFor } from '@/lib/engine';
 import { flatList, isFree, custId, type FlatRow } from '@/lib/people';
 import { statusTag } from '@/components/views/aptbits';
 import { PLAN_LABEL, NEW_PLANS } from '@/lib/types';
 import { Go, GoRow, ModalShell, CloseBtn, Submit } from '@/components/client';
 import { RowCheck, AllCheck, SelBar } from '@/components/Selection';
+import { MoreBar, shownOf } from '@/components/views/more';
 import { PossessionModal } from '@/components/views/modals';
 import { addAptAction } from '@/lib/actions-people';
 import { fds, rs } from '@/lib/fmt';
@@ -31,6 +32,7 @@ export default async function Apartments({ searchParams }: { searchParams: Promi
   const noPos = states.reduce((a, s) => a + s.owners.filter(o => o.status === 'active' && !o.possessionKnown).length, 0);
   const free = rows.filter(r => isFree(r.f)), occ = rows.filter(r => r.f.status === 'occupied'), booked = rows.filter(r => r.f.status === 'booked');
   const list = rows.filter(r => (!st || (st === 'free' ? isFree(r.f) : !isFree(r.f))) && (!q || `${r.f.apt} ${r.f.block} ${r.f.floor} ${r.f.type} ${r.pname} ${r.f.owner?.name || ''} ${r.cid}`.toUpperCase().includes(q)));
+  const shown = shownOf(sp.n, list.length), page = list.slice(0, shown);
   const base = { p: picked.join(','), st, q: sp.q || '' };
   const href = (k: Record<string, string>) => { const u = new URLSearchParams(Object.entries({ ...base, ...k }).filter(([, v]) => v)).toString(); return '/apartments' + (u ? '?' + u : ''); };
   const toggle = (id: string) => { const s = new Set(picked); if (s.has(id)) s.delete(id); else s.add(id); return href({ p: [...s].join(',') }); };
@@ -46,7 +48,7 @@ export default async function Apartments({ searchParams }: { searchParams: Promi
     modal = s ? use(s, () => PossessionModal({ preset: sp.flat || '', back: href({ p: one }) })) : pickBuilding('possession', 'New possession');
   } else if (sp.m === 'addapt' && admin) {
     const s = states.find(x => x.project === one);
-    modal = !s ? pickBuilding('addapt', 'Add apartments') : use(s, () => { const types = rateTypes(), blocks = [...new Set(flatList().map(f => f.block).filter(Boolean))].sort();
+    modal = !s ? pickBuilding('addapt', 'Add apartments') : use(s, () => { const types = baseTypes(), blocks = [...new Set(flatList().map(f => f.block).filter(Boolean))].sort();
       return <ModalShell title={`Add apartments · ${s.proj.name}`} closeKeys={['m']}><form action={addAptAction} className="m-form" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <input type="hidden" name="pid" value={s.project} /><input type="hidden" name="back" value={href({ p: one })} />
         <div className="callout">Add one apartment, a list (C-301, C-302) or a range (C-301 to C-310). They show as available for new possessions.</div>
@@ -90,9 +92,9 @@ export default async function Apartments({ searchParams }: { searchParams: Promi
             <input type="search" name="q" defaultValue={sp.q || ''} placeholder="Apartment, block, type or customer" aria-label="Search apartments" /><button type="submit" className="btn sm"><Ic n="search" s={15} /> Search</button></form>
         </div>
       </div>
-      <SelBar id="apt-sel" action="/api/export/apartments" params={base} allHref={`/api/export/apartments${exportQ ? '?' + exportQ : ''}`} noun="apartment" />
-      {list.length ? <div className="tbl-wrap"><table className="apt-tbl"><thead><tr><th className="chk"><AllCheck form="apt-sel" /></th><th>Apartment</th>{shownP.length > 1 ? <th>Building</th> : null}<th>Type</th><th>Billing plan</th><th>Status</th><th>Customer</th><th>Customers so far</th></tr></thead><tbody>
-        {list.map(r => { const f = r.f, o = f.owner;
+      <SelBar id="apt-sel" action="/api/export/apartments" params={base} allHref={`/api/export/apartments${exportQ ? '?' + exportQ : ''}`} noun="apartment" allLabel={`Download all ${list.length}`} />
+      {list.length ? <><div className="tbl-wrap"><table className="apt-tbl"><thead><tr><th className="chk"><AllCheck form="apt-sel" /></th><th>Apartment</th>{shownP.length > 1 ? <th>Building</th> : null}<th>Type</th><th>Billing plan</th><th>Status</th><th>Customer</th><th>Customers so far</th></tr></thead><tbody>
+        {page.map(r => { const f = r.f, o = f.owner;
           return <GoRow key={r.pid + f.apt} href={o ? `/customers/${r.pid}/${o.id}` : `/apartments/${r.pid}/${encodeURIComponent(f.apt)}`} className={'row-link' + (isFree(f) ? ' apt-free' : '')}>
             <td className="chk" data-l=""><RowCheck form="apt-sel" value={`${r.pid}|${f.apt}`} label={`Select ${f.apt}`} /></td>
             <td data-l="Apartment"><b>{f.apt}</b><div className="cell-sub">{[f.block && `Block ${f.block}`, f.floor].filter(Boolean).join(' · ')}</div></td>
@@ -105,7 +107,7 @@ export default async function Apartments({ searchParams }: { searchParams: Promi
               : f.lastName ? <span className="cell-sub">{f.lastName} left{f.leftOn ? ` ${fds(f.leftOn)}` : ''}</span> : <span className="cell-sub">Never possessed</span>}</td>
             <td data-l="Customers so far" className="num">{f.customers.length}</td>
           </GoRow>; })}
-      </tbody></table></div>
+      </tbody></table></div><MoreBar shown={shown} total={list.length} noun="apartment" href={n => href({ n })} /></>
         : <Empty kind="search" small title={q ? `No apartment matches "${sp.q}"` : st === 'free' ? 'No available apartments' : 'No apartments here yet'}>{admin && !q ? 'Add them with Add apartment.' : null}</Empty>}
       <p className="cell-sub" style={{ margin: '10px 0 0' }}>A possessed apartment opens its customer (their dues, payments and history). Any other opens the apartment: its details and the customers it has had. Apartments carry no dues of their own.{admin ? '' : ' Only the Admin adds apartments or changes their details.'}</p>
     </div>

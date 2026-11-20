@@ -1,5 +1,5 @@
 // Settings (the demo's viewSettings), plus reminder rules, bank details and the daily run.
-import { cur, rateTypes, rateFor, getTarget, isAdmin, billDateOf, balance } from '@/lib/engine';
+import { cur, rateTypes, rateFor, getTarget, isAdmin, billDateOf, balance, baseTypes, genFeeAt, GEN_FEE } from '@/lib/engine';
 import { fd, fds, fm, rs, ord, addDays, hour12 } from '@/lib/fmt';
 import { Go } from '@/components/client';
 import { Submit } from '@/components/client';
@@ -39,7 +39,8 @@ export default async function Settings({ params, searchParams }: { params: Promi
       <div className="grid2">
         <div className="card"><h3>Monthly fees by apartment type <small>rate card</small></h3>
           <form action={ratesAction}>{hid}<div className="tbl-wrap"><table className="m-keep rate-tbl"><thead><tr><th>Type</th><th className="r">From {fd(curFrom)}</th><th className="r">From <input type="date" name="from" defaultValue={nextFrom} className="th-date" aria-label="New rates start on" /></th></tr></thead><tbody>
-            {types.map(ty => <tr key={ty}><td className="cell-main">{ty}</td><td className="r num">{rs(rateFor(ty, S.today))}</td><td className="r"><input className="fee-in num" type="number" min="0" step="100" name={`r:${ty}`} defaultValue={rateFor(ty, nextFrom)} aria-label={`${ty} rate from ${fd(nextFrom)}`} /></td></tr>)}
+            {baseTypes().map(ty => <tr key={ty}><td className="cell-main">{ty}</td><td className="r num">{rs(rateFor(ty, S.today))}</td><td className="r"><input className="fee-in num" type="number" min="0" step="100" name={`r:${ty}`} defaultValue={rateFor(ty, nextFrom)} aria-label={`${ty} rate from ${fd(nextFrom)}`} /></td></tr>)}
+            <tr className="gen-row"><td className="cell-main">{GEN_FEE}<div className="cell-sub">added to the monthly fee of flats on the Generator Charges List</div></td><td className="r num">{genFeeAt(S.today) ? `+ ${rs(genFeeAt(S.today))}` : <span className="cell-sub">none</span>}</td><td className="r"><input className="fee-in num" type="number" min="0" step="100" name={`r:${GEN_FEE}`} defaultValue={genFeeAt(nextFrom) || ''} placeholder="0" aria-label={`Generator charges from ${fd(nextFrom)}`} /></td></tr>
           </tbody></table></div>
           {why('why-rates')}
           <div style={{ marginTop: 10 }}><ApplyTo /></div>

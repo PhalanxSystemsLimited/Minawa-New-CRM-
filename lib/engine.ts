@@ -74,20 +74,30 @@ export function rateFor(type: string, d: string) {
   for (const x of S.rates) if (x.type === type && x.from <= d && (!r || x.from > r.from)) r = x;
   return r ? r.amount : 0;
 }
-/* Generator charges: a flat on the project's Generator Charges List is billed on the "<type> + generator" rate card
- * (Royal Enclave: Apartment 12,000, Apartment + generator 15,000) where that card exists. A flat's own agreed rate still
- * wins. Bills store their amount, so changing the list only affects bills made after the change. */
+/* Generator charges (21 Nov 2026): one amount a month per building, set by the Admin in Settings › Monthly fees (the
+ * rate card row "Generator charges", dated like the others). A flat on the Generator Charges List pays its apartment's
+ * fee plus that amount, as two lines on the bill. Before that row existed the building used "<type> + generator" rate
+ * cards (Royal Enclave: Apartment 12,000, Apartment + generator 15,000): those still price the months before it.
+ * A flat's own agreed rate still wins. Bills store their amounts, so a change only affects bills made after it. */
 export const GEN = ' + generator';
+export const GEN_FEE = 'Generator charges';
 export const genType = (type: string) => type + GEN;
-export const isGenType = (type: string) => type.endsWith(GEN);
+export const isGenType = (type: string) => type.endsWith(GEN) || type === GEN_FEE;
+/** The apartment types (no generator rows). */
 export const baseTypes = () => rateTypes().filter(t => !isGenType(t));
-/** Whether this project has generator rate cards (and so a Generator Charges List). */
-export const hasGenerator = () => S.rates.some(r => isGenType(r.type));
-/** The rate card a flat is billed on for a bill on day d. */
-export function cardType(o: Owner, d: string) {
-  return o.generator && S.rates.some(r => r.type === genType(o.type) && r.from <= d) ? genType(o.type) : o.type;
+/** Whether this project charges for the generator (and so has a Generator Charges List). */
+export const hasGenerator = () => S.rates.some(r => isGenType(r.type) && r.amount > 0);
+/** The generator charge a month on day d (for a flat of this type, for the old "+ generator" cards). */
+export function genFeeAt(d: string, type?: string): number {
+  if (S.rates.some(r => r.type === GEN_FEE && r.from <= d)) return rateFor(GEN_FEE, d);
+  const t = type || baseTypes().find(x => S.rates.some(r => r.type === genType(x) && r.from <= d));
+  return t && S.rates.some(r => r.type === genType(t) && r.from <= d) ? Math.max(0, rateFor(genType(t), d) - rateFor(t, d)) : 0;
 }
-export const cardRate = (o: Owner, d: string) => rateFor(cardType(o, d), d);
+/** What this flat pays for the generator a month on day d (0 off the list). */
+export const genFee = (o: Owner, d: string) => o.generator ? genFeeAt(d, o.type) : 0;
+/** The rate card a flat is billed on (its apartment type; the generator is its own line). */
+export function cardType(o: Owner, _d: string) { return o.type; }
+export const cardRate = (o: Owner, d: string) => rateFor(o.type, d) + genFee(o, d);
 /** What one month of maintenance costs this flat on day d: its own rate, or its rate card (with or without generator). */
 export const rateOf = (o: Owner, d: string) => o.rate || cardRate(o, d);
 /** Payment amount checks (21 Nov 2026). Above `owed` the entry needs a confirmation (the extra becomes advance credit);
@@ -288,7 +298,7 @@ export function monthTarget(p: string): Target {
   if (p < S.goLive.slice(0, 7)) return t;   // nothing is billed before go-live (opening balances cover it)
   for (const o of S.owners) {
     if (o.status !== 'active') continue;
-    const d = billDateOf(p), ct = cardType(o, d), card = rateFor(ct, d), amt = o.rate || card;
+    const d = billDateOf(p), ct = genFee(o, d) && !o.rate ? genType(o.type) : o.type, card = cardRate(o, d), amt = o.rate || card;
     if (o.exempt) {
       if (inc.exempt.includes(o.id)) { t.exOn += amt; t.exOnN++; t.total += amt; } else { t.excluded++; t.exOut += amt; }
       continue;
@@ -354,9 +364,9 @@ export function createBill(o: Owner, d: string, opts: { utilitiesOnly?: boolean;
 }
 function createSlotBill(o: Owner, sl: Slot, d: string, withUtilities: boolean) {
   const before = balance(o), n = planN(o), frac = sl.days / sl.full, part = sl.days < sl.full;
-  const own = !!o.rate, card = own ? o.type : cardType(o, sl.from);
+  const own = !!o.rate;
   const total = Math.round(rateOf(o, sl.from) * n * frac);
-  const gen = !own && isGenType(card) ? Math.round((cardRate(o, sl.from) - rateFor(o.type, sl.from)) * n * frac) : 0;
+  const gen = own ? 0 : Math.round(genFee(o, sl.from) * n * frac);
   const maint = total - gen, disc = discountFor(o, sl.from, total), cover = coverLabel(sl.from, sl.to);
   const lines: BillLine[] = [{ kind: 'maintenance', label: `Maintenance, ${o.type}, ${cover}${part ? ` (${sl.days} of ${sl.full} days)` : ''}`, amount: maint }];
   if (gen) lines.push({ kind: 'generator', label: `Generator charges, ${cover}`, amount: gen });

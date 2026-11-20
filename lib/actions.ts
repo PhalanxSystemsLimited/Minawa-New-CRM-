@@ -13,7 +13,7 @@ import { photoFor } from './actions-photos';
 import { photoStore } from './images';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
-  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock } from './engine';
+  verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock, GEN, GEN_FEE } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
 import { normCnic, keepCustIds, staffNos, nextCustId } from './people';
 import { normPhone } from './importer';
@@ -228,7 +228,7 @@ export async function ratesAction(fdata: FormData) {
   // An admin's rates apply now; an accountant's wait for an admin's approval.
   const r = await attempt(() => mutate(pid, staff, () => {
     const rates: Record<string, number> = {};
-    for (const ty of [...new Set([...rateTypes(), ...S(fdata, 'newtype').split(',').map(x => x.trim()).filter(Boolean)])]) { const v = Math.round(+S(fdata, 'r:' + ty) || 0); if (v > 0) rates[ty] = v; }
+    for (const ty of [...new Set([...rateTypes().filter(t => !t.endsWith(GEN)), GEN_FEE, ...S(fdata, 'newtype').split(',').map(x => x.trim()).filter(Boolean)])]) { if (!fdata.has('r:' + ty)) continue; const v = Math.round(+S(fdata, 'r:' + ty) || 0); if (v > 0 || (ty === GEN_FEE && rateTypes().includes(GEN_FEE))) rates[ty] = v; }
     return changeOrRequest(null, 'rates', { from, rates, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, S(fdata, 'why'));
   }, { send: false }));
   go(back, failed(r) ? r.error : r.done === 'applied' ? 'Rates saved. Use a mass announcement to tell owners.' : r.text);

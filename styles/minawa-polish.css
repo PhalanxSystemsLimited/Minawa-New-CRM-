@@ -813,3 +813,32 @@ tr.apt-free td:nth-child(2) b{color:color-mix(in srgb,#B45309 70%,var(--ink,#000
 .bld-choose{display:flex;flex-direction:column;gap:8px;margin:12px 0}
 .bld-choose .btn{justify-content:flex-start}
 @media (max-width:640px){.sel-bar{justify-content:stretch}.sel-bar>.cell-sub{flex-basis:100%}.sel-bar .btn{flex:1 1 auto;white-space:nowrap}.apt-acts .btn{flex:1 1 auto}}
+/* Long lists a page at a time (update 125). */
+.more-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0 0;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--muted,#8a8f98) 7%,transparent)}
+.more-bar>.cell-sub{margin-right:auto}
+@media (max-width:640px){.more-bar>.cell-sub{flex-basis:100%;margin:0;text-align:center}.more-bar .btn{flex:1 1 auto}}
+
+/* Plain buttons in the theme's colour (update 126): a light tint of the theme's accent with accent text and icon;
+   on hover they fill evenly in the accent (no fixed peach sweep, never half-filled). Badges use the accent too. */
+:root{--btn-t-bg:color-mix(in srgb,var(--accent) 8%,var(--surface,#fff));--btn-t-line:color-mix(in srgb,var(--accent) 28%,var(--line-strong,#d0d3cb));--btn-t-ink:var(--accent-dark,var(--accent))}
+:root[data-theme=dark]{--btn-t-bg:color-mix(in srgb,var(--accent) 14%,var(--surface,#17181B));--btn-t-line:color-mix(in srgb,var(--accent) 40%,transparent);--btn-t-ink:color-mix(in srgb,var(--accent) 62%,#fff)}
+:root[data-theme=frost]{--btn-t-bg:color-mix(in srgb,var(--accent) 22%,rgba(255,255,255,.1));--btn-t-line:rgba(255,255,255,.34);--btn-t-ink:#fff}
+html .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send),html[data-theme] .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send){background:var(--btn-t-bg);border-color:var(--btn-t-line);color:var(--btn-t-ink);transition:background .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
+html .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send) svg,html[data-theme] .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send) svg{color:currentColor}
+html .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send)::before,html[data-theme] .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send)::before{display:none}
+html .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]),html[data-theme] .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]){background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff);box-shadow:0 8px 18px -10px color-mix(in srgb,var(--accent) 60%,transparent)}
+html .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]) svg,html[data-theme] .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send):hover:not([disabled]) svg{color:var(--accent-ink,#fff)}
+html .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send)[disabled],html[data-theme] .btn:not(.primary):not(.wa):not(.neon):not(.danger):not(.ghost):not(.apv-send)[disabled]{background:var(--surface);border-color:var(--line);color:var(--muted)}
+html .tab-b,html[data-theme] .tab-b,html .proj-tabs button[aria-current="page"] .tab-b{background:var(--accent);color:var(--accent-ink,#fff)}
+/* Electricity: Bills / Add electricity bills (update 126), in the theme's colours. */
+.seg-tabs{display:flex;gap:6px;padding:5px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);width:max-content;max-width:100%;flex-wrap:wrap}
+.seg-tab{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13.5px;cursor:pointer;transition:background .2s,color .2s}
+.seg-tab:hover{color:var(--accent-dark,var(--accent));background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.seg-tab[aria-current="true"]{background:var(--accent);color:var(--accent-ink,#fff)}
+:root[data-theme=dark] .seg-tab:hover,:root[data-theme=frost] .seg-tab:hover{color:#fff}
+.el-acts{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+@media (max-width:640px){.seg-tabs{width:100%}.seg-tab{flex:1;justify-content:center}}
+/* Tables: the hover lift (a row grows a little) never makes a scroll bar appear (update 126). The wrapper scrolls
+   sideways only; a little room above and below lets the lifted row show whole. */
+.tbl-wrap{overflow-y:hidden;padding-top:4px;padding-bottom:8px;margin-top:-4px;margin-bottom:-8px}
+.gen-row td{border-top:1px dashed var(--line-strong)}

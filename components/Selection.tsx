@@ -22,7 +22,7 @@ export function AllCheck({ form }: { form: string }) {
   }} />;
 }
 /** The download bar: a form (GET) to the export with the screen's filters, plus the ticked rows. */
-export function SelBar({ id, action, params, allHref, noun }: { id: string; action: string; params: Record<string, string>; allHref: string; noun: string }) {
+export function SelBar({ id, action, params, allHref, noun, allLabel = 'Download all shown' }: { id: string; action: string; params: Record<string, string>; allHref: string; noun: string; allLabel?: string }) {
   const [n, setN] = useState(0);
   useEffect(() => {
     const f = () => setN(document.querySelectorAll(`input.row-check[form="${id}"]:checked`).length);
@@ -34,6 +34,6 @@ export function SelBar({ id, action, params, allHref, noun }: { id: string; acti
     <span className="cell-sub">{n ? `${n} ${noun}${n === 1 ? '' : 's'} selected` : `Tick ${noun}s to download only those`}</span>
     {n ? <button type="button" className="btn sm ghost" onClick={clear}>Clear</button> : null}
     <button type="submit" className="btn sm" disabled={!n}><Ic n="download" s={15} /> Download selected{n ? ` (${n})` : ''}</button>
-    <a className="btn sm" href={allHref}><Ic n="download" s={15} /> Download all shown</a>
+    <a className="btn sm" href={allHref}><Ic n="download" s={15} /> {allLabel}</a>
   </form>;
 }

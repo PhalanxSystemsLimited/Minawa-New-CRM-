@@ -7,6 +7,7 @@ import { use, balance, ownerStatus } from '@/lib/engine';
 import { custId, cnicState, cnicNote } from '@/lib/people';
 import { Go, GoRow } from '@/components/client';
 import { RowCheck, AllCheck, SelBar } from '@/components/Selection';
+import { MoreBar, shownOf } from '@/components/views/more';
 import { fd, fds, rs, todayPKT } from '@/lib/fmt';
 import { PageIc, KIc, Empty } from '@/components/views/art';
 import { Ic } from '@/components/icons';
@@ -25,6 +26,7 @@ export default async function Customers({ searchParams }: { searchParams: Promis
   const active = rows.filter(r => r.o.status === 'active'), gone = rows.filter(r => r.o.status === 'closed');
   const match = (r: Row) => !q || `${r.id} ${r.o.name} ${r.o.apt} ${r.o.phone} ${r.o.cnic || ''} ${r.pname}`.toLowerCase().includes(q) || (digits.length >= 4 && `${r.o.cnic || ''}${r.o.phone}`.replace(/\D/g, '').includes(digits));
   const list = (past ? gone : active).filter(match).sort((a, b) => past ? (b.o.closedOn || '').localeCompare(a.o.closedOn || '') : a.id.localeCompare(b.id, 'en', { numeric: true }));
+  const shown = shownOf(sp.n, list.length), page = list.slice(0, shown);
   const noCnic = active.filter(r => !r.o.cnic).length, expired = active.filter(r => cnicState(r.o.cnicExpiry, today) === 'expired').length, soon = active.filter(r => cnicState(r.o.cnicExpiry, today) === 'soon').length;
   const href = (k: Record<string, string>) => { const u = new URLSearchParams(Object.entries({ p: pid, v: past ? 'past' : '', q: sp.q || '', ...k }).filter(([, v]) => v)).toString(); return '/customers' + (u ? '?' + u : ''); };
   const cnicTag = (o: Owner) => !o.cnic ? <span className="tag warn">CNIC not on file</span> : cnicState(o.cnicExpiry, today) === 'expired' ? <span className="tag bad">{cnicNote(o.cnicExpiry, today)}</span> : cnicState(o.cnicExpiry, today) === 'soon' ? <span className="tag warn">{cnicNote(o.cnicExpiry, today)}</span> : null;
@@ -49,9 +51,9 @@ export default async function Customers({ searchParams }: { searchParams: Promis
           <button type="submit" className="btn sm"><Ic n="search" s={15} /> Search</button>
         </form>
       </div>
-      <SelBar id="cus-sel" action="/api/export/customers" params={{ p: pid, v: past ? 'past' : '', q: sp.q || '' }} allHref={`/api/export/customers?${new URLSearchParams(Object.entries({ p: pid, v: past ? 'past' : '', q: sp.q || '' }).filter(([, v]) => v))}`} noun="customer" />
-      {list.length ? <div className="tbl-wrap"><table className="cus-tbl"><thead><tr><th className="chk"><AllCheck form="cus-sel" /></th><th>Customer ID</th><th>Customer</th><th>Flat</th>{pid ? null : <th>Building</th>}<th>Phone</th><th>Possession</th>{past ? <th>Left on</th> : null}<th className="r">{past ? 'Balance at leaving' : 'Balance'}</th></tr></thead><tbody>
-        {list.map(r => <GoRow key={r.pid + r.o.id} href={`/customers/${r.pid}/${r.o.id}`} className="row-link">
+      <SelBar id="cus-sel" action="/api/export/customers" params={{ p: pid, v: past ? 'past' : '', q: sp.q || '' }} allHref={`/api/export/customers?${new URLSearchParams(Object.entries({ p: pid, v: past ? 'past' : '', q: sp.q || '' }).filter(([, v]) => v))}`} noun="customer" allLabel={`Download all ${list.length}`} />
+      {list.length ? <><div className="tbl-wrap"><table className="cus-tbl"><thead><tr><th className="chk"><AllCheck form="cus-sel" /></th><th>Customer ID</th><th>Customer</th><th>Flat</th>{pid ? null : <th>Building</th>}<th>Phone</th><th>Possession</th>{past ? <th>Left on</th> : null}<th className="r">{past ? 'Balance at leaving' : 'Balance'}</th></tr></thead><tbody>
+        {page.map(r => <GoRow key={r.pid + r.o.id} href={`/customers/${r.pid}/${r.o.id}`} className="row-link">
           <td className="chk" data-l=""><RowCheck form="cus-sel" value={`${r.pid}|${r.o.id}`} label={`Select ${r.o.name}`} /></td>
           <td data-l="Customer ID"><b className="num">{r.id}</b></td>
           <td data-l="Customer"><b>{r.o.name}</b><div className="cell-sub num">{r.o.cnic ? `CNIC ${r.o.cnic}` : ''}</div>{cnicTag(r.o)}</td>
@@ -62,7 +64,7 @@ export default async function Customers({ searchParams }: { searchParams: Promis
           {past ? <td data-l="Left on" style={{ whiteSpace: 'nowrap' }}>{r.o.closedOn ? fd(r.o.closedOn) : '—'}</td> : null}
           <td data-l="Balance" className="r num">{r.bal > 0 ? <b>{rs(r.bal)}</b> : r.bal < 0 ? <span className="cell-sub">{rs(-r.bal)} advance</span> : <span className="cell-sub">Rs 0</span>}{!past && r.status === 'overdue' ? <div><span className="tag bad">Overdue</span></div> : null}</td>
         </GoRow>)}
-      </tbody></table></div>
+      </tbody></table></div><MoreBar shown={shown} total={list.length} noun="customer" href={n => href({ n })} /></>
         : <Empty kind="search" small title={q ? `No ${past ? 'past' : 'active'} customer matches "${sp.q}"` : past ? 'No past customers yet' : 'No active customers'}>{past ? 'Customers who leave or sell their flat show here, with the date they left.' : null}</Empty>}
       <p className="cell-sub" style={{ margin: '10px 0 0' }}>Click a customer for their details, payments, charges and history{past ? ', and the date they left' : ''}. The Excel download has a sheet with each customer\'s whole history (up to 60 customers at a time).</p>
     </div>

@@ -1,7 +1,7 @@
 // One apartment (21 Nov 2026): its details, who has it now (or the possession waiting for approval), and every
 // customer it has had, each linking to their own page with their dues and history. The apartment itself carries no
 // dues. Available: New possession starts here with this apartment picked. Only the Admin edits or removes it.
-import { cur, rateTypes, rateFor } from '@/lib/engine';
+import { cur, baseTypes, rateFor } from '@/lib/engine';
 import { flatByApt, custId, isFree } from '@/lib/people';
 import { PLAN_LABEL, NEW_PLANS } from '@/lib/types';
 import { fd, rs } from '@/lib/fmt';
@@ -30,7 +30,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       <input type="hidden" name="pid" value={pid} /><input type="hidden" name="apt" value={f.apt} />
       {f.customers.length || w ? null : <div className="form-row"><label htmlFor="ea-a">Apartment number</label><input id="ea-a" name="newApt" type="text" defaultValue={f.apt} required /><div className="cell-sub">Can change only while nobody has had it.</div></div>}
       <div className="grid2" style={{ gap: 10 }}>
-        <div className="form-row"><label htmlFor="ea-t">Type</label><select id="ea-t" name="type" defaultValue={rateTypes().includes(f.type) ? f.type : ''}>{rateTypes().includes(f.type) ? null : <option value="">{f.type || 'Choose'}</option>}{rateTypes().map(t => <option key={t} value={t}>{t} · {rs(rateFor(t, S.today))} a month</option>)}</select></div>
+        <div className="form-row"><label htmlFor="ea-t">Type</label><select id="ea-t" name="type" defaultValue={baseTypes().includes(f.type) ? f.type : ''}>{baseTypes().includes(f.type) ? null : <option value="">{f.type || 'Choose'}</option>}{baseTypes().map(t => <option key={t} value={t}>{t} · {rs(rateFor(t, S.today))} a month</option>)}</select></div>
         <div className="form-row"><label htmlFor="ea-pl">Billing plan for maintenance</label><select id="ea-pl" name="plan" defaultValue={f.plan || ''}><option value="">Not set (chosen at possession)</option>{NEW_PLANS.map(k => <option key={k} value={k}>{PLAN_LABEL[k]}</option>)}</select></div>
         <div className="form-row"><label htmlFor="ea-b">Block</label><input id="ea-b" name="block" type="text" defaultValue={f.block} /></div>
         <div className="form-row"><label htmlFor="ea-f">Floor</label><input id="ea-f" name="floor" type="text" defaultValue={f.floor} /></div>
@@ -50,7 +50,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       <div className="grid2">
         <div className="card"><h3 data-hic="building" data-tone="blue">Apartment details</h3>
           {kv([['Apartment', f.apt], ['Building', S.proj.name], ['Block', f.block || '—'], ['Floor', f.floor || '—'], ['Type', f.type || '—'],
-            ['Monthly fee', f.type && rateTypes().includes(f.type) ? `${rs(rateFor(f.type, S.today))} (rate card)` : '—'], ['Billing plan', f.plan ? PLAN_LABEL[f.plan] : 'chosen at possession'],
+            ['Monthly fee', f.type && baseTypes().includes(f.type) ? `${rs(rateFor(f.type, S.today))} (rate card)` : '—'], ['Billing plan', f.plan ? PLAN_LABEL[f.plan] : 'chosen at possession'],
             ['Status', statusTag(f)], ...(f.note ? [['Note', f.note] as [string, React.ReactNode]] : []),
             ...(f.def?.editedBy ? [['Last changed', `${f.def.editedBy} · ${f.def.editedD ? fd(f.def.editedD) : ''}`] as [string, React.ReactNode]] : f.def && !f.customers.length ? [['Added', `${f.def.by} · ${fd(f.def.d)}`] as [string, React.ReactNode]] : [])])}
         </div>
