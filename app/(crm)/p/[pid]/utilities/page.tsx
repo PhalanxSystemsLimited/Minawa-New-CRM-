@@ -6,6 +6,7 @@ import { fd, fm, prevMonth, nextMonth, ord, addDays } from '@/lib/fmt';
 import { GoSelect } from '@/components/client';
 import { Submit } from '@/components/client';
 import { UtilityGrid, type GridRow } from '@/components/UtilityGrid';
+import { Ic } from '@/components/icons';
 import { projectPage, projHead } from '@/components/views/project';
 import { saveChargesAction, importChargesAction, billUtilitiesNowAction } from '@/lib/actions-desk';
 
@@ -39,14 +40,14 @@ export default async function Utilities({ params, searchParams }: { params: Prom
     return <>
       {projHead('utilities')}
       <div className="page-head"><div><h2>Utility bills</h2><p>Enter each flat&apos;s meter reading and {kind.toLowerCase()} bill for the month. Saving makes each flat&apos;s {kind.toLowerCase()} bill straight away, with the due date you pick, and puts it in your To do to send.</p></div>
-        <a className="btn" href={`/api/export/utilities?project=${pid}&period=${period}&kind=${encodeURIComponent(kind)}`}>Download sheet (CSV)</a></div>
+        <a className="btn" href={`/api/export/utilities?project=${pid}&period=${period}&kind=${encodeURIComponent(kind)}`}><Ic n="download" s={15} /> Download sheet (Excel)</a></div>
       <div className={`callout ${entered === rows.length ? 'good' : 'warn'}`} style={{ marginBottom: 14 }}><div><b>{fm(period)}: {entered} of {rows.length} flats entered.</b> Each saved flat gets its own {kind.toLowerCase()} bill at once; billed flats are locked.</div></div>
       {waiting ? <form action={billUtilitiesNowAction} className="callout" style={{ marginBottom: 14, alignItems: 'center' }}>{hid}<div style={{ flex: 1 }}><b>{waiting} utility bill{waiting === 1 ? ' was' : 's were'} entered after the bills went out.</b> They go on the next bill automatically, or you can send them now on their own bill.</div><Submit className="btn sm" pendingText="Sending…">Send them now</Submit></form> : null}
       <div className="card">
         <div className="toolbar" style={{ marginBottom: 14 }}>
           <GoSelect name="period" value={period} ariaLabel="Month" style={{ width: 'auto' }} options={months} />
           {kinds.length > 1 ? <GoSelect name="kind" value={kind} ariaLabel="Utility" style={{ width: 'auto' }} options={kinds.map(k => [k, k] as [string, string])} /> : <span className="tag info">{kind}</span>}
-          <form action={importChargesAction} className="ut-import">{hid}<input type="file" name="file" accept=".csv,text/csv" aria-label="CSV file" required /><Submit className="btn sm" pendingText="Importing…">Import CSV</Submit></form>
+          <form action={importChargesAction} className="ut-import">{hid}<input type="file" name="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Excel or CSV file" required /><Submit className="btn sm" pendingText="Importing…">Import sheet</Submit></form>
         </div>
         {rows.length ? <UtilityGrid key={`${period}-${kind}`} rows={rows} kind={kind} action={saveChargesAction} pid={pid} period={period} due={addDays(S.today, 15)} readings={kind === 'Electricity'} /> : <p className="empty">No flats were possessed by {fm(period)}.</p>}
       </div>

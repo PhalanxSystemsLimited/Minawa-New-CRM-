@@ -1,35 +1,42 @@
-// A customer leaving (Phase 3): the final figures and payments as CSV. With ?d=: the charges up to that leaving date
-// (still to pay, or cleared); for a customer who has left: the "All charges cleared" report.
+// A customer leaving (Phase 3): the final figures and payments as an Excel workbook. With ?d=: the charges up to that
+// leaving date (still to pay, or cleared); for a customer who has left: the "All charges cleared" report.
 import { currentStaff } from '@/lib/session';
 import { load, liveProjects } from '@/lib/ops';
 import { use, ownerById, leaveFigures, billsOf, sortedPayments, periodLabel, balance } from '@/lib/engine';
-import { todayPKT } from '@/lib/fmt';
+import { todayPKT, fd } from '@/lib/fmt';
+import { Sheet, xlsxResponse } from '@/lib/xlsx';
 
 export const dynamic = 'force-dynamic';
-const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export async function GET(req: Request) {
   const staff = await currentStaff();
   if (!staff) return new Response('sign in first', { status: 401 });
   const u = new URL(req.url), pid = u.searchParams.get('project') || '', oid = u.searchParams.get('oid') || '';
   if (!(await liveProjects(staff)).some(p => p.id === pid)) return new Response('not found', { status: 404 });
-  const s = await load(pid, staff), row = (a: unknown[]) => a.map(cell).join(',');
+  const s = await load(pid, staff);
   const out = use(s, () => {
     const o = ownerById(oid); if (!o) return null;
     const L = /^\d{4}-\d{2}-\d{2}$/.test(u.searchParams.get('d') || '') ? u.searchParams.get('d')! : (o.closedOn || s.today);
-    const lines = [row([o.status === 'closed' ? 'All charges cleared' : 'Charges before leaving', s.proj.name, o.apt, o.name]), row(['Possession', o.possessionKnown ? o.possession : '', 'Leaving', L]),
-      row(['Meter at possession', o.meterIn?.reading ?? '', 'Meter at leaving', o.meterOut?.reading ?? '']), ''];
+    const x = new Sheet(o.apt).title(`${o.status === 'closed' ? 'All charges cleared' : 'Charges before leaving'} · ${o.apt}`).note(`${o.name} · ${s.proj.name} · downloaded by ${staff.name} on ${fd(todayPKT())}`)
+      .section('Details').head(['Item', ['Value', 'text']]);
+    x.row(['Possession', o.possessionKnown ? fd(o.possession) : '—']).row(['Leaving', fd(L)]).row(['Meter at possession', o.meterIn?.reading ?? '—']).row(['Meter at leaving', o.meterOut?.reading ?? '—']);
+    x.section('Figures').head(['Item', ['Rs', 'money']]);
     if (o.status !== 'closed') {
       const f = leaveFigures(o, L);
-      lines.push(row(['Balance now (Rs)', f.balance]), row(['Maintenance up to leaving, not billed yet (Rs)', f.unbilled]), row(['Credit for days billed after leaving (Rs)', f.credit]),
-        row([f.due > 0 ? 'Still to pay before leaving (Rs)' : 'Advance to refund (Rs)', Math.abs(f.due)]), row([f.due > 0 ? 'Charges are not cleared' : 'All charges cleared']), '');
-    } else lines.push(row(['Balance at leaving (Rs)', balance(o)]), '');
-    lines.push(row(['Bills']), row(['Bill', 'Period', 'Due date', 'Amount (Rs)', 'Paid (Rs)', 'Unpaid (Rs)']));
-    for (const b of billsOf(o)) lines.push(row([b.id, periodLabel(b), b.dueDate, b.net, b.paid, b.net - b.paid]));
-    lines.push('', row(['Payments']), row(['Date', 'Amount (Rs)', 'Received as', 'Receipt', 'Entered by', 'Approved by']));
-    for (const p of sortedPayments().filter(p => p.ownerId === o.id).reverse()) lines.push(row([p.d, p.amount, p.method, p.receipt, p.enteredBy || p.by, p.approvedBy || '']));
-    return { lines, apt: o.apt };
+      x.row(['Balance now', f.balance]).row(['Maintenance up to leaving, not billed yet', f.unbilled]).row(['Credit for days billed after leaving', f.credit]);
+      x.total([f.due > 0 ? 'Still to pay before leaving' : 'Advance to refund', Math.abs(f.due)]);
+      x.note(f.due > 0 ? 'Charges are not cleared.' : 'All charges cleared.');
+    } else x.total(['Balance at leaving', balance(o)]);
+    x.section('Bills').head(['Bill', 'Period', ['Due date', 'date'], ['Amount (Rs)', 'money'], ['Paid (Rs)', 'money'], ['Unpaid (Rs)', 'money']]);
+    const bills = billsOf(o);
+    for (const b of bills) x.row([b.id, periodLabel(b), b.dueDate, b.net, b.paid, b.net - b.paid]);
+    x.total(['Total', '', '', bills.reduce((a, b) => a + b.net, 0), bills.reduce((a, b) => a + b.paid, 0), bills.reduce((a, b) => a + b.net - b.paid, 0)]);
+    x.section('Payments').head([['Date', 'date'], ['Amount (Rs)', 'money'], 'Received as', 'Receipt', 'Entered by', 'Approved by']);
+    const pays = sortedPayments().filter(p => p.ownerId === o.id).reverse();
+    for (const p of pays) x.row([p.d, p.amount, p.method, p.receipt, p.enteredBy || p.by, p.approvedBy || '']);
+    x.total(['Total', pays.reduce((a, p) => a + p.amount, 0)]);
+    return { x, apt: o.apt };
   });
   if (!out) return new Response('not found', { status: 404 });
-  return new Response('﻿' + out.lines.join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="minawa-${pid}-${out.apt.replace(/[^\w-]+/g, '_')}-leaving-${todayPKT()}.csv"` } });
+  return xlsxResponse(out.x, `minawa-${pid}-${out.apt}-leaving-${todayPKT()}`);
 }

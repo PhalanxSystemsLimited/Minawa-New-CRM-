@@ -50,23 +50,27 @@ export async function saveChargesAction(fdata: FormData) {
   go(back, `${res.billed} ${kind.toLowerCase()} bill${res.billed === 1 ? '' : 's'} made, due ${fd(due)}. They are in your To do to send on WhatsApp.`);
 }
 
-/** CSV with Apartment, Amount (and optional Units) columns, for the selected month and kind. */
+/** An Excel sheet (.xlsx) or CSV with Apartment, Amount (and optional Units) columns, for the selected month and kind. */
 export async function importChargesAction(fdata: FormData) {
   const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
   const back = `/p/${pid}/utilities?period=${period}&kind=${encodeURIComponent(kind)}`;
   const file = fdata.get('file') as File | null;
-  if (!file || !file.size) go(back, 'Pick a CSV file');
-  const text = await file!.text();
-  const { parseCsv } = await import('./importer');
-  const rows = parseCsv(text), head = (rows[0] || []).map(h => h.trim().toLowerCase());
+  if (!file || !file.size) go(back, 'Pick the Excel sheet (or a CSV file)');
+  // The sheet downloaded from this page (Excel), or a CSV.
+  const bytes = new Uint8Array(await file!.arrayBuffer()), isXlsx = bytes[0] === 0x50 && bytes[1] === 0x4b;
+  let rows: string[][] = [];
+  if (isXlsx) { const { readXlsx } = await import('./xlsx'); try { rows = readXlsx(bytes); } catch { go(back, 'This Excel file couldn\'t be read. Save it again as .xlsx (or CSV) and try again'); } }
+  else if (/\.xls$/i.test(file!.name)) go(back, 'This is an old Excel file (.xls). Save it as .xlsx (or CSV) and try again');
+  else { const { parseCsv } = await import('./importer'); rows = parseCsv(new TextDecoder().decode(bytes).replace(/^\uFEFF/, '')); }
+  const head = (rows[0] || []).map(h => String(h || '').replace(/\(.*?\)/g, '').trim().toLowerCase());
   const ia = head.findIndex(h => ['apartment', 'apt', 'flat', 'unit'].includes(h)), im = head.findIndex(h => ['amount', 'bill', 'electricity', 'total', 'rs'].includes(h)), iu = head.findIndex(h => ['units', 'unit used', 'kwh'].includes(h));
-  if (ia < 0 || im < 0) go(back, 'The CSV needs an "Apartment" and an "Amount" column');
+  if (ia < 0 || im < 0) go(back, 'The sheet needs an "Apartment" and an "Amount" column on its first row');
   const res = await mutate(pid, staff, s => {
     const byApt = new Map(apartments().filter(o => o.status === 'active').map(o => [o.apt.toUpperCase(), o]));
     let n = 0; const missing: string[] = [];
     for (const r of rows.slice(1)) {
       const apt = String(r[ia] || '').trim(), amount = Math.round(+String(r[im] || '').replace(/[,\sRs]/gi, ''));
-      if (!apt) continue;
+      if (!apt || !String(r[im] ?? '').trim()) continue;          // no amount filled in: leave that flat as it is
       const o = byApt.get(apt.toUpperCase());
       if (!o || !Number.isFinite(amount)) { missing.push(apt); continue; }
       const units = iu >= 0 && r[iu] ? Math.round(+r[iu]) : null;

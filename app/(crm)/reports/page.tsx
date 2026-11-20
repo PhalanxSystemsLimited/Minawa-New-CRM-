@@ -35,7 +35,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
         : <label style={{ display: 'flex', gap: 6, alignItems: 'center', paddingBottom: 8 }}><input type="checkbox" name="o" value="1" defaultChecked={overdue} /> Overdue only (defaulters)</label>}
       <button type="submit" className="btn">Show</button>
       <span style={{ flex: 1 }} />
-      <a className="btn" href={r === 'month' ? `/api/export/collections?month=${month}${pid ? `&project=${pid}` : ''}` : `/api/export/dues?${pid ? `project=${pid}&` : ''}${overdue ? 'overdue=1' : ''}`}><Ic n="download" s={15} /> Download CSV</a>
+      <a className="btn" href={r === 'month' ? `/api/export/collections?month=${month}${pid ? `&project=${pid}` : ''}` : `/api/export/dues?${pid ? `project=${pid}&` : ''}${overdue ? 'overdue=1' : ''}`}><Ic n="download" s={15} /> Download Excel</a>
       <PrintBtn><Ic n="print" s={15} /> Print</PrintBtn>
     </form>
   </>;

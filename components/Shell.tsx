@@ -106,7 +106,7 @@ function QuickActions({ projects, pid, role }: { projects: { id: string; name: s
       {here ? <>
         <div className="qa-h">{here.name}</div>
         {acts.map(([k, l, href]) => <Go key={k} href={href(here.id)}>{l}</Go>)}
-        <a href={`/api/export/payments?project=${here.id}&per=all`} className="menu-a">Export this project&apos;s payments (CSV)</a>
+        <a href={`/api/export/payments?project=${here.id}&per=all`} className="menu-a">Export this project&apos;s payments (Excel)</a>
         <hr />
         <div className="qa-h">All projects</div>
       </> : <>
@@ -118,7 +118,7 @@ function QuickActions({ projects, pid, role }: { projects: { id: string; name: s
         <hr />
         <div className="qa-h">All projects</div>
       </>}
-      <a href="/api/export/payments?per=all" className="menu-a">Export all payments (CSV)</a>
+      <a href="/api/export/payments?per=all" className="menu-a">Export all payments (Excel)</a>
       <Go href="/whatsapp">WhatsApp log</Go>
       <Go href="/approvals">Approvals</Go>
     </div>

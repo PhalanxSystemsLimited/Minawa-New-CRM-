@@ -725,3 +725,37 @@ td > p.empty,.cell-sub.empty{padding-left:0!important}
 .pay-form select{min-width:150px}
 tr.pay-tot td{background:var(--surface-2,transparent);border-top:2px solid var(--line-strong)}
 @media (max-width:640px){.pay-form>.btn,.pay-form>.form-row{flex:1 1 100%}.pay-form>span[style]{display:none}}
+
+/* Skeleton loaders (update 123): shown while a page is on its way (components/Skeleton.tsx). */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sk-page{display:flex;flex-direction:column;gap:18px;animation:skIn .25s ease both}
+.sk{display:block;flex:none;max-width:100%;border-radius:7px;position:relative;overflow:hidden;background:color-mix(in srgb,var(--muted,#8a8f98) 17%,transparent)}
+.sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--surface,#fff) 70%,transparent) 50%,transparent);animation:skShine 1.35s ease-in-out infinite}
+.sk-col{display:flex;flex-direction:column;gap:9px;min-width:0}
+.sk-head{display:flex;align-items:center;gap:16px;padding:18px 20px}
+.sk-head .sk-crumb{margin-left:auto}
+.sk-tabs{display:flex;gap:8px;flex-wrap:nowrap;overflow:hidden}
+.sk-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.sk-kpi{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-height:112px;margin:0}
+.sk-kpi>.sk-col{flex:1}
+.sk-card{display:flex;flex-direction:column;gap:0}
+.sk-row-t{display:flex;align-items:center;gap:12px;margin-bottom:14px;min-width:0}
+.sk-row-t>.sk,.sk-filters>.sk,.sk-head>.sk-col>.sk{flex-shrink:1;min-width:24px}
+.sk-th{display:flex;gap:16px;padding:12px 14px;border-radius:10px;background:color-mix(in srgb,var(--muted,#8a8f98) 8%,transparent);margin-bottom:4px}
+.sk-tr{display:flex;gap:16px;padding:14px 14px;border-bottom:1px solid color-mix(in srgb,var(--muted,#8a8f98) 14%,transparent);animation:skIn .3s ease both}
+.sk-tr:last-child{border-bottom:0}
+.sk-li{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid color-mix(in srgb,var(--muted,#8a8f98) 14%,transparent)}
+.sk-li:last-child{border-bottom:0}
+.sk-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px}
+.sk-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 20px}
+.sk-prof{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.sk-prof-r{align-items:flex-end;margin-left:auto}
+.sk-chips{display:flex;gap:8px;flex-wrap:wrap}
+.sk-field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+@keyframes skShine{to{transform:translateX(100%)}}
+@keyframes skIn{from{opacity:0}to{opacity:1}}
+@media (max-width:900px){.sk-grid{grid-template-columns:minmax(0,1fr)}.sk-head .sk-crumb{display:none}}
+@media (max-width:640px){.sk-prof{flex-direction:column;align-items:flex-start}.sk-prof-r{align-items:flex-start;margin-left:0}.sk-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sk-kpi{min-height:92px}.sk-kpi .sk-ic{display:none}.sk-tr>.sk:nth-child(n+4),.sk-th>.sk:nth-child(n+4){display:none}.sk-filters>span{display:none}}
+@media (prefers-reduced-motion:reduce){.sk::after{animation:none;display:none}.sk-page,.sk-tr{animation:none}}
+/* Photos fill in over the same shine while they load. */
+.ph-thumb,.ph-big a{background:color-mix(in srgb,var(--muted,#8a8f98) 14%,transparent)}

@@ -82,7 +82,7 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
         const q = (k: Record<string, string>) => '/tasks?' + new URLSearchParams(Object.entries({ m: sp.m || '', b, ...k }).filter(([, x]) => x)).toString();
         return <form action={bulkApproveAction} className="card" id="entries"><input type="hidden" name="back" value="/tasks" /><input type="hidden" name="one" value="" />
           <div className="card-row"><h3>Entries to approve <small>{proofs.length} waiting · {rs(proofs.reduce((a, x) => a + x.p.amount, 0))}</small></h3>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><a className="btn sm" href={`/api/export/entries${b ? `?project=${b}` : ''}`}><Ic n="download" s={15} /> Download CSV</a></div></div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}><a className="btn sm" href={`/api/export/entries${b ? `?project=${b}` : ''}`}><Ic n="download" s={15} /> Download Excel</a></div></div>
           <div className="chips" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 10px' }}>
             {[['', 'All'], ['cash', 'Cash'], ['bank', 'Bank transfer']].map(([k, l]) => <a key={k} href={q({ m: k })} className={'chipbtn' + ((sp.m || '') === k ? ' on' : '')}>{l}</a>)}
             {live.length > 1 ? live.map(pj => <a key={pj.id} href={q({ b: b === pj.id ? '' : pj.id })} className={'chipbtn' + (b === pj.id ? ' on' : '')}>{pj.name}</a>) : null}

@@ -30,7 +30,7 @@ export default async function Possession({ searchParams }: { searchParams: Promi
       <div className="form-row" style={{ margin: 0 }}><label htmlFor="ps-p">Building</label><select id="ps-p" name="p" defaultValue={pid}><option value="">All your buildings</option>{all.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
       <div className="form-row" style={{ margin: 0 }}><label htmlFor="ps-q">Apartment or name</label><input id="ps-q" name="q" type="search" defaultValue={sp.q || ''} placeholder="e.g. 16B or Aslam" /></div>
       <button type="submit" className="btn">Show</button><span style={{ flex: 1 }} />
-      <a className="btn" href={`/api/export/possession${pid ? `?project=${pid}` : ''}`}><Ic n="download" s={15} /> Download CSV</a>
+      <a className="btn" href={`/api/export/possession${pid ? `?project=${pid}` : ''}`}><Ic n="download" s={15} /> Download Excel</a>
     </form>
     <div className="kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
       <div className="kpi"><KIc n="key" tone="violet" /><div className="l">No possession date</div><div className="v num">{rows.length}</div><div className="cell-sub">due on the 1st for now</div></div>

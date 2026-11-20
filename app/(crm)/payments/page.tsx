@@ -85,7 +85,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
         <div className="form-row" style={{ margin: 0 }}><label htmlFor="py-m">Confirmed in</label><select id="py-m" name="month" defaultValue={allTime ? 'all' : month === today.slice(0, 7) ? '' : month}>{months.map(([v, l]) => <option key={v || 'now'} value={v}>{l}</option>)}<option value="all">All time</option></select></div>
         {mgr ? null : <div className="form-row" style={{ margin: 0 }}><label htmlFor="py-w">Entered or confirmed by</label><select id="py-w" name="who" defaultValue={who}><option value="">Anyone</option>{people.map(x => <option key={x}>{x}</option>)}</select></div>}
         <button type="submit" className="btn">Show</button><span style={{ flex: 1 }} />
-        <a className="btn" href={`/api/export/received?${csv}`}><Ic n="download" s={15} /> Download CSV</a><PrintBtn><Ic n="print" s={15} /> Print</PrintBtn>
+        <a className="btn" href={`/api/export/received?${csv}`}><Ic n="download" s={15} /> Download Excel</a><PrintBtn><Ic n="print" s={15} /> Print</PrintBtn>
       </form>
     </div>
 
@@ -150,7 +150,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
 
       <div className="card" id="day"><div className="card-row"><h3>Daily cash reconciliation <small>{fd(day)}</small></h3>
         <form method="get" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{Object.entries(params).filter(([, v]) => v).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}<input type="date" name="d" defaultValue={day} max={today} aria-label="Day" /><button type="submit" className="btn sm">Show</button>
-          <a className="btn sm" href={`/api/export/cash?d=${day}`}>CSV</a></form></div>
+          <a className="btn sm" href={`/api/export/cash?d=${day}`}><Ic n="download" s={15} /> Excel</a></form></div>
         {rec.rows.length ? <div className="tbl-wrap"><table><thead><tr><th>Building</th><th>Who took the cash</th><th className="r">In hand at start</th><th className="r">Taken</th><th className="r">Handed over</th><th className="r">In hand at end</th></tr></thead><tbody>
           {rec.rows.map(r => <tr key={r.project + r.collectorId}><td>{r.pname}</td><td><b>{r.name}</b></td><td className="r num">{rs(r.open)}</td><td className="r num">{rs(r.collected)}{r.nCollected ? <div className="cell-sub">{r.nCollected} payment{r.nCollected === 1 ? '' : 's'}</div> : null}</td><td className="r num">{rs(r.handed)}</td><td className="r num"><b>{rs(r.close)}</b></td></tr>)}
           <tr><td colSpan={2}><b>Total</b></td><td className="r num">{rs(rec.rows.reduce((a, r) => a + r.open, 0))}</td><td className="r num">{rs(rec.rows.reduce((a, r) => a + r.collected, 0))}</td><td className="r num">{rs(rec.rows.reduce((a, r) => a + r.handed, 0))}</td><td className="r num"><b>{rs(rec.rows.reduce((a, r) => a + r.close, 0))}</b></td></tr>

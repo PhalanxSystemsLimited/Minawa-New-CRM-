@@ -31,7 +31,7 @@ export async function WaLogBody({ sp, fixedProject }: { sp: Record<string, strin
   let day = '';
   return <>
     <div className="page-head"><div><p>Every message sent by hand on WhatsApp, as confirmed with <b>Did you send the message?</b> on returning to the CRM: who sent it, to which owner and number, when, and what it said.{admin ? '' : ' You see the messages you sent.'}</p></div>
-      <a className="btn" href={`/api/export/whatsapp?${qs}`}><Ic n="download" s={15} /> Download CSV</a></div>
+      <a className="btn" href={`/api/export/whatsapp?${qs}`}><Ic n="download" s={15} /> Download Excel</a></div>
     {err ? <div className="callout bad" style={{ marginBottom: 14 }}><div>The WhatsApp log can&apos;t be read yet ({err}). Run <b>supabase/migrations/0005_whatsapp_log_and_sheets.sql</b> in Supabase.</div></div> : null}
     <div className="kpis wl-kpis">
       <div className="kpi"><KIc n="send" tone="green" /><div className="l">Sent</div><div className="v num">{sent.length}</div><div className="cell-sub">{owners} owner{owners === 1 ? '' : 's'}</div></div>

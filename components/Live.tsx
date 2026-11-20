@@ -208,14 +208,17 @@ export function LiveEffects() {
     const sh = document.querySelector<HTMLElement>('.shell');
     if (sh && sh.scrollHeight > sh.clientHeight && getComputedStyle(sh).overflowY !== 'visible') sh.scrollTop = 0;
     const main = document.getElementById('main') || document.body;
-    tagFigures(main); tagCards(main); sizeBars(main); capLists(main);
-    let stopCount = countUp(main); tagHeads(main);
-    const stopReveal = reveal(main);
+    // A page that streams in after its skeleton (update 123) is put on screen a moment before React takes it over:
+    // touch it only once React has (changing it earlier makes React's copy and the screen disagree).
+    const owned = (el: Element) => Object.keys(el).some(k => k.startsWith('__reactFiber$'));
+    const ready = () => Array.from(main.querySelectorAll('.card, .kpi, .proj-head, .proj-tabs, .ptabs, table')).every(owned);
+    let stopCount = () => {}, stopReveal: (() => void) | null = null, stopInk: (() => void) | null = null, raf = 0, wait: ReturnType<typeof setTimeout> | undefined, tries = 0;
+    const apply = () => { tagFigures(main); tagCards(main); sizeBars(main); capLists(main); stopCount(); stopCount = countUp(main); tagHeads(main); };
+    const run = () => { clearTimeout(wait); if (!ready() && tries++ < 60) { wait = setTimeout(run, 50); return; } tries = 0; apply(); if (!main.querySelector('.sk-page')) { if (!stopReveal) stopReveal = reveal(main); if (!stopInk) stopInk = reduced() ? () => {} : tabInk(); } };
+    run();
     // Changes come in bursts (a list refreshing): handle them once per frame, not once per change.
-    let raf = 0;
-    const mo = new MutationObserver(() => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; tagFigures(main); tagCards(main); sizeBars(main); capLists(main); stopCount(); stopCount = countUp(main); tagHeads(main); }); });
+    const mo = new MutationObserver(() => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; run(); }); });
     mo.observe(main, { childList: true, subtree: true });
-    const stopInk = reduced() ? () => {} : tabInk();
     try { if (!document.querySelector('.proj-tabs')) sessionStorage.removeItem('minawa.tabInk'); } catch { /* ignore */ }
     // Figures that would leave their boxes are scaled to fit: now, once the count-ups have finished, and whenever the
     // page is resized or zoomed.
@@ -225,7 +228,7 @@ export function LiveEffects() {
     const ro = new ResizeObserver(fit); ro.observe(main);
     const mo2 = new MutationObserver(fit); mo2.observe(main, { childList: true, subtree: true, characterData: true });
     window.addEventListener('resize', fit);
-    return () => { mo.disconnect(); cancelAnimationFrame(raf); stopCount(); stopInk(); stopReveal(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
+    return () => { mo.disconnect(); cancelAnimationFrame(raf); clearTimeout(wait); stopCount(); stopInk?.(); stopReveal?.(); ro.disconnect(); mo2.disconnect(); clearTimeout(late); clearTimeout(ft); window.removeEventListener('resize', fit); };
   }, [path]);
   // Once: pointer light, tilt and button ripple (delegated, so it works for every page).
   useEffect(() => {

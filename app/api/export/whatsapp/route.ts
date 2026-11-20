@@ -1,11 +1,12 @@
-// The WhatsApp log as CSV, with the same filters as the page. Admins get everyone; an accountant gets their own.
+// The WhatsApp log as an Excel workbook, with the same filters as the page. Admins get everyone; an accountant gets
+// their own.
 import { currentStaff } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { projects as listProjects } from '@/lib/ops';
-import { todayPKT, addDays, t12 } from '@/lib/fmt';
+import { todayPKT, addDays, t12, fd } from '@/lib/fmt';
+import { Sheet, xlsxResponse } from '@/lib/xlsx';
 
 export const dynamic = 'force-dynamic';
-const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export async function GET(req: Request) {
   const me = await currentStaff();
@@ -19,8 +20,9 @@ export async function GET(req: Request) {
   let list = await store.getWaLog({ project: g('p') || null, staffIds: ids, answer: a, since, limit: 20000 });
   if (q) list = list.filter(e => `${e.apt} ${e.ownerName} ${e.phone} ${e.sentTo} ${e.fromNumber || ''} ${e.title} ${e.staffName}`.toLowerCase().includes(q));
   const pname = (id: string) => projs.find(p => p.id === id)?.name || id;
-  const lines = [['Date', 'Time', 'Answer', 'Sent by', 'Role', 'Sent from number', 'Project', 'Apartment', 'Owner', 'Owner number', 'Chat opened with', 'Test', 'Message', 'Text', 'Balance then (Rs)', 'Confirmed', 'Message id', 'Recorded at (UTC)'].map(cell).join(',')];
-  for (const e of list) lines.push([e.d, t12(e.t), e.answer === 'sent' ? 'Sent' : 'Opened, not sent', e.staffName, e.staffRole, e.fromNumber ? '+' + e.fromNumber : '', pname(e.project), e.apt, e.ownerName, e.phone, '+' + e.sentTo, e.test ? 'yes' : '',
-    e.title, e.text, e.amount, e.via === 'prompt' ? 'Answered on return' : 'Marked by hand', e.messageId || '', e.at].map(cell).join(','));
-  return new Response('﻿' + lines.join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="minawa-whatsapp-log-${today}.csv"` } });
+  const x = new Sheet('WhatsApp log').title('WhatsApp log').note(`${list.length} message${list.length === 1 ? '' : 's'} · downloaded by ${me.name} on ${fd(today)}`).blank()
+    .head([['Date', 'date'], 'Time', 'Answer', 'Sent by', 'Role', 'Sent from number', 'Building', 'Apartment', 'Owner', 'Owner number', 'Chat opened with', 'Test', 'Message', 'Text', ['Balance then (Rs)', 'money'], 'Confirmed', 'Message id', ['Recorded at', 'datetime']]);
+  for (const e of list) x.row([e.d, t12(e.t), e.answer === 'sent' ? 'Sent' : 'Opened, not sent', e.staffName, e.staffRole, e.fromNumber ? '+' + e.fromNumber : '', pname(e.project), e.apt, e.ownerName, e.phone, '+' + e.sentTo, e.test ? 'yes' : '',
+    e.title, e.text, e.amount, e.via === 'prompt' ? 'Answered on return' : 'Marked by hand', e.messageId || '', e.at]);
+  return xlsxResponse(x, `minawa-whatsapp-log-${today}`);
 }

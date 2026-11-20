@@ -1,12 +1,13 @@
-// The daily cash reconciliation as CSV (/cash): per building and person, cash in hand at the start of the day, taken,
-// handed over, in hand at the end; then the hand-overs the Accountant received and the bank deposits that day.
+// The daily cash reconciliation as an Excel workbook (Payments, cash): per building and person, cash in hand at the
+// start of the day, taken, handed over, in hand at the end; then the hand-overs the Accountant received and the bank
+// deposits that day.
 import { currentStaff } from '@/lib/session';
 import { load, liveProjects } from '@/lib/ops';
 import { dayCash } from '@/lib/cash';
-import { todayPKT } from '@/lib/fmt';
+import { todayPKT, fd } from '@/lib/fmt';
+import { Sheet, xlsxResponse } from '@/lib/xlsx';
 
 export const dynamic = 'force-dynamic';
-const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export async function GET(req: Request) {
   const staff = await currentStaff();
@@ -15,17 +16,19 @@ export async function GET(req: Request) {
   const states = await Promise.all((await liveProjects(staff)).map(p => load(p.id, staff)));
   const r = dayCash(states, d), mine = staff.role === 'manager';
   const rows = r.rows.filter(x => !mine || x.collectorId === staff.id);
-  const lines = [[`Cash reconciliation ${d}`].map(cell).join(','), '',
-    ['Building', 'Who took the cash', 'In hand at start (Rs)', 'Taken (Rs)', 'Payments', 'Handed over (Rs)', 'In hand at end (Rs)'].map(cell).join(',')];
-  for (const x of rows) lines.push([x.pname, x.name, x.open, x.collected, x.nCollected, x.handed, x.close].map(cell).join(','));
-  const tot = (k: 'open' | 'collected' | 'handed' | 'close') => rows.reduce((a, x) => a + x[k], 0);
-  lines.push(['Total', '', tot('open'), tot('collected'), rows.reduce((a, x) => a + x.nCollected, 0), tot('handed'), tot('close')].map(cell).join(','));
+  const x = new Sheet('Cash ' + d).title(`Daily cash reconciliation · ${fd(d)}`).note(`Minawa CRM · downloaded by ${staff.name} on ${fd(todayPKT())}`).blank()
+    .head(['Building', 'Who took the cash', ['In hand at start (Rs)', 'money'], ['Taken (Rs)', 'money'], ['Payments', 'int'], ['Handed over (Rs)', 'money'], ['In hand at end (Rs)', 'money']]);
+  for (const y of rows) x.row([y.pname, y.name, y.open, y.collected, y.nCollected, y.handed, y.close]);
+  const tot = (k: 'open' | 'collected' | 'handed' | 'close') => rows.reduce((a, y) => a + y[k], 0);
+  x.total(['Total', '', tot('open'), tot('collected'), rows.reduce((a, y) => a + y.nCollected, 0), tot('handed'), tot('close')]);
   if (!mine) {
-    lines.push('', ['Received by the Accountant'].map(cell).join(','), ['Hand-over', 'Building', 'From', 'Received by', 'Amount (Rs)'].map(cell).join(','));
-    for (const { h, pname } of r.received) lines.push([h.id, pname, h.fromName, h.receivedBy, h.amount].map(cell).join(','));
-    lines.push('', ['Deposited in the bank'].map(cell).join(','), ['Hand-over', 'Building', 'Slip', 'Deposited by', 'Amount (Rs)'].map(cell).join(','));
-    for (const { h, pname } of r.deposited) lines.push([h.id, pname, h.depositSlip, h.depositedBy, h.amount].map(cell).join(','));
+    x.section('Received by the Accountant').head(['Hand-over', 'Building', 'From', 'Received by', ['Amount (Rs)', 'money']]);
+    for (const { h, pname } of r.received) x.row([h.id, pname, h.fromName, h.receivedBy, h.amount]);
+    x.total(['Total', '', '', '', r.received.reduce((a, y) => a + y.h.amount, 0)]);
+    x.section('Deposited in the bank').head(['Hand-over', 'Building', 'Slip', 'Deposited by', ['Amount (Rs)', 'money']]);
+    for (const { h, pname } of r.deposited) x.row([h.id, pname, h.depositSlip, h.depositedBy, h.amount]);
+    x.total(['Total', '', '', '', r.deposited.reduce((a, y) => a + y.h.amount, 0)]);
   }
-  if (r.pending.length) lines.push('', [`Not counted: ${r.pending.length} cash entries (Rs ${r.pending.reduce((a, x) => a + x.pr.amount, 0)}) still waiting for the Accountant to confirm`].map(cell).join(','));
-  return new Response('﻿' + lines.join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="minawa-cash-${d}.csv"` } });
+  if (r.pending.length) x.blank().note(`Not counted: ${r.pending.length} cash entries (Rs ${r.pending.reduce((a, y) => a + y.pr.amount, 0).toLocaleString('en-US')}) still waiting for the Accountant to confirm.`);
+  return xlsxResponse(x, `minawa-cash-${d}`);
 }
