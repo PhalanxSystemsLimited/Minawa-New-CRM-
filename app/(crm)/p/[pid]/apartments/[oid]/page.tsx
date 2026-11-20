@@ -85,30 +85,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
         {closed ? null : <div className="actions">
           {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Enter payment' : 'Record cash payment'}</Go> : null}
           {bal > 0 && !o.exempt && S.role === 'manager' ? waBtn(o) : null}
-          <details className="more"><summary className="btn">More ▾</summary><div className="menu">
-            {bal > 0 ? <Go href={m('promise')}>Promise to pay</Go> : <button disabled>Promise to pay</button>}
-            <Go href={m('note')}>Add note</Go>
-            <a className="menu-a" href={`/api/pdf/${pid}/history/${o.id}`} target="_blank" rel="noopener">Payment history (PDF)</a>
-            <a className="menu-a" href={`/api/pdf/${pid}/apthistory/${o.id}`} target="_blank" rel="noopener">Apartment history (PDF)</a>
-            {S.role !== 'accountant' ? <Go href={`${base}/leave`}>Customer left (hand back the keys)</Go> : null}
-            {S.role !== 'accountant' ? o.flagged ? <Go href={m('discontinue')}>Resume maintenance{ask}</Go> : bal > 0 && billsOf(o).some(b => b.dueDate < S.today && b.net > b.paid) || (o.openingLeft > 0 && S.today > openingDue()) ? <Go href={m('discontinue')}>Discontinue maintenance{ask}</Go> : null : null}
-            <Go href={m('edit')}>Edit owner and WhatsApp number</Go>
-            <Go href={m('adjust')}>Adjustment (charge or credit){ask}</Go>
-            {hasGenerator() && S.role === 'manager' ? genWait ? <button aria-disabled="true" title="An admin has to approve or reject the change first">Generator change waiting for approval</button>
-              : <Go href={m('generator')}>{o.generator ? 'Remove generator charges' : 'Add generator charges'}{ask}</Go> : null}
-            {bal > 0 || S.role === 'admin' ? null : <Go href={m('recpay')}>Record payment</Go>}
-            {S.role === 'admin' && !closed ? <Go href={m('recpay')}>Record a payment above the limit</Go> : null}
-            <Go href={`${base}?doc=statement:${o.id}`}>Statement of dues (PDF)</Go>
-            <Go href={m('discount')}>Discount{ask}</Go>
-            {o.openingLeft > 0 ? <Go href={m('instal-3')}>{o.instalments ? 'Change the instalment plan' : 'Instalment plan for old arrears'}{ask}</Go> : null}
-            <Go href={m('due')}>Due date for this owner{ask}</Go>
-            <hr />
-            <Go href={m('clearance')}>Dues clearance certificate</Go>
-            {adminItem('transfer', 'Transfer to a new owner')}
-            {o.flagged || (activeSusp.length && bal <= 0) ? <hr /> : null}
-            {o.flagged ? <Go href={m('disconnect')} className="danger">Record disconnection</Go> : null}
-            {activeSusp.length && bal <= 0 ? <form action={restoreAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><button type="submit">Record restoration</button></form> : null}
-          </div></details>
+          <Go href={`/customers/${pid}/${o.id}`} className="btn"><Ic n="users" s={16} /> View customer details</Go>
         </div>}
       </div>
       {waiting.length ? <div className="card apv-card"><div className="card-row"><h3>Waiting for approval <small>{waiting.length} change{waiting.length === 1 ? '' : 's'} to what {o.name} is charged</small></h3><Go href="/approvals" className="btn sm">Approvals</Go></div>

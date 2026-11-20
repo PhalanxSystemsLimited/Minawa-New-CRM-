@@ -165,7 +165,7 @@ export async function possessionAction(fdata: FormData) {
 /** A charge (goes on the next bill) or a credit/waiver (lowers what is owed now), with a reason. */
 export async function adjustAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), kind = S(fdata, 'kind'), reason = S(fdata, 'reason');
-  const amount = Math.round(+S(fdata, 'amount').replace(/[,\s]/g, '')), back = `/p/${pid}/apartments/${oid}`;
+  const amount = Math.round(+S(fdata, 'amount').replace(/[,\s]/g, '')), back = S(fdata, 'back') === `/customers/${pid}/${oid}` ? `/customers/${pid}/${oid}` : `/p/${pid}/apartments/${oid}`;
   if (!(amount > 0) || !reason) go(back + '?m=adjust', 'Enter an amount and the reason');
   // An admin's adjustment applies now; an accountant's waits for an admin's approval.
   // The reason the accountant gives is also their reason for the admin.
@@ -188,7 +188,7 @@ export async function companyAction(fdata: FormData) {
 
 /* ---------- instalment plans and a due day for one owner (Admin applies; others ask the Admin) ---------- */
 export async function instalmentAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), back = `/p/${pid}/apartments/${oid}`;
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), back = S(fdata, 'back') === `/customers/${pid}/${oid}` ? `/customers/${pid}/${oid}` : `/p/${pid}/apartments/${oid}`;
   const amounts = fdata.getAll('amount').map(x => Math.round(+String(x).replace(/[,\s]/g, '') || 0)), dues = fdata.getAll('due').map(String);
   const items = amounts.map((amount, i) => ({ amount, due: dues[i] || '' })), n = items.length;
   let r: Awaited<ReturnType<typeof changeOrRequest>> | null = null, err = '';
@@ -198,7 +198,7 @@ export async function instalmentAction(fdata: FormData) {
   go(back, r!.text);
 }
 export async function dueAction(fdata: FormData) {
-  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), back = `/p/${pid}/apartments/${oid}`;
+  const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), back = S(fdata, 'back') === `/customers/${pid}/${oid}` ? `/customers/${pid}/${oid}` : `/p/${pid}/apartments/${oid}`;
   let r: Awaited<ReturnType<typeof changeOrRequest>> | null = null, err = '';
   try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'due', { dueDay: Math.round(+S(fdata, 'dueDay')) }, S(fdata, 'reason')); }, { send: false }); }
   catch (e) { err = (e as Error).message; }
@@ -209,7 +209,7 @@ export async function dueAction(fdata: FormData) {
 /** Discontinue (or resume) a customer's maintenance after the late warning: the building manager asks, the Admin approves. */
 export async function discontinueAction(fdata: FormData) {
   const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), on = S(fdata, 'on') === '1', reason = S(fdata, 'reason');
-  const back = `/p/${pid}/apartments/${oid}`;
+  const back = S(fdata, 'back') === `/customers/${pid}/${oid}` ? `/customers/${pid}/${oid}` : `/p/${pid}/apartments/${oid}`;
   if (staff.role !== 'admin' && !reason) go(`${back}?m=discontinue`, 'Write the reason for the Admin');
   let r = '';
   try { r = await mutate(pid, staff, () => { const o = ownerById(oid); if (!o) throw new Error('Apartment not found'); return changeOrRequest(o, 'discontinue', { on }, reason).text; }, { send: false }); }

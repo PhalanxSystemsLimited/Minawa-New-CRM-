@@ -16,7 +16,7 @@ const failed = (x: unknown): x is { error: string } => !!x && typeof x === 'obje
 /** Reverse a wrong payment: the Admin does it at once; the Accountant's request waits for the Admin. */
 export async function reverseAction(fdata: FormData) {
   const staff = await requireRole('admin', 'accountant'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), payId = S(fdata, 'pay'), reason = S(fdata, 'reason');
-  const back = `/p/${pid}/apartments/${oid}`;
+  const back = S(fdata, 'back') === `/customers/${pid}/${oid}` ? `/customers/${pid}/${oid}` : `/p/${pid}/apartments/${oid}`;
   if (!reason) go(`${back}?m=reverse-${encodeURIComponent(payId)}`, 'Write why this payment is wrong');
   const r = await attempt(() => mutate(pid, staff, s => {
     const o = ownerById(oid); if (!o) throw new Error('Apartment not found');

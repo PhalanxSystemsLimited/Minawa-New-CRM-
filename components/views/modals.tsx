@@ -87,7 +87,7 @@ export function DocModal({ doc, flash }: { doc: string; flash?: string }) {
   );
 }
 
-const hidden = (o: Owner) => <><input type="hidden" name="pid" value={o.project} /><input type="hidden" name="oid" value={o.id} /></>;
+const hidden = (o: Owner) => <><input type="hidden" name="pid" value={o.project} /><input type="hidden" name="oid" value={o.id} />{cur().viewBase ? <input type="hidden" name="back" value={cur().viewBase!} /> : null}</>;
 const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 
 /** "Apply to the current bill or from the next bill" on every change to what a customer is charged (Phase 2). */

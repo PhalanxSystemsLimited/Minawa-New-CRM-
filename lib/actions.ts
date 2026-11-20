@@ -23,7 +23,8 @@ import { changeOrRequest, type ChangeResult } from './approvals';
 import { billDoc } from './docdata';
 
 const S = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim();
-const ownerPath = (pid: string, oid: string) => `/p/${pid}/apartments/${oid}`;
+/** Where a customer's window returns: the customer's page when it was opened there, else the apartment page. */
+const ownerPath = (pid: string, oid: string, fd?: FormData) => { const b = fd ? String(fd.get('back') ?? '') : ''; return b === `/customers/${pid}/${oid}` ? b : `/p/${pid}/apartments/${oid}`; };
 const go = (path: string, toast?: string, extra = ''): never => redirect(path + (path.includes('?') ? '&' : '?') + (toast ? 't=' + encodeURIComponent(toast) : '') + extra);
 /** Runs a change; a rule it breaks (e.g. a missing reason) comes back as a message instead of an error page. */
 async function attempt<T>(fn: () => Promise<T>): Promise<T | { error: string }> { try { return await fn(); } catch (e) { return { error: (e as Error).message }; } }
@@ -34,18 +35,18 @@ function needOwner(s: State, oid: string): Owner { const o = ownerById(oid); if 
 export async function recordPaymentAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
   const amt = Math.round(+S(fdata, 'amt'));
-  if (!(amt > 0)) go(ownerPath(pid, oid), 'Enter an amount');
+  if (!(amt > 0)) go(ownerPath(pid, oid, fdata), 'Enter an amount');
   // Amount checks (21 Nov 2026): above what is owed needs the tick; far above it is blocked, except for the Admin.
   const lim = use(await load(pid, staff), () => { const o = ownerById(oid); if (!o) return null; return { owed: payLimits(o).owed, block: payBlock(o, amt) }; });
   if (!lim) go(`/p/${pid}`, 'Apartment not found');
-  const formBack = S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
+  const formBack = S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
   // Payments are entered by building managers and accountants only (no online payments); the Admin only enters an
   // amount above what one entry can take (after checking it is right).
   if (staff.role === 'admin') {
-    if (!lim!.block) go(ownerPath(pid, oid), 'Payments are entered by the building manager or the Accountant');
-    if (!S(fdata, 'ref') || S(fdata, 'over') !== '1') go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number and tick to confirm the amount');
+    if (!lim!.block) go(ownerPath(pid, oid, fdata), 'Payments are entered by the building manager or the Accountant');
+    if (!S(fdata, 'ref') || S(fdata, 'over') !== '1') go(ownerPath(pid, oid, fdata) + '?m=recpay', 'Enter the receipt number and tick to confirm the amount');
     const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
-    redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
+    redirect(`${ownerPath(pid, oid, fdata)}?doc=receipt:${p.id}&flash=staff`);
   }
   if (lim!.block) go(formBack, lim!.block);
   if (amt > lim!.owed && S(fdata, 'over') !== '1') go(formBack, `Rs ${amt.toLocaleString('en-US')} is more than the Rs ${lim!.owed.toLocaleString('en-US')} owed: tick to confirm the amount (the extra becomes advance credit)`);
@@ -55,7 +56,7 @@ export async function recordPaymentAction(fdata: FormData) {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
     const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
     // "Bill received" from the Electricity bills screen (21 Nov 2026): pays that electricity bill first.
-    const billId = S(fdata, 'billId') || null, again = billId ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(billId)}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid) + `?m=recpay${method === 'Bank transfer' ? '-bank' : ''}`;
+    const billId = S(fdata, 'billId') || null, again = billId ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(billId)}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${method === 'Bank transfer' ? '-bank' : ''}`;
     if (method === 'Cash' && !S(fdata, 'ref')) go(again, 'Enter the receipt number you gave the owner');
     if (method === 'Bank transfer' && !txn) go(again, 'Enter the bank transaction ID');
     // The photo of the transfer (or the bill receipt): needed for a bank transfer once photo storage is set up.
@@ -66,27 +67,27 @@ export async function recordPaymentAction(fdata: FormData) {
     if (photo) await (await getStore()).linkImage(photo, pr.payId || pr.id).catch(() => undefined);
     go(`/p/${pid}/send?type=queue&kind=receipt&ids=${encodeURIComponent(oid)}&go=1`, `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. Send the receipt now.`);
   }
-  if (!S(fdata, 'ref')) go(ownerPath(pid, oid) + '?m=recpay', 'Enter the receipt number you gave the owner');
+  if (!S(fdata, 'ref')) go(ownerPath(pid, oid, fdata) + '?m=recpay', 'Enter the receipt number you gave the owner');
   const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
-  redirect(`${ownerPath(pid, oid)}?doc=receipt:${p.id}&flash=staff`);
+  redirect(`${ownerPath(pid, oid, fdata)}?doc=receipt:${p.id}&flash=staff`);
 }
 export async function promiseAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), d = S(fdata, 'd'), note = S(fdata, 'note');
   await mutate(pid, staff, s => { const o = needOwner(s, oid); o.promiseUntil = d; o.notes.push({ d: s.today, by: staffName(staff), text: `Promised to pay by ${fd(d)}.${note ? ' ' + note : ''}` }); log(s.today, at(15), 'job', `Promise to pay recorded for ${o.apt} until ${fd(d)}. Notices paused`, o.id); });
-  go(ownerPath(pid, oid), 'Promise saved. Notices paused until ' + fd(d));
+  go(ownerPath(pid, oid, fdata), 'Promise saved. Notices paused until ' + fd(d));
 }
 export async function noteAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), text = S(fdata, 'text');
   if (text) await mutate(pid, staff, s => { needOwner(s, oid).notes.push({ d: s.today, by: staffName(staff), text }); }, { send: false, what: s => `Note added to ${ownerById(oid)?.apt || 'an apartment'} by ${staffName(staff)}: ${text.slice(0, 140)}` });
-  go(ownerPath(pid, oid) + '?tab=notes', 'Note saved');
+  go(ownerPath(pid, oid, fdata) + '?tab=notes', 'Note saved');
 }
 export async function discountAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), k = S(fdata, 'kind'), v = Math.max(0, Math.round(+S(fdata, 'value') || 0));
-  if (k === 'pct' && v > 100) go(ownerPath(pid, oid), 'A percentage discount can be at most 100');
+  if (k === 'pct' && v > 100) go(ownerPath(pid, oid, fdata), 'A percentage discount can be at most 100');
   // An admin's discount applies now; an accountant's waits for an admin's approval.
   const r = await attempt(() => mutate(pid, staff, s => changeOrRequest(needOwner(s, oid), 'discount', { kind: k === 'none' || !v ? 'none' : k, value: v, until: S(fdata, 'until') || null, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, S(fdata, 'why')), { send: false }));
-  if (failed(r)) go(ownerPath(pid, oid) + '?m=discount', r.error);
-  go(ownerPath(pid, oid), (r as ChangeResult).text);
+  if (failed(r)) go(ownerPath(pid, oid, fdata) + '?m=discount', r.error);
+  go(ownerPath(pid, oid, fdata), (r as ChangeResult).text);
 }
 export async function clearanceAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
@@ -97,13 +98,13 @@ export async function clearanceAction(fdata: FormData) {
     if (!c) { c = { no: 'DC-' + s.today.slice(0, 4) + '-' + String(nid('dc')).padStart(3, '0'), ownerId: o.id, project: pid, d: s.today, by: staffName(staff) }; s.clearances.push(c); log(s.today, at(15), 'admin', `Dues Clearance certificate ${c.no} issued for ${o.apt}`, o.id); }
     return c.no;
   }, { send: false });
-  if (!no) go(ownerPath(pid, oid), 'Dues are outstanding, so no certificate can be issued');
-  redirect(`${ownerPath(pid, oid)}?doc=clearance:${no}`);
+  if (!no) go(ownerPath(pid, oid, fdata), 'Dues are outstanding, so no certificate can be issued');
+  redirect(`${ownerPath(pid, oid, fdata)}?doc=clearance:${no}`);
 }
 export async function transferAction(fdata: FormData) {
   const staff = await requireAdmin(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), name = S(fdata, 'name').replace(/\s+/g, ' '), phone = S(fdata, 'phone');
   // The buyer's details from their CNIC, and the meter reading on the day (21 Nov 2026).
-  const cnic = normCnic(S(fdata, 'cnic')), cnicExpiry = S(fdata, 'cnicExpiry'), cnicAddress = S(fdata, 'cnicAddress').replace(/\s+/g, ' '), reading = S(fdata, 'reading'), again = ownerPath(pid, oid) + '?m=transfer';
+  const cnic = normCnic(S(fdata, 'cnic')), cnicExpiry = S(fdata, 'cnicExpiry'), cnicAddress = S(fdata, 'cnicAddress').replace(/\s+/g, ' '), reading = S(fdata, 'reading'), again = ownerPath(pid, oid, fdata) + '?m=transfer';
   if (!name || !phone) go(again, 'Enter the buyer\'s full name and WhatsApp number');
   if (waDigits(phone).length < 10) go(again, 'That WhatsApp number looks too short. Include the country code, e.g. +92.');
   if (!cnic) go(again, 'Enter the buyer\'s CNIC number: 13 digits, e.g. 12345-1234567-1');
@@ -130,16 +131,16 @@ export async function transferAction(fdata: FormData) {
 export async function disconnectAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), sv = S(fdata, 'service');
   await mutate(pid, staff, s => { const o = needOwner(s, oid); o.suspensions.push({ service: sv, from: s.today, to: null, by: staffName(staff) }); log(s.today, at(15), 'flag', `${sv} disconnection recorded for ${o.apt}`, o.id); }, { send: false });
-  go(ownerPath(pid, oid), 'Disconnection recorded');
+  go(ownerPath(pid, oid, fdata), 'Disconnection recorded');
 }
 export async function restoreAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
   await mutate(pid, staff, s => { const o = needOwner(s, oid); o.suspensions.forEach(x => { if (!x.to) { x.to = s.today; log(s.today, at(15), 'admin', `${x.service} restored for ${o.apt}`, o.id); } }); }, { send: false });
-  go(ownerPath(pid, oid), 'Restoration recorded');
+  go(ownerPath(pid, oid, fdata), 'Restoration recorded');
 }
 export async function fixNumberAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), phone = S(fdata, 'phone');
-  if (waDigits(phone).length < 10) go(ownerPath(pid, oid) + '?m=fix', 'That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.');
+  if (waDigits(phone).length < 10) go(ownerPath(pid, oid, fdata) + '?m=fix', 'That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.');
   await mutate(pid, staff, s => {
     const o = needOwner(s, oid);
     o.phone = phone; o.invalidPhone = false; o.noPhone = false;
@@ -147,7 +148,7 @@ export async function fixNumberAction(fdata: FormData) {
     log(s.today, at(15), 'admin', `Number fixed for ${o.apt}; latest balance resent`, o.id);
     if (balance(o) > 0) sendDues(o, s.today, at(15));
   });
-  go(ownerPath(pid, oid), 'Number saved and message resent');
+  go(ownerPath(pid, oid, fdata), 'Number saved and message resent');
 }
 export async function editOwnerAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
@@ -179,9 +180,9 @@ export async function editOwnerAction(fdata: FormData) {
     if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, why)); }
     return out.filter(x => x.done === 'requested').map(x => x.summary);
   }, { send: false }));
-  if (failed(asked)) go(ownerPath(pid, oid) + '?m=edit', `Not saved: ${asked.error}`);
+  if (failed(asked)) go(ownerPath(pid, oid, fdata) + '?m=edit', `Not saved: ${asked.error}`);
   const list = asked as string[];
-  go(ownerPath(pid, oid), list.length ? `Saved. Sent to an admin for approval: ${list.join('; ')}. It applies once approved.` : 'Saved');
+  go(ownerPath(pid, oid, fdata), list.length ? `Saved. Sent to an admin for approval: ${list.join('; ')}. It applies once approved.` : 'Saved');
 }
 export async function pickAction(fdata: FormData) {
   await requireRole('manager');

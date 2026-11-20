@@ -9,6 +9,7 @@ import { fd, fds, rs, t12 } from '@/lib/fmt';
 import { Go, A } from '@/components/client';
 import { projectPage } from '@/components/views/project';
 import { pill, viaHtml, rcpt, ownerHref } from '@/components/views/bits';
+import { customerActions } from '@/components/views/custmore';
 import { PageIc, KIc } from '@/components/views/art';
 import { Ic } from '@/components/icons';
 
@@ -20,6 +21,7 @@ export default async function Customer({ params, searchParams }: { params: Promi
     const S = cur(), o = ownerById(oid), base = `/customers/${pid}/${oid}`;
     if (!o) return <><div className="proj-head"><PageIc n="users" tone="violet" /><div><div className="eyebrow-b">Customers</div><div className="proj-title">Customer not found</div></div></div>
       <div className="card allclear"><div className="big">This customer isn&apos;t in {S.proj.name}</div><Go href="/customers" className="btn">← Customers</Go></div></>;
+    S.viewBase = base;   // the windows opened here come back here after saving
     const past = o.status === 'closed', id = custId(o), bal = balance(o), st = ownerStatus(o), cs = cnicState(o.cnicExpiry, S.today);
     const pays = sortedPayments().filter(p => p.ownerId === o.id), good = pays.filter(p => !p.reversed);
     const bills = billsOf(o).slice().reverse();
@@ -33,12 +35,7 @@ export default async function Customer({ params, searchParams }: { params: Promi
       <div className="proj-head"><PageIc n="users" tone="violet" /><div><div className="eyebrow-b">{past ? 'Past customer' : 'Customer'} · {id}</div><div className="proj-title">{o.name}</div></div>
         <div className="crumb-path"><A href="/">Dashboard</A><span>/</span><A href={past ? '/customers?v=past' : '/customers'}>Customers</A><span>/</span>{id}</div></div>
       {past ? <div className="callout warn cus-left"><div><b>Left on {o.closedOn ? fd(o.closedOn) : 'a date not on file'}.</b> Customer of {o.apt}, {S.proj.name} {o.possessionKnown ? `from ${fd(o.possession)} ` : ''}until then.{clr ? ` Dues clearance ${clr.no} issued on ${fd(clr.d)}.` : ''}{after.length ? <> Customer after them: {after.map(link)}.</> : ' The flat is empty now.'}</div></div> : null}
-      <div className="cus-acts no-print">
-        <Go href={ownerHref(o)} className="btn"><Ic n="building" s={15} /> Open flat {o.apt}</Go>
-        {past ? null : <Go href={`${base}?m=edit`} className="btn"><Ic n="edit" s={15} /> Edit details</Go>}
-        <a className="btn" href={`/api/pdf/${pid}/history/${encodeURIComponent(o.id)}`} target="_blank" rel="noopener"><Ic n="file" s={15} /> Payment history (PDF)</a>
-        <a className="btn" href={`/api/pdf/${pid}/statement/${encodeURIComponent(o.id)}`} target="_blank" rel="noopener"><Ic n="receipt" s={15} /> Statement (PDF)</a>
-      </div>
+      {customerActions(o, base)}
       <div className="kpis">
         <div className="kpi"><KIc n="receipt" tone="amber" /><div className="l">Charged</div><div className="v num">{rs(charged)}</div><div className="cell-sub">{bills.length} bill{bills.length === 1 ? '' : 's'}{o.opening ? ` · incl. ${rs(o.opening)} from before the CRM` : ''}</div></div>
         <div className="kpi"><KIc n="cash" tone="green" /><div className="l">Paid</div><div className="v num">{rs(paid)}</div><div className="cell-sub">{good.length} payment{good.length === 1 ? '' : 's'}</div></div>
