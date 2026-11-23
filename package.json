@@ -2,7 +2,7 @@
   "name": "minawa-new-crm",
   "version": "1.0.0",
   "private": true,
-  "description": "Minawa Group ERP: maintenance billing CRM with WhatsApp reminders and Safepay payments",
+  "description": "Minawa Group ERP: maintenance billing CRM with WhatsApp reminders and payments entered by staff",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -15,6 +15,8 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "4.3.0",
+    "@simplewebauthn/browser": "13.3.0",
+    "@simplewebauthn/server": "13.3.3",
     "@supabase/ssr": "0.6.1",
     "@supabase/supabase-js": "2.49.4",
     "next": "15.5.28",

@@ -11,6 +11,7 @@ import { liveProjects, autoDaily, load } from '@/lib/ops';
 import { notesFor, type Note } from '@/lib/notify';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { addDays, todayPKT } from '@/lib/fmt';
+import { attFeed } from '@/lib/att-notify';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -24,9 +25,14 @@ export async function GET(req: Request) {
     const since = jar.get(paySeenCookie(staff.id, p.id))?.value || addDays(today, -NEW_DAYS) + 'T00:00';
     counts[p.id] = (await store.paymentsSince(p.id, since.slice(0, 10))).filter(r => payKey(r) > since).length;
   }
-  const rev = await store.revision(), had = Number(new URL(req.url).searchParams.get('rev') || -1);
+  // The revision also moves every 5 minutes, so time-based news (people not checked in yet) arrives without a save.
+  const rev = (await store.revision()) + Math.floor(Date.now() / 300000), had = Number(new URL(req.url).searchParams.get('rev') || -1);
   // Notifications only when something changed since this screen last asked (they need every project loaded).
   let notes: Note[] | undefined;
-  if (had !== rev) { try { notes = notesFor(staff, await Promise.all((await liveProjects(staff)).map(p => load(p.id, staff)))); } catch (e) { console.error('notes', (e as Error).message); } }
+  if (had !== rev) {
+    try { notes = notesFor(staff, await Promise.all((await liveProjects(staff)).map(p => load(p.id, staff)))); } catch (e) { console.error('notes', (e as Error).message); }
+    // Attendance (23 Nov 2026): check-ins, not checked in yet, phones and requests to approve, alerts.
+    try { notes = [...(notes || []), ...(await attFeed(staff)).notes].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 100); } catch (e) { console.error('att notes', (e as Error).message); }
+  }
   return NextResponse.json({ counts, ran, rev, notes }, { headers: { 'Cache-Control': 'no-store' } });
 }

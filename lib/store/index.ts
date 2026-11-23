@@ -1,6 +1,6 @@
 // The data store. With Supabase settings in the environment it uses Supabase (production); without them it
 // keeps everything in data/local-db.json, so the CRM runs on a laptop with the sample data and no setup.
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Role, Company, WaLog, WaTake, WaUse, ImageRec } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Role, Company, WaLog, WaTake, WaUse, ImageRec, Employee, AttRecord, AttRequest, AttAlert } from '../types';
 import { STATE_TABLES, KEY, type TableName } from './tables';
 
 export interface LoadOpts { today: string; by?: string; role?: Role }
@@ -52,6 +52,21 @@ export interface Store {
   saveImage(r: ImageRec): Promise<void>;
   getImage(id: string): Promise<ImageRec | null>;
   linkImage(id: string, refId: string): Promise<void>;
+  /** Attendance (23 Nov 2026): employees, their days, "Ask manager" requests and tracking alerts. Lists are empty
+   *  (not an error) until migration 0023 has run. */
+  listEmployees(): Promise<Employee[]>;
+  saveEmployee(e: Employee): Promise<void>;
+  listAttendance(q: { from: string; to: string; employeeIds?: string[] | null }): Promise<AttRecord[]>;
+  saveAttendance(r: AttRecord): Promise<void>;
+  listAttRequests(q: { since?: string | null; status?: AttRequest['status'] | null }): Promise<AttRequest[]>;
+  saveAttRequest(r: AttRequest): Promise<void>;
+  listAttAlerts(q: { since: string }): Promise<AttAlert[]>;
+  saveAttAlert(a: AttAlert): Promise<void>;
+  /** A small named number kept for good (e.g. when someone last looked at their attendance notifications). */
+  getNum(k: string): Promise<number>;
+  /** One building's settings (without loading its data). */
+  getSettings(pid: string): Promise<ProjectSettings>;
+  setNum(k: string, n: number): Promise<void>;
 }
 export const DEFAULT_COMPANY: Company = { legalName: 'Minawa (Pvt) Ltd', address: '', ntn: '', phone: '', email: '' };
 

@@ -1,7 +1,7 @@
 // File store for running without Supabase: data/local-db.json, created from the sample on first use.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Rate, Company, WaLog, WaTake, WaUse, ImageRec } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Rate, Company, WaLog, WaTake, WaUse, ImageRec, Employee, AttRecord, AttRequest, AttAlert } from '../types';
 import { TEMPLATES, PROJECTS, defaultSettings } from '../defaults';
 import { STATE_TABLES, KEY, natSort, type TableName } from './tables';
 import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, useOf, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
@@ -12,6 +12,7 @@ interface DB {
   log: LogEntry[]; staff: Staff[]; company?: Company; walog?: WaLog[];
   waOpens?: { number: string; to_phone: string; staff_id: string; staff_name: string; project: string; owner_id: string; at: string }[];
   images?: ImageRec[];
+  employees?: Employee[]; attendance?: AttRecord[]; attRequests?: AttRequest[]; attAlerts?: AttAlert[];
   waExtras?: { number: string; amount: number; reason: string; by_id: string; by_name: string; at: string }[];
   owners: object[]; bills: object[]; entries: object[]; messages: object[]; payments: object[]; handovers?: object[]; proofs: object[]; alerts: object[]; clearances: object[]; charges: object[]; notices: object[]; approvals?: object[]; rates: Rate[];
 }
@@ -148,6 +149,23 @@ export class LocalStore implements Store {
   async getImage(id: string) { const r = (db().images || []).find(x => x.id === id); return r ? clone(r) : null; }
   async linkImage(id: string, refId: string) { const r = (db().images || []).find(x => x.id === id); if (r) { r.refId = refId; flush(); } }
   async ping() { db(); }
+  /* ---------- attendance ---------- */
+  private put<T extends { id: string }>(list: T[], r: T) { const i = list.findIndex(x => x.id === r.id); if (i >= 0) list[i] = clone(r); else list.push(clone(r)); db().counters.__rev = Date.now(); flush(); }
+  async listEmployees() { return clone(db().employees || []).sort((a, b) => a.empNo.localeCompare(b.empNo)); }
+  async saveEmployee(e: Employee) { this.put(db().employees ||= [], { ...e, createdAt: e.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); }
+  async listAttendance(q: { from: string; to: string; employeeIds?: string[] | null }) {
+    return clone((db().attendance || []).filter(r => r.d >= q.from && r.d <= q.to && (!q.employeeIds || q.employeeIds.includes(r.employeeId)))).sort((a, b) => a.d.localeCompare(b.d));
+  }
+  async saveAttendance(r: AttRecord) { this.put(db().attendance ||= [], { ...r, updatedAt: new Date().toISOString() }); }
+  async listAttRequests(q: { since?: string | null; status?: AttRequest['status'] | null }) {
+    return clone((db().attRequests || []).filter(r => (!q.since || r.d >= q.since) && (!q.status || r.status === q.status))).reverse();
+  }
+  async saveAttRequest(r: AttRequest) { this.put(db().attRequests ||= [], { ...r, createdAt: r.createdAt || new Date().toISOString() }); }
+  async listAttAlerts(q: { since: string }) { return clone((db().attAlerts || []).filter(a => a.d >= q.since)).reverse(); }
+  async saveAttAlert(a: AttAlert) { this.put(db().attAlerts ||= [], a); }
+  async getSettings(pid: string) { return defaultSettings(pid, clone(db().settings[pid] || null)); }
+  async getNum(k: string) { return Number(db().counters['n:' + k] || 0); }
+  async setNum(k: string, n: number) { db().counters['n:' + k] = n; flush(); }
   async listStaff() { return clone(db().staff); }
   async saveStaff(st: Staff) { const d = db(); const i = d.staff.findIndex(x => x.id === st.id); if (i >= 0) d.staff[i] = clone(st); else d.staff.push(clone(st)); db().counters.__rev = Date.now(); flush(); }
   async replaceProjectData(pid: string, s: State) {

@@ -223,7 +223,7 @@ export function LiveEffects() {
     // Figures that would leave their boxes are scaled to fit: now, once the count-ups have finished, and whenever the
     // page is resized or zoomed.
     let ft: ReturnType<typeof setTimeout> | undefined;
-    const fit = () => { clearTimeout(ft); ft = setTimeout(() => requestAnimationFrame(() => { fitText(main); sizeBars(main); }), 80); };
+    const fit = () => { clearTimeout(ft); ft = setTimeout(() => requestAnimationFrame(() => { fitText(main); if (ready()) sizeBars(main); }), 80); };
     fit(); const late = setTimeout(fit, 1700);
     const ro = new ResizeObserver(fit); ro.observe(main);
     const mo2 = new MutationObserver(fit); mo2.observe(main, { childList: true, subtree: true, characterData: true });

@@ -38,6 +38,9 @@ export interface Rules {
    *  Admin's unit rate (Country Club). Reading day of the month, due N days after the bill, reminder days relative to
    *  the due date (negative = before), and the late-fine steps (from N days late, P% of the unpaid bill). */
   elecMode?: 'bill' | 'meter'; elecReadDay?: number; elecDueDays?: number; elecRemind?: number[]; elecFine?: { days: number; pct: number }[];
+  /** Attendance (23 Nov 2026): the building's office point and radius (metres), the worst location accuracy accepted
+   *  (metres), and the minutes after the start of a shift before a check-in counts as late. */
+  attArea?: AttArea | null; attAcc?: number; attGrace?: number;
 }
 export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null, billLead: 15, warnAfter: 15 };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
@@ -285,3 +288,40 @@ export interface WaNumber { id: string; number: string; label: 'Personal' | 'Com
 /** One sending number's use in the last 24 hours. */
 export interface WaUse { number: string; used: number; limit: number; extra: number; nextFree: string | null }
 export interface WaTake { ok: boolean; repeat?: boolean; used: number; limit: number; nextFree?: string | null }
+
+/* ---------- Attendance (23 Nov 2026) ---------- */
+/** Someone whose attendance is kept: field staff (gardener, cleaner, guard…) or a building manager / accountant linked
+ *  to their CRM login. `projects`: the buildings they work at (and may check in at). Working hours are "HH:MM"; a
+ *  shift that ends before it starts runs past midnight. `token`: their personal attendance link. */
+export interface Employee {
+  id: string; empNo: string; name: string; fatherName: string | null; phone: string; cnic: string | null;
+  designation: string; projects: string[]; staffId: string | null;
+  shiftStart: string; shiftEnd: string; offDays: number[];
+  active: boolean; joined: ISODate | null; leftOn: ISODate | null;
+  token: string; device: AttDevice | null;
+  createdBy: string | null; createdAt?: string; updatedAt?: string | null;
+}
+/** The phone registered on an employee's link: a passkey (web) or the Android app's key. Check-ins count once the
+ *  building manager (or the Admin) has approved it. */
+export interface AttDevice {
+  kind: 'web' | 'android'; credId: string; publicKey: string; counter: number; transports: string[];
+  label: string; status: 'pending' | 'approved'; at: string; approvedBy: string | null; approvedAt: string | null;
+}
+export type AttStatus = 'present' | 'late' | 'absent' | 'leave' | 'off' | 'half';
+/** Where a phone was at check-in or check-out: metres from the building's office point, and how accurate. */
+export interface AttPlace { lat: number; lng: number; acc: number; dist: number }
+/** One employee's day. inAt / outAt: "YYYY-MM-DD HH:MM" Pakistan time. */
+export interface AttRecord {
+  id: string; employeeId: string; project: string; d: ISODate; status: AttStatus;
+  inAt: string | null; outAt: string | null; inPlace: AttPlace | null; outPlace: AttPlace | null;
+  how: 'fingerprint' | 'app' | 'manager'; byName: string | null; note: string | null; updatedAt?: string;
+}
+/** "Ask manager" after a refused check-in or check-out. */
+export interface AttRequest {
+  id: string; employeeId: string; project: string; d: ISODate; t: string; kind: 'checkin' | 'checkout'; reason: string;
+  place: AttPlace | null; status: 'pending' | 'approved' | 'refused'; decidedBy: string | null; decidedAt: string | null; createdAt?: string;
+}
+/** An alert from the Android app's tracking: left the area, back, location off, or left before the shift ended. */
+export interface AttAlert { id: string; employeeId: string; project: string; d: ISODate; at: string; kind: 'left' | 'back' | 'signal_lost' | 'early_out'; text: string; place: AttPlace | null }
+/** A building's office point for attendance (in its settings' rules). */
+export interface AttArea { lat: number; lng: number; radius: number }

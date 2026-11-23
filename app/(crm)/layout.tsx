@@ -12,6 +12,7 @@ import { NavProgress } from '@/components/NavProgress';
 import { cookies } from 'next/headers';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { addDays, todayPKT } from '@/lib/fmt';
+import { attFeed } from '@/lib/att-notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,11 +35,13 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   // The bell: an Admin's approvals; everyone else's own To do (see lib/tasks.ts).
   const admin = staff.role === 'admin', todo = admin ? approvals : nav.reduce((s, p) => s + p.todo, 0), firstTodo = nav.find(p => p.todo)?.id || null;
   const defaultPid = nav.find(p => p.live)?.id || 'cc';
+  // Attendance notifications this person hasn't seen (cleared when the Attendance screen is opened).
+  let attNew = 0; try { attNew = (await attFeed(staff)).unseen; } catch (e) { console.error('attendance', (e as Error).message); }
   return (
     <>
       <LiveEffects />
       <div className="app">
-        <Suspense><Sidebar projects={nav} admin={admin} role={staff.role} approvals={approvals} me={{ name: staff.name, role: roleName(staff), signOut }} /></Suspense>
+        <Suspense><Sidebar projects={nav} admin={admin} role={staff.role} approvals={approvals} attNew={attNew} me={{ name: staff.name, role: roleName(staff), signOut }} /></Suspense>
         <div className="side-scrim" data-a="side-close"></div>
         <div className="shell">
           <header className="top">

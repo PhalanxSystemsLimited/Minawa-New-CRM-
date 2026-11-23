@@ -1,7 +1,7 @@
 // Supabase store (production). Uses the service role on the server only; the browser never writes.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
-import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Company, WaLog, WaTake, WaUse, ImageRec } from '../types';
+import type { State, Project, LogEntry, Staff, Template, ProjectSettings, Company, WaLog, WaTake, WaUse, ImageRec, Employee, AttRecord, AttRequest, AttAlert } from '../types';
 import { TEMPLATES, defaultSettings } from '../defaults';
 import { TABLES, STATE_TABLES, KEY, toCol, fromCol, natSort, type TableName } from './tables';
 import { snapshot, changes, rowsOf, normalizeState, DEFAULT_COMPANY, useOf, type Store, type LoadOpts, type LogQuery, type WaLogQuery } from './index';
@@ -186,6 +186,44 @@ export class SupabaseStore implements Store {
   async saveImage(r: ImageRec) { const { error } = await this.db.from('images').insert(toRow(r as unknown as Record<string, unknown>)); if (error) throw new Error(error.message); }
   async getImage(id: string) { const { data, error } = await this.db.from('images').select('*').eq('id', id).limit(1); if (error) throw new Error(error.message); return data?.[0] ? fromRow<ImageRec>(data[0]) : null; }
   async linkImage(id: string, refId: string) { const { error } = await this.db.from('images').update({ ref_id: refId }).eq('id', id); if (error) throw new Error(error.message); }
+  /* ---------- attendance ---------- */
+  async listEmployees() {
+    try { return (await this.all('employees')).map(r => fromRow<Employee>(r)).sort((a, b) => a.empNo.localeCompare(b.empNo)); }
+    catch { return []; }   // before migration 0023
+  }
+  async saveEmployee(e: Employee) { await this.upsert('employees', [toRow({ ...e, createdAt: e.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() } as unknown as Record<string, unknown>)], 'id'); await this.bump(); }
+  async listAttendance(q: { from: string; to: string; employeeIds?: string[] | null }) {
+    if (q.employeeIds && !q.employeeIds.length) return [];
+    const out: AttRecord[] = [];
+    for (let from = 0; ; from += 1000) {
+      let x = this.db.from('attendance').select('*').gte('d', q.from).lte('d', q.to).order('d').range(from, from + 999);
+      if (q.employeeIds) x = x.in('employee_id', q.employeeIds);
+      const { data, error } = await x;
+      if (error) return out;   // before migration 0023
+      out.push(...(data || []).map(r => fromRow<AttRecord>(r)));
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  }
+  async saveAttendance(r: AttRecord) { await this.upsert('attendance', [toRow({ ...r, updatedAt: new Date().toISOString() } as unknown as Record<string, unknown>)], 'id'); await this.bump(); }
+  async listAttRequests(q: { since?: string | null; status?: AttRequest['status'] | null }) {
+    let x = this.db.from('att_requests').select('*').order('created_at', { ascending: false }).limit(500);
+    if (q.since) x = x.gte('d', q.since);
+    if (q.status) x = x.eq('status', q.status);
+    const { data, error } = await x;
+    if (error) return [];
+    return (data || []).map(r => fromRow<AttRequest>(r));
+  }
+  async saveAttRequest(r: AttRequest) { await this.upsert('att_requests', [toRow({ ...r, createdAt: r.createdAt || new Date().toISOString() } as unknown as Record<string, unknown>)], 'id'); await this.bump(); }
+  async listAttAlerts(q: { since: string }) {
+    const { data, error } = await this.db.from('att_alerts').select('*').gte('d', q.since).order('at', { ascending: false }).limit(1000);
+    if (error) return [];
+    return (data || []).map(r => fromRow<AttAlert>(r));
+  }
+  async saveAttAlert(a: AttAlert) { await this.upsert('att_alerts', [toRow(a as unknown as Record<string, unknown>)], 'id'); await this.bump(); }
+  async getSettings(pid: string) { const { data } = await this.db.from('project_settings').select('*').eq('project', pid).limit(1); return defaultSettings(pid, data?.[0] ? fromRow<ProjectSettings>(data[0]) : null); }
+  async getNum(k: string) { const { data } = await this.db.from('counters').select('n').eq('k', k).limit(1); return Number(data?.[0]?.n || 0); }
+  async setNum(k: string, n: number) { await this.upsert('counters', [{ k, n }], 'k'); }
   async getCompany() { const { data } = await this.db.from('company').select('*').eq('id', 1).limit(1); const r = data?.[0]; if (!r) return { ...DEFAULT_COMPANY }; const c = fromRow<Company & { id?: number }>(r); delete c.id; return { ...DEFAULT_COMPANY, ...c }; }
   async saveCompany(c: Company) { await this.upsert('company', [{ id: 1, ...toRow(c as unknown as Record<string, unknown>) }], 'id'); await this.bump(); }
 }

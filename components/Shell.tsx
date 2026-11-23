@@ -7,7 +7,7 @@ import { Go, GlobalSearch } from './client';
 
 export interface NavProject { id: string; name: string; place: string; live: boolean; todo: number; pays?: number; nopos?: number }
 
-export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects: NavProject[]; admin: boolean; role?: string; approvals?: number; me?: { name: string; role: string; signOut: () => Promise<void> } }) {
+export function Sidebar({ projects, admin, role, approvals = 0, attNew = 0, me }: { projects: NavProject[]; admin: boolean; role?: string; approvals?: number; attNew?: number; me?: { name: string; role: string; signOut: () => Promise<void> } }) {
   const path = usePathname();
   const home = path === '/';
   const pid = path.startsWith('/p/') ? path.split('/')[2] : null;
@@ -30,6 +30,7 @@ export function Sidebar({ projects, admin, role, approvals = 0, me }: { projects
         <Go href="/whatsapp" className="side-i si si-wa" current={path.startsWith('/whatsapp') || path.startsWith('/messages')}><span className="si-ic" aria-hidden="true"><Wa /></span><span className="side-l">WhatsApp</span></Go>
         <Go href="/approvals" className="side-i si si-apv" current={path.startsWith('/approvals')}><span className="si-ic" aria-hidden="true"><Ic n="shieldok" /></span><span className="side-l">Approvals</span>{approvals ? <span className="side-b" title={admin ? `${approvals} waiting for your approval` : `${approvals} of your changes waiting`}>{approvals}</span> : null}</Go>
         {(() => { const n = admin ? 0 : projects.reduce((a, p) => a + (p.todo || 0), 0); return <Go href="/tasks" className="side-i si si-todo" current={path.startsWith('/tasks')}><span className="si-ic" aria-hidden="true"><Ic n="clip" /></span><span className="side-l">{admin ? 'Team To do' : 'To do'}</span>{n ? <span className="side-b" title={`${n} task${n === 1 ? '' : 's'} for you`}>{n}</span> : null}</Go>; })()}
+        <Go href="/attendance" className="side-i si si-att" current={path.startsWith('/attendance')}><span className="si-ic" aria-hidden="true"><Ic n="clock" /></span><span className="side-l">Attendance</span>{attNew && !path.startsWith('/attendance') ? <span className="side-b" title={`${attNew} new: check-ins, people not checked in, requests`}>{attNew}</span> : null}</Go>
         <Go href="/customers" className="side-i si si-cus" current={path.startsWith('/customers')}><span className="si-ic" aria-hidden="true"><Ic n="users" /></span><span className="side-l">Customers</span></Go>
         <Go href="/apartments" className="side-i si si-pos" current={path.startsWith('/apartments') || path.startsWith('/possession')}><span className="si-ic" aria-hidden="true"><Ic n="building" /></span><span className="side-l">Apartments</span></Go>
         <Go href="/payments" className="side-i si si-cash" current={path === '/payments' || path.startsWith('/cash') || path.startsWith('/received')}><span className="si-ic" aria-hidden="true"><Ic n="cash" /></span><span className="side-l">Payments</span></Go>

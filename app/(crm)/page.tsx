@@ -21,6 +21,7 @@ import { ActivityList, lastSeen } from '@/components/views/activity';
 import { getStore } from '@/lib/store';
 import { ApprovalItem, type ApprovalView } from '@/components/views/approvals';
 import { fmtNumber, freeAt, validNumber } from '@/lib/wa-numbers';
+import { AttTodayCard } from '@/components/views/att-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,6 +158,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </>}
       <NeedTile title="Payments" icon="cash" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
+    <AttTodayCard staff={staff} />
     {(() => {
       // Customers with no possession date (due on the 1st until one is added), for the person's buildings: a slim notice.
       const per = states.map(s => ({ p: s.proj, n: s.owners.filter(o => o.status === 'active' && !o.possessionKnown).length })).filter(x => x.n), n = per.reduce((a, x) => a + x.n, 0);
