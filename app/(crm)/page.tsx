@@ -95,14 +95,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const per = st.map(x => use(x.s, () => {
     const since = jar.get(paySeenCookie(staff.id, x.p.id))?.value || addDays(today, -NEW_DAYS) + 'T00:00';
     const np = x.s.payments.filter(p => payKey(p) > since);
-    return { id: x.p.id, send: pendingCount(), newN: np.length, newAmt: np.reduce((a, p) => a + p.amount, 0), co: collections(), next: nextBillOf(x.s.owners, addDays(today, x.s.settings.lastRun === today ? 1 : 0)) };
+    return { id: x.p.id, send: pendingCount(), newN: np.length, co: collections(), next: nextBillOf(x.s.owners, addDays(today, x.s.settings.lastRun === today ? 1 : 0)) };
   }));
-  const sendN = per.reduce((a, x) => a + x.send, 0), newN = per.reduce((a, x) => a + x.newN, 0), newAmt = per.reduce((a, x) => a + x.newAmt, 0);
+  const sendN = per.reduce((a, x) => a + x.send, 0), newN = per.reduce((a, x) => a + x.newN, 0);
   const byMonth = new Map<string, number>(); per.forEach(x => x.co.forEach(([m, v]) => byMonth.set(m, (byMonth.get(m) || 0) + v)));
   const months = [...byMonth.keys()].sort().slice(-6), spark = months.map(m => byMonth.get(m) || 0);
   const nextBill = starts || per.map(x => x.next).sort()[0] || today, daysTo = Math.max(0, diff(nextBill, today));
   const r0 = st[0]?.s.settings.rules, dueDay = r0 ? r0.dueDays : 15;
-  const firstTodo = st.find(x => x.todo)?.p.id || live[0]?.id || '', firstSend = per.find(x => x.send)?.id || live[0]?.id || '', firstNew = per.find(x => x.newN)?.id || live[0]?.id || '';
+  const firstTodo = st.find(x => x.todo)?.p.id || live[0]?.id || '', firstSend = per.find(x => x.send)?.id || live[0]?.id || '';
   // The three To do lists (lib/tasks.ts): managers' work, accountants' work, and this person's own.
   const allT = states.flatMap(s => projectTasks(s)), accT = allT.filter(t => t.role === 'accountant'), myT = myTasks(allT, staff);
   const lateN = (l: typeof allT) => l.filter(t => t.overdue).length;
@@ -158,7 +158,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders, notices, receipts' : 'Nothing waiting'} />
         <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
       </>}
-      <NeedTile title="Payments" icon="cash" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
     {(() => {
       // Customers with no possession date (due on the 1st until one is added), for the person's buildings: a slim notice.
