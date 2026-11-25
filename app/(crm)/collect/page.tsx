@@ -9,6 +9,7 @@ import { liveProjects, load } from '@/lib/ops';
 import { use, balance, billsOf, unpaid, isUtilBill } from '@/lib/engine';
 import { custId, accountantsOf } from '@/lib/people';
 import { createRequestAction, cancelRequestAction } from '@/lib/actions-requests';
+import { yearDues, yearsText, paidMonths } from '@/lib/requests';
 import { Go, Submit, ModalShell } from '@/components/client';
 import { PageIc, Empty } from '@/components/views/art';
 import { Ic } from '@/components/icons';
@@ -31,7 +32,7 @@ export default async function Collect({ searchParams }: { searchParams: Promise<
   // Customers with dues, most owed first, with any open request.
   const dues = shown.flatMap(s => use(s, () => s.owners.filter(o => o.status === 'active' && !o.exempt && balance(o) > 0)
     .filter(o => !q || o.apt.toLowerCase().includes(q) || o.name.toLowerCase().includes(q) || custId(o).toLowerCase().includes(q))
-    .map(o => { const open = billsOf(o).filter(x => unpaid(x) > 0); return { o, s, bal: balance(o), bills: open.length, oldest: open[0]?.dueDate || null, req: (s.requests || []).find(r => r.ownerId === o.id && r.status === 'open') || null, cid: custId(o) }; })))
+    .map(o => { const open = billsOf(o).filter(x => unpaid(x) > 0); return { o, s, bal: balance(o), bills: open.length, oldest: open[0]?.dueDate || null, req: (s.requests || []).find(r => r.ownerId === o.id && r.status === 'open') || null, cid: custId(o), years: yearsText(o) }; })))
     .sort((a, b2) => b2.bal - a.bal);
   const reqs = shown.flatMap(s => use(s, () => (s.requests || []).map(r => { const o = s.owners.find(x => x.id === r.ownerId); return { r, s, apt: o?.apt || '', name: o?.name || '', pr: r.proofId ? s.proofs.find(x => x.id === r.proofId) || null : null }; })))
     .sort((a, b2) => `${b2.r.d} ${b2.r.t}`.localeCompare(`${a.r.d} ${a.r.t}`));
@@ -51,7 +52,7 @@ export default async function Collect({ searchParams }: { searchParams: Promise<
       const pm = span(bills.filter(x => !isUtilBill(x))), first = [pm[0], addMonths(today.slice(0, 7), -12)].sort()[0], months: string[] = [];
       for (let m = first; m <= addMonths(today.slice(0, 7), 12); m = addMonths(m, 1)) months.push(m);
       const elec = s.settings.rules.utilities.includes('Electricity') && bills.some(x => isUtilBill(x));
-      return { o, cid: custId(o), bal: balance(o), pm, months, elec, open: (s.requests || []).find(r => r.ownerId === o.id && r.status === 'open') };
+      return { o, cid: custId(o), bal: balance(o), pm, months, elec, years: yearDues(o), paid: paidMonths(o), open: (s.requests || []).find(r => r.ownerId === o.id && r.status === 'open') };
     }) : null;
     const mgrs = staff.filter(x => x.role === 'manager' && x.active && !x.leftOn && (x.projects || []).includes(pid))
       .sort((a, c) => +accountantsOf(c).includes(me.id) - +accountantsOf(a).includes(me.id) || a.name.localeCompare(c.name));
@@ -61,7 +62,8 @@ export default async function Collect({ searchParams }: { searchParams: Promise<
         <form action={createRequestAction} className="rules-form cq-form">
           <input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={f.o.id} /><input type="hidden" name="back" value={back} />
           {sp.t ? <div className="callout bad" role="alert"><div>{sp.t}</div></div> : null}
-          <div className="cq-who"><span className="cq-apt">{f.o.apt}</span><div><b>{f.o.name}</b><small>{f.cid} · {s.proj.name} · owes <b>{rs(f.bal)}</b></small></div></div>
+          <div className="cq-who"><span className="cq-apt">{f.o.apt}</span><div><b>{f.o.name}</b><small>{f.cid} · {s.proj.name} · owes <b>{rs(f.bal)}</b></small>
+            {f.years.length ? <div className="cq-years">{f.years.map(y => <span key={y.label}>{y.label}: <b>{rs(y.amount)}</b></span>)}</div> : null}</div></div>
           <div className="grid2" style={{ gap: 10 }}>
             <div className="form-row"><label htmlFor="cq-a">Amount to collect (Rs)</label><input id="cq-a" name="amount" type="number" min={1} step={1} required defaultValue={f.bal} /></div>
             <div className="form-row"><label htmlFor="cq-m">Building manager who collects it</label>
@@ -77,10 +79,10 @@ export default async function Collect({ searchParams }: { searchParams: Promise<
             <label className="pay-via-o"><input type="radio" name="forWhat" value="electricity" /> <span><b>Electricity</b><small>pays the electricity bills first</small></span></label>
           </fieldset> : null}
           <div className="grid2" style={{ gap: 10 }}>
-            <div className="form-row"><label htmlFor="cq-f">Paid for: from</label><select id="cq-f" name="periodFrom" defaultValue={f.pm[0]} required>{f.months.map(m => <option key={m} value={m}>{fm(m)}</option>)}</select></div>
-            <div className="form-row"><label htmlFor="cq-t">to</label><select id="cq-t" name="periodTo" defaultValue={f.pm[1]} required>{f.months.map(m => <option key={m} value={m}>{fm(m)}</option>)}</select></div>
+            <div className="form-row"><label htmlFor="cq-f">Paid for: from</label><select id="cq-f" name="periodFrom" defaultValue={f.pm[0]} required>{f.months.map(m => <option key={m} value={m}>{fm(m)}{f.paid.has(m) ? ' · paid' : ''}</option>)}</select></div>
+            <div className="form-row"><label htmlFor="cq-t">to</label><select id="cq-t" name="periodTo" defaultValue={f.pm[1]} required>{f.months.map(m => <option key={m} value={m}>{fm(m)}{f.paid.has(m) ? ' · paid' : ''}</option>)}</select></div>
           </div>
-          <p className="cell-sub" style={{ margin: '-4px 0 0' }}>The months are shown on the customer&apos;s receipt and its WhatsApp message. Suggested from the unpaid bills.</p>
+          <p className="cell-sub" style={{ margin: '-4px 0 0' }}>The months are shown on the customer&apos;s receipt and its WhatsApp message, and the payment pays those months first. Months marked paid are paid in full: a request can only ask for what is still unpaid for its months (or for months not billed yet, as an advance).</p>
           <div className="form-row"><label htmlFor="cq-n">Note for the building manager (optional)</label><input id="cq-n" name="note" type="text" maxLength={300} placeholder="e.g. He said he will pay on Friday evening" /></div>
           <div className="m-actions"><Go href={back} className="btn">Cancel</Go><Submit disabled={!mgrs.length}>Send request</Submit></div>
         </form>}
@@ -105,11 +107,11 @@ export default async function Collect({ searchParams }: { searchParams: Promise<
       </div>
       {!v ? (dues.length ? <>
         <div className="tbl-wrap"><table className="cq-tbl"><thead><tr><th>Flat</th><th>Customer</th>{projs.length > 1 && !b ? <th>Building</th> : null}<th className="r">Owes</th><th>Unpaid bills</th><th>Request</th><th></th></tr></thead><tbody>
-          {dues.slice(0, n).map(({ o, s, bal, bills, oldest, req, cid }) => <tr key={s.project + o.id}>
+          {dues.slice(0, n).map(({ o, s, bal, bills, oldest, req, cid, years }) => <tr key={s.project + o.id}>
             <td data-l="Flat"><b>{o.apt}</b></td>
             <td data-l="Customer">{o.name}<div className="cell-sub">{cid}{o.phone ? ` · ${o.phone}` : ' · no WhatsApp'}</div></td>
             {projs.length > 1 && !b ? <td data-l="Building">{s.proj.name}</td> : null}
-            <td data-l="Owes" className="r num"><b>{rs(bal)}</b></td>
+            <td data-l="Owes" className="r num"><b>{rs(bal)}</b>{years ? <div className="cell-sub">{years}</div> : null}</td>
             <td data-l="Unpaid bills">{bills ? <>{bills} bill{bills === 1 ? '' : 's'}{oldest ? <div className="cell-sub">{oldest < today ? 'overdue since' : 'due'} {fds(oldest)}</div> : null}</> : <span className="cell-sub">old dues</span>}</td>
             <td data-l="Request">{req ? <span className="tag info">{rs(req.amount)} · {req.managerName}</span> : <span className="cell-sub">none</span>}</td>
             <td className="r">{req ? <Go href={href({ v: 'requests', st: 'open', n: '' })} className="btn sm">See request</Go> : <Go href={href({ req: `${s.project}:${o.id}` })} className="btn sm primary"><Ic n="send" s={14} /> Request collection</Go>}</td>

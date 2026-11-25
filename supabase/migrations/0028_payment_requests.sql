@@ -27,7 +27,11 @@ create table if not exists requests (
 create index if not exists requests_project_status on requests(project, status);
 create index if not exists requests_manager on requests(manager_id, status);
 alter table requests enable row level security;
-drop policy if exists staff_read on requests;
-create policy staff_read on requests for select to authenticated using (is_staff());
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'requests' and policyname = 'staff_read') then
+    create policy staff_read on requests for select to authenticated using (is_staff());
+  end if;
+end $$;
 
 alter table proofs add column if not exists request_id text;
+notify pgrst, 'reload schema';

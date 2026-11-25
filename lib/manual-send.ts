@@ -6,6 +6,7 @@ import { bankOf } from './bank';
 import type { Message, Owner } from './types';
 import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer, utilKind, isUtilBill, elecDue } from './engine';
 import { rs, fd, fm, fill, addDays, periodText } from './fmt';
+import { yearsText } from './requests';
 import { intl } from './dispatch';
 import { docToken, type DocKind } from './doclink';
 
@@ -142,6 +143,8 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     const text = lines(head(o, '✅ Payment received', 'Thank you! We have received your maintenance payment.'), details(o), '',
       '*Payment details*', `• Amount received: *${rs(p.amount)}*`, p.periodFrom ? `• Paid for: *${periodText(p.periodFrom, p.periodTo)}*${p.forWhat === 'electricity' ? ' (electricity)' : ''}` : null, `• Date: ${fd(p.d)}`, `• Receipt no: ${p.receipt}`, p.entryId && !/bank/i.test(p.method) && p.ref ? `• Cash book no: ${p.ref}` : null, p.method ? `• Paid by: ${p.method}` : null, RULE,
       `*Remaining balance: ${after > 0 ? rs(after) : after < 0 ? `Rs 0 (advance credit ${rs(-after)})` : 'Rs 0, all paid up'}*`,
+      // 26 Nov 2026: what is left, year by year (what is left of one year carries into the next year's balance).
+      after > 0 && balance(o) === after && yearsText(o) ? `_Of which ${yearsText(o)}_` : null,
       l ? payBlock() : null, foot());
     return out('receipt', 'Payment received', text, { kind: 'receipt', id: p.id });
   }

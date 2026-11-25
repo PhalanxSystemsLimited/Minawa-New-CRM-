@@ -470,12 +470,17 @@ function syncFee(o: Owner, d: string) {
   log(d, '11:00', 'fine', `Fine for ${o.apt} is now ${rs(target)}: ${feePct()}% of ${rs(dues)} owed`, o.id);
   return add;
 }
-function allocate(o: Owner, amt: number, prefer?: 'electricity', billId?: string | null): Applied[] {
+function allocate(o: Owner, amt: number, prefer?: 'electricity', billId?: string | null, range?: [string, string]): Applied[] {
+  // 26 Nov 2026: a payment for certain months (a payment request) pays those months' bills first; old dues from
+  // before the CRM come first only when the months asked for go back that far.
+  const inR = (b: Bill) => !!range && (prefer === 'electricity' ? !b.months : b.months > 0) && !((b.periodEnd || b.period) < range[0] || b.period > range[1]);
+  const arrFirst = !range || range[0] < goLive().slice(0, 7);
   let left = amt;
   const out: Applied[] = [];
   const put = (kind: Applied['kind'], label: string, x: number, ref?: string) => { if (x <= 0) return; const r = out.find(y => y.label === label); if (r) r.amount += x; else out.push({ kind, label, amount: x, ...(ref ? { ref } : {}) }); };
   const dues = duesOf(o), fee = o.feeDue || 0, feeL = `Fine (${feePct()}%)`;
-  const toFee = dues > 0 ? Math.min(fee, Math.round(amt * fee / (dues + fee))) : Math.min(fee, amt);
+  // A payment for certain months pays those months in full first; any fine is paid from what is left over.
+  const toFee = range ? 0 : dues > 0 ? Math.min(fee, Math.round(amt * fee / (dues + fee))) : Math.min(fee, amt);
   o.feeDue = fee - toFee; left -= toFee; put('fee', feeL, toFee, 'fee');
   const arrL = `Earlier dues (before ${fm(goLive().slice(0, 7))})`;
   if (o.instalments && o.openingLeft > 0) {
@@ -483,12 +488,14 @@ function allocate(o: Owner, amt: number, prefer?: 'electricity', billId?: string
     // instalments not yet due only after that. One arrears balance, never counted twice.
     const late = Math.min(left, instOverdue(o, S.today), o.openingLeft);
     if (late > 0) { o.openingLeft -= late; left -= late; put('dues', `${arrL}, late instalments`, late, 'arrears'); }
-  } else if (o.openingLeft > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x, 'arrears'); }
+  } else if (o.openingLeft > 0 && arrFirst) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x, 'arrears'); }
   // A payment marked for electricity (Oakwood) pays the electricity bills first, oldest first.
   let order = prefer === 'electricity' ? [...billsOf(o).filter(b => !b.months), ...billsOf(o).filter(b => b.months)] : billsOf(o);
   // "Bill received" for one electricity bill (21 Nov 2026): that bill first.
   if (billId) { const t = order.find(b => b.id === billId); if (t) order = [t, ...order.filter(b => b !== t)]; }
+  if (range) order = [...order.filter(inR), ...order.filter(b => !inR(b))];
   for (const b of order) { if (left <= 0) break; const x = Math.min(left, b.net - b.paid); if (x > 0) { b.paid += x; left -= x; put('dues', `${b.months ? 'Maintenance' : utilKind(b)}, ${periodLabel(b)}`, x, b.id); } }
+  if (!o.instalments && o.openingLeft > 0 && left > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', arrL, x, 'arrears'); }
   if (o.instalments && o.openingLeft > 0 && left > 0) { const x = Math.min(left, o.openingLeft); o.openingLeft -= x; left -= x; put('dues', `${arrL}, instalments ahead of time`, x, 'arrears'); }
   if (left > 0 && o.feeDue > 0) { const x = Math.min(left, o.feeDue); o.feeDue -= x; left -= x; put('fee', feeL, x, 'fee'); }
   if (left > 0) { o.credit += left; put('credit', 'Kept as advance credit', left, 'credit'); }
@@ -776,7 +783,7 @@ export function runDaily(d: string) {
 export function recordPayment(o: Owner, amt: number, method: string, ref: string | null, d: string, source: Payment['source'], t: string, by: string, extra?: Partial<Payment>, opts: { holdReceipt?: boolean } = {}) {
   const pid = 'PAY-' + (1000 + nid('pay')), before = balance(o);
   addEntry(o.id, d, 'payment', -amt, `Payment · ${method}`, { ref: ref || pid, pid });
-  const applied = allocate(o, amt, extra?.forWhat === 'electricity' ? 'electricity' : undefined, extra?.billId);
+  const applied = allocate(o, amt, extra?.forWhat === 'electricity' ? 'electricity' : undefined, extra?.billId, extra?.periodFrom ? [extra.periodFrom, extra.periodTo || extra.periodFrom] : undefined);
   const bal = balance(o);
   const p: Payment = { id: pid, ownerId: o.id, project: S.project, d, t, amount: amt, method, ref: ref || pid, source, by: by || 'Provider', before, applied, balAfter: bal,
     receipt: 'RC-' + d.slice(0, 4) + '-' + String(nid('rc' + d.slice(0, 4))).padStart(4, '0'), ...(extra || {}) };

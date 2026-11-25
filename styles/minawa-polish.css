@@ -1162,3 +1162,6 @@ html:not([data-theme=frost]) body:has(.mgr-app){background-image:radial-gradient
 .mgr-rq-empty{padding:34px 20px}
 .mgr-rq-ok{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 10px;border-radius:50%;background:color-mix(in srgb,#22C55E 14%,transparent);color:#16A34A}
 :root[data-theme=dark] .tag.mgr-cash{color:#86EFAC}:root[data-theme=dark] .tag.mgr-bank{color:#C4B5FD}
+.cq-years{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.cq-years span{font-size:12px;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#E5484D 10%,transparent);color:var(--fg)}
+:root[data-theme=frost] .cq-years span{background:rgba(255,255,255,.16);color:#fff}
