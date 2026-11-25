@@ -13,9 +13,6 @@ import { bankOf } from '@/lib/bank';
 import { waTestNumber } from '@/lib/whatsapp';
 import { flatList, isFree } from '@/lib/people';
 import { elecSettingsAction } from '@/lib/actions-elec';
-import { attSettings, mapsLink, DEF_RADIUS } from '@/lib/attendance';
-import { attSettingsAction } from '@/lib/actions-att';
-import { HereBtn } from '@/components/AttBits';
 import { ELEC_RATE, unitRate, readDay, elecDueDays, remindDays, fineSteps, remindLabel, meterMode, elecOn } from '@/lib/meter';
 
 export const dynamic = 'force-dynamic';
@@ -124,21 +121,6 @@ export default async function Settings({ params, searchParams }: { params: Promi
             {mode !== 'off' ? <><div className="li"><div className="t"><div className="a">Reminders</div><div className="b">{remindDays().map(remindLabel).join(', ')} the due date</div></div></div>
               <div className="li"><div className="t"><div className="a">Late fine</div><div className="b">{steps.length ? steps.map(x => `${x.pct}% from ${x.days} days late`).join(', ') : 'none'}</div></div></div></> : null}
             <p className="cell-sub" style={{ margin: '8px 0 0' }}>Only the Admin changes these.</p></div>}
-        </div>; })()}
-      {(() => { const a = attSettings(r);
-        return <div className="card" id="attendance"><div className="card-row"><h3 data-hic="clock" data-tone="teal">Attendance <small>{a.area ? `staff check in within ${a.area.radius} m of the office point` : 'office point not set: check-ins are refused until it is'}</small></h3><Go href={`/attendance?p=${pid}`} className="btn sm">Attendance</Go></div>
-          {a.area ? <p className="cell-sub" style={{ margin: '0 0 10px' }}>Office point {a.area.lat.toFixed(6)}, {a.area.lng.toFixed(6)} · <a href={mapsLink(a.area)} target="_blank" rel="noopener noreferrer">Open in Google Maps</a> to check it is the building.</p> : null}
-          {ad ? <form action={attSettingsAction} className="rules-form" id="att-set-form">{hid}
-            <div className="form-row"><label htmlFor="at-pt">Office point</label><input id="at-pt" name="point" defaultValue="" placeholder={a.area ? 'Leave empty to keep the point above' : 'Paste a full Google Maps link, or 24.860700, 67.001100'} />
-              <div className="att-here"><HereBtn form="att-set-form" /></div>
-              <div className="cell-sub">Easiest: stand in the middle of the building with your phone and press <b>Use my current location</b>. Or in Google Maps press and hold the building, copy the two numbers shown, and paste them. Short share links (maps.app.goo.gl) don&apos;t carry the numbers. No Google Maps account or key is needed.</div></div>
-            <div className="grid2" style={{ gap: 10 }}>
-              <div className="form-row"><label htmlFor="at-r">Radius (metres)</label><input id="at-r" name="radius" type="number" min="20" max="2000" step="5" defaultValue={a.area?.radius || DEF_RADIUS} /><div className="cell-sub">Check-ins count only this close to the point. Indoors GPS is often 20–50 m off: 100 m suits most buildings.</div></div>
-              <div className="form-row"><label htmlFor="at-a">Worst location accuracy accepted (metres)</label><input id="at-a" name="acc" type="number" min="10" max="500" step="5" defaultValue={a.acc} /><div className="cell-sub">A phone that only knows its place to ±more than this is asked to try again.</div></div>
-              <div className="form-row"><label htmlFor="at-g">Grace time (minutes)</label><input id="at-g" name="grace" type="number" min="0" max="180" step="1" defaultValue={a.grace} /><div className="cell-sub">A check-in this long after the start of the shift still counts as on time; after it, Late. The building manager is told who hasn&apos;t checked in once it passes.</div></div>
-            </div>
-            <div className="m-actions"><Submit>Save attendance settings</Submit></div>
-          </form> : <p className="cell-sub" style={{ margin: 0 }}>Radius {a.area?.radius ?? '—'} m · accuracy limit {a.acc} m · grace {a.grace} min. Only the Admin changes these.</p>}
         </div>; })()}
       {(() => { const fl = flatList(), free = fl.filter(isFree).length; return <div className="card" id="flats"><div className="card-row"><h3 data-hic="building" data-tone="blue">Apartments <small>{fl.length} in {S.proj.name} · {fl.length - free} possessed or booked · {free} available</small></h3><Go href={`/apartments?p=${pid}`} className="btn sm">Open Apartments</Go></div>
         <p className="cell-sub" style={{ margin: 0 }}>{ad ? 'Add apartments and change their details on the Apartments screen (left menu). New possessions pick from the available ones.' : 'The Admin adds apartments and changes their details on the Apartments screen.'}</p></div>; })()}

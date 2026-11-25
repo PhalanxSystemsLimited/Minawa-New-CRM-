@@ -16,4 +16,4 @@ export async function middleware(req: NextRequest) {
   return res;
 }
 // Not on the scheduler or static files.
-export const config = { matcher: ['/((?!api/|a/|d/|_next/|assets/|fonts/|icons/|sounds/|themes/|manifest|favicon|owners-template).*)'] };
+export const config = { matcher: ['/((?!api/|d/|_next/|assets/|fonts/|icons/|sounds/|themes/|manifest|favicon|owners-template).*)'] };

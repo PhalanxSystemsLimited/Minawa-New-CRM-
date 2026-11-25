@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/session';
 import { getStore } from '@/lib/store';
 import { staffAction, inviteAction } from '@/lib/actions';
 import { companyAction } from '@/lib/actions-desk';
-import { Submit, Go, ModalShell, CloseBtn, PasswordInput } from '@/components/client';
+import { Submit, Go, GoRow, ModalShell, CloseBtn, PasswordInput } from '@/components/client';
 import { StaffAccess } from '@/components/StaffAccess';
 import { WaNumbersField } from '@/components/WaNumbersField';
 import { Wa } from '@/components/icons';
@@ -16,6 +16,8 @@ import { PageIc } from '@/components/views/art';
 import { PersonFields, IdBox } from '@/components/PersonFields';
 import { staffNos, cnicState, cnicNote } from '@/lib/people';
 import { todayPKT, fd } from '@/lib/fmt';
+import { DeleteEmployeeForm, RestoreForm } from '@/components/views/staff-leave';
+import { Ic } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,12 +29,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   for (const e of acts) if (e.staffId && !last.has(e.staffId)) last.set(e.staffId, { d: e.d, t: e.t });
   const accIds = staff.filter(x => x.role === 'accountant').map(x => x.id);
   const accActs = acts.filter(e => e.staffId && accIds.includes(e.staffId) && !['signin', 'signout'].includes(e.kind)).slice(0, 8);
-  const rank = { admin: 0, accountant: 1, manager: 2 } as const, sorted = [...staff].sort((a, b) => (rank[a.role] - rank[b.role]) || a.name.localeCompare(b.name));
-  const ed = sp.edit ? staff.find(x => x.id === sp.edit) : null, keys = ['edit', 'add', 'extra'];
+  const rank = { admin: 0, accountant: 1, manager: 2 } as const, sorted = [...staff].filter(x => !x.leftOn).sort((a, b) => (rank[a.role] - rank[b.role]) || a.name.localeCompare(b.name));
+  const ed = sp.edit ? staff.find(x => x.id === sp.edit && !x.leftOn) : null, keys = ['edit', 'add', 'extra'];
+  // Past employees (24 Nov 2026): deleted by the Admin; they can't sign in. Newest first.
+  const showPast = sp.v === 'past', pastStaff = staff.filter(x => x.leftOn).sort((a, b) => (b.leftOn || '').localeCompare(a.leftOn || '')), pv = sp.past ? pastStaff.find(x => x.id === sp.past) : null;
   const nos = staffNos(staff), today = todayPKT();
   // WhatsApp numbers (20 Nov 2026): every number on someone's details, who uses it, and its use in the last 24 hours.
   const numRows = new Map<string, { number: string; limit: number; people: string[]; labels: Set<string>; on: boolean }>();
-  for (const x of staff) for (const n of x.waNumbers || []) if (validNumber(n.number)) {
+  for (const x of staff.filter(y => !y.leftOn)) for (const n of x.waNumbers || []) if (validNumber(n.number)) {
     const r = numRows.get(n.number) || { number: n.number, limit: n.limit, people: [], labels: new Set<string>(), on: false };
     r.limit = Math.min(r.limit, n.limit); r.people.push(x.name + (x.active ? '' : ' (sign-in off)')); r.labels.add(n.label); r.on = r.on || (n.active && x.active); numRows.set(n.number, r);
   }
@@ -43,7 +47,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const row = (name: string, ok: boolean, what: string, tag?: string) => <div className="li"><div className="t"><div className="a">{name}</div><div className="b">{what}</div></div>{ok ? <span className={`tag ${tag === 'warn' ? 'warn' : 'good'}`}>{tag && tag !== 'warn' ? tag : 'On'}</span> : <span className="tag bad">Not set up</span>}</div>;
   return <>
     <div className="proj-head"><PageIc n="users" tone="blue" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
-    <div className="card"><div className="card-row"><h3>Staff <small>who can sign in</small></h3><Go href="/admin?add=1" className="btn primary sm">+ Add someone</Go></div>
+    <div className="card"><div className="card-row"><div className="ptabs" role="tablist"><Go href="/admin" current={!showPast ? 'true' : 'false'} replace>Staff <span className="tab-new">{sorted.length}</span></Go><Go href="/admin?v=past" current={showPast ? 'true' : 'false'} replace>Past employees <span className="tab-new">{pastStaff.length}</span></Go></div><div className="emp-acts"><Go href="/admin?add=1" className="btn primary sm">+ Add someone</Go><Go href="/admin?m=delete" className="btn sm danger"><Ic n="x" s={14} /> Delete employee</Go></div></div>
+      {!showPast ? <>
       <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Employee</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
           <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}<div className="cell-sub num">{nos.map.get(s.id)}{s.cnic ? ` · CNIC ${s.cnic}` : ''}{s.phone ? ` · ${s.phone}` : ''}</div>
@@ -56,6 +61,17 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         </tr>; })}
       </tbody></table></div>
       <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants approve the payments entered in their buildings; their changes go to an Admin for approval. Building managers and accountants only see the buildings ticked for them, and each must have at least one. Building managers record payments, send reminders on WhatsApp and ask the Admin for changes for an owner.</p>
+      </> : <>
+      {pastStaff.length ? <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Employee</th><th>Role</th><th>Last working day</th><th>Why</th><th></th></tr></thead><tbody>
+        {pastStaff.map(s => <GoRow key={s.id} href={`/admin?v=past&past=${encodeURIComponent(s.id)}`} className="row-link">
+          <td><b>{s.name}</b><div className="cell-sub num">{nos.map.get(s.id)} · {s.email}</div></td>
+          <td>{roleTag(s.role)}</td>
+          <td style={{ whiteSpace: 'nowrap' }}>{s.leftOn ? fd(s.leftOn) : '—'}</td>
+          <td>{s.leftReason || <span className="cell-sub">not recorded</span>}{s.leftBy ? <div className="cell-sub">recorded by {s.leftBy}</div> : null}</td>
+          <td className="r"><span className="btn sm">Details</span></td>
+        </GoRow>)}
+      </tbody></table></div> : <p className="cell-sub" style={{ margin: 0 }}>People you delete with <b>Delete employee</b> show here with the day they left. Their login is turned off and they can&apos;t sign in; their records and history are kept.</p>}
+      </>}
     </div>
     <div className="card" id="wa"><div className="card-row"><h3 data-hic="send" data-tone="green">WhatsApp numbers <small>daily limit · different customers in any 24 hours</small></h3></div>
       {noNumber.length ? <div className="callout warn" style={{ marginBottom: 12 }}><div><b>{noNumber.map(x => x.name).join(', ')}</b> {noNumber.length === 1 ? 'has' : 'have'} no WhatsApp number, so {noNumber.length === 1 ? 'they' : 'they'} can&apos;t open chats from the CRM. Add it with Edit.</div></div> : null}
@@ -102,6 +118,25 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         <label className="cb"><input type="checkbox" name="active" defaultChecked={ed.active} /> Can sign in{ed.id === me.id ? ' (you can\'t turn off your own access)' : ''}</label>
         <div className="m-actions"><CloseBtn keys={keys} /><Submit>Save changes</Submit></div>
       </form></ModalShell> : null}
+    {sp.m === 'delete' ? <ModalShell title="Delete employee" wide closeKeys={['m', 'id']}>
+      <DeleteEmployeeForm today={today} picked={sp.id} options={sorted.filter(x => x.id !== me.id).map(x => ({ id: x.id, label: `${x.name} · ${nos.map.get(x.id) || ''} · ${x.role === 'admin' ? 'Admin' : x.role === 'manager' ? 'Building manager' : 'Accountant'}${x.active ? '' : ' (sign-in off)'}` }))} />
+    </ModalShell> : null}
+    {pv ? <ModalShell title={`${pv.name} · past employee`} wide closeKeys={['past', 't']}>
+      <div className="list">
+        <div className="li"><div className="t"><div className="a">Employee ID</div><div className="b num">{nos.map.get(pv.id) || '—'}</div></div></div>
+        <div className="li"><div className="t"><div className="a">Role</div><div className="b">{pv.role === 'admin' ? 'Admin' : pv.role === 'manager' ? 'Building manager' : 'Accountant'}{pv.role !== 'admin' && (pv.projects || []).length ? ` · ${(pv.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ')}` : ''}</div></div></div>
+        <div className="li"><div className="t"><div className="a">Login email</div><div className="b">{pv.email} · <span className="tag bad">Can&apos;t sign in</span></div></div></div>
+        {pv.phone ? <div className="li"><div className="t"><div className="a">Phone</div><div className="b num">{pv.phone}</div></div></div> : null}
+        <div className="li"><div className="t"><div className="a">CNIC</div><div className="b num">{pv.cnic || 'not on file'}{pv.cnicExpiry ? ` · expires ${fd(pv.cnicExpiry)}` : ''}</div></div></div>
+        <div className="li"><div className="t"><div className="a">Last working day</div><div className="b">{pv.leftOn ? fd(pv.leftOn) : '—'}</div></div></div>
+        <div className="li"><div className="t"><div className="a">Why they left</div><div className="b">{pv.leftReason || 'not recorded'}{pv.leftBy ? ` · recorded by ${pv.leftBy}` : ''}</div></div></div>
+        <div className="li"><div className="t"><div className="a">Last active</div><div className="b">{last.get(pv.id) ? lastSeen(last.get(pv.id)!.d, last.get(pv.id)!.t) : 'never'}</div></div></div>
+      </div>
+      <div className="m-actions" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+        <Go href={`/log?who=${encodeURIComponent(pv.id)}`} className="btn sm">Their activity</Go>
+      </div>
+      <RestoreForm id={pv.id} name={pv.name} />
+    </ModalShell> : null}
     <div className="card"><h3>Company details <small>printed on every bill, statement and receipt</small></h3>
       <form action={companyAction} className="grid-add co-form">
         <div className="form-row"><label htmlFor="co-n">Legal name</label><input id="co-n" name="legalName" defaultValue={co.legalName} required /></div>

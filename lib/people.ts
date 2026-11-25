@@ -110,3 +110,7 @@ export function parseFlats(text: string): string[] {
   }
   return [...new Set(out)];
 }
+
+/* ---------- past employees (24 Nov 2026) ---------- */
+/** Why someone left (Delete employee on Staff & connections). */
+export const LEAVE_REASONS = ['Resigned', 'Contract ended', 'Terminated', 'Retired', 'Transferred out of Minawa', 'Other'];
