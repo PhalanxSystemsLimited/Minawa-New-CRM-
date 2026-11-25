@@ -334,3 +334,11 @@ html[data-theme=frost] .mgr-nowa{color:#FDE68A}
 html[data-theme=frost] .mgr-cnt{background:rgba(255,255,255,.18)}
 html[data-theme=frost] .mgr-lat-ic.cash{background:rgba(74,222,128,.22);color:#BBF7D0}html[data-theme=frost] .mgr-lat-ic.bank{background:rgba(167,139,250,.25);color:#DDD6FE}
 html[data-theme=frost] .mgr-money{background:rgba(14,20,19,.55)!important}
+/* Payment requests in Frost (26 Nov 2026). */
+html[data-theme=frost] .mgr-rq{background:linear-gradient(165deg,rgba(255,255,255,.2),rgba(255,255,255,.04) 42%,rgba(255,255,255,.1)),rgba(14,24,22,.3);border-color:rgba(255,255,255,.28);color:#F4F7F6;
+  -webkit-backdrop-filter:blur(9px) saturate(1.75);backdrop-filter:blur(9px) saturate(1.75);box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.75),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.3),0 18px 40px -22px rgba(0,0,0,.55)}
+html[data-theme=frost] .mgr-rq-who b,html[data-theme=frost] .mgr-rq-meta b,html[data-theme=frost] .mgr-req .mgr-hello h1{color:#fff}
+html[data-theme=frost] .mgr-rq-who small,html[data-theme=frost] .mgr-rq-meta{color:rgba(240,246,244,.78)}
+html[data-theme=frost] .tag.mgr-cash{background:rgba(74,222,128,.22);color:#BBF7D0}html[data-theme=frost] .tag.mgr-bank{background:rgba(167,139,250,.25);color:#DDD6FE}
+html[data-theme=frost] .cq-search{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);color:#fff}
+html[data-theme=frost] .cq-who{background:rgba(255,255,255,.1)}

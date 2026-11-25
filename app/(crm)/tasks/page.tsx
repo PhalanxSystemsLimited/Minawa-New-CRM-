@@ -75,7 +75,7 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
     const rest = mine.filter(t => t.kind !== 'receipt' && !t.id.startsWith('proof:') && !t.id.startsWith('cash'));
     const accTabs = tabs([['', 'Approve entries', myN, late(cashT)], ['receipts', 'Receipts to send', rcpt.length, late(rcpt)], ['todo', 'Other To do', rest.length, late(rest)]]);
     if (v === 'receipts') return <>
-      {head('Receipts to send', 'Receipts the building manager didn\'t send from his screen (he pressed Cancel, or the customer has no WhatsApp number). Send each one to the customer.', ['receipt', 'green'])}
+      {head('Receipts to send', 'Receipts for the payments you approved (with the months each one pays for) and for payments you recorded. Send each customer theirs on WhatsApp to confirm the payment.', ['receipt', 'green'])}
       {accTabs}
       {live.map(p => { const l = rcpt.filter(t => t.project === p.id); if (!l.length && live.length > 1) return null;
         return <div className="card rc-card" key={p.id}><div className="card-row"><h3 data-hic="receipt" data-tone="green">{p.name} <small>{l.length} receipt{l.length === 1 ? '' : 's'} to send{late(l) ? ` · ${late(l)} from earlier days` : ''}</small></h3>
@@ -85,9 +85,9 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
             <div className="t"><div className="a"><span className="apt-t">{t.apt}</span> · {t.owner}</div><div className="b">{t.detail}</div></div>
             <div className="rc-when"><b>{t.since === today ? (t.time ? t12(t.time) : 'Today') : fds(t.since)}</b>{t.overdue ? <span className="tag bad">Waiting since {fds(t.since)}</span> : <span className="tag good">Send now</span>}</div>
             <Go href={t.href} className="btn sm wa"><Wa /> Send receipt</Go></div>)}</div>
-            : <Empty kind="done" small title="No receipts waiting">Receipts the building managers don&apos;t send come here.</Empty>}
+            : <Empty kind="done" small title="No receipts waiting">Approve a building manager&apos;s entry and its receipt comes here.</Empty>}
         </div>; })}
-      {live.length > 1 && !rcpt.length ? <Empty card kind="done" title="No receipts waiting">Receipts the building managers don&apos;t send come here.</Empty> : null}
+      {live.length > 1 && !rcpt.length ? <Empty card kind="done" title="No receipts waiting">Approve a building manager&apos;s entry and its receipt comes here.</Empty> : null}
     </>;
     if (v === 'todo') return <>
       {head('Other To do', 'Bills, reminders and notices to send on WhatsApp, printed vouchers, numbers to fix, promises and instalments to follow up, meter readings. Open a task to do it.')}
@@ -95,7 +95,7 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
       {live.map(p => { const l = rest.filter(t => t.project === p.id); return <div className="card" key={p.id}><div className="card-row"><h3>{p.name} <small>{l.length} open{late(l) ? ` · ${late(l)} late` : ''}</small></h3><Go href={`/p/${p.id}/todo`} className="btn sm">Open building To do</Go></div><Table list={l} staff={staff} today={today} showWho={false} /></div>; })}
     </>;
     return <>
-      {head('To do', 'Payments building managers entered (cash or bank transfer). Each already counts for the customer, who has the receipt. Approve the ones whose money you have received; "Not received" takes the payment back and sends it to the building manager to put right.')}
+      {head('To do', 'Payments building managers entered for your payment requests (cash or bank transfer). Each already counts for the customer. Approve the ones whose money you have received: the receipt then waits in Receipts to send. "Not received" takes the payment back and the request goes back to the building manager.')}
       {accTabs}
       {(() => {
         const f = (sp.m === 'cash' ? 'Cash' : sp.m === 'bank' ? 'Bank transfer' : ''), b = sp.b || '';
@@ -117,7 +117,7 @@ export default async function Tasks({ searchParams }: { searchParams: Promise<Re
                 <input name={`reply-${p.id}`} type="text" placeholder="Why (for the manager)" aria-label="Why it wasn't received" style={{ width: 170 }} />
                 <PickSubmit action={rejectEntryAction} field="one" value={`${s.project}:${p.id}`}>Not received</PickSubmit>
               </div></div>)}</div>
-            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving confirms you have the money: nothing new goes to the customer (the receipt went when the payment was entered). Approved cash is then with you, ready for the bank deposit on the Payments page.</p></>
+            <p className="cell-sub" style={{ margin: '10px 0 0' }}>Showing {list.length} · {rs(tot)}. Approving confirms you have the money; the receipt (with the months it pays for) then waits in Receipts to send. Approved cash is then with you, ready for the bank deposit on the Payments page.</p></>
             : <Empty kind="inbox" small title={`Nothing to approve${f || b ? ' with these filters' : ''}`} />}
         </form>;
       })()}

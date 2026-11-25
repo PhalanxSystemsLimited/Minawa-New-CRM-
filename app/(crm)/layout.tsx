@@ -19,11 +19,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
-  // 25 Nov 2026: a building manager has one simple screen (his customers, the money box, Add payment). Any other page,
+  // 25–26 Nov 2026: a building manager has one screen, Payment requests (from his accountant). Any other page,
   // old link or bookmark brings him back to it.
   if (staff.role === 'manager') {
     const path = (await headers()).get('x-path') || '/';
-    if (path !== '/' && !/^\/m\/[a-z0-9]+\/[^/]+$/i.test(path)) redirect('/');
+    if (path !== '/') redirect('/');
     return <ManagerShell staff={staff} signOut={signOut}>{children}</ManagerShell>;
   }
   const projs = await listProjects(staff);

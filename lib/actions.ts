@@ -35,15 +35,14 @@ function needOwner(s: State, oid: string): Owner { const o = ownerById(oid); if 
 /* ---------- apartment ---------- */
 export async function recordPaymentAction(fdata: FormData) {
   const staff = await requireStaff(), pid = S(fdata, 'pid'), oid = S(fdata, 'oid');
+  // 26 Nov 2026: a building manager enters payments only by answering the accountant's payment requests.
+  if (staff.role === 'manager') go('/', 'Payments are entered from your payment requests');
   const amt = Math.round(+S(fdata, 'amt'));
   if (!(amt > 0)) go(ownerPath(pid, oid, fdata), 'Enter an amount');
   // Amount checks (21 Nov 2026): above what is owed needs the tick; far above it is blocked, except for the Admin.
   const lim = use(await load(pid, staff), () => { const o = ownerById(oid); if (!o) return null; return { owed: payLimits(o).owed, block: payBlock(o, amt) }; });
-  if (!lim) go(staff.role === 'manager' ? '/' : `/p/${pid}`, 'Apartment not found');
-  // 25 Nov 2026: a building manager's own screen: the customer's page (/m/…), its payment form, then the locked
-  // "Send the receipt" screen.
-  const mPage = `/m/${pid}/${encodeURIComponent(oid)}`;
-  const formBack = staff.role === 'manager' ? `${mPage}?pay=1` : S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
+  if (!lim) go(`/p/${pid}`, 'Apartment not found');
+  const formBack = S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
   // Payments are entered by building managers and accountants only (no online payments); the Admin only enters an
   // amount above what one entry can take (after checking it is right).
   if (staff.role === 'admin') {
@@ -56,27 +55,6 @@ export async function recordPaymentAction(fdata: FormData) {
   if (amt > lim!.owed && S(fdata, 'over') !== '1') go(formBack, `Rs ${amt.toLocaleString('en-US')} is more than the Rs ${lim!.owed.toLocaleString('en-US')} owed: tick to confirm the amount (the extra becomes advance credit)`);
   // A building manager enters a payment (cash or bank transfer): since 19 Nov 2026 it counts at once (balance, receipt)
   // and he goes straight to sending the receipt; the Accountant then confirms he received the money.
-  if (staff.role === 'manager') {
-    const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
-    const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
-    // "Bill received" from the Electricity bills screen (21 Nov 2026): pays that electricity bill first.
-    const billId = S(fdata, 'billId') || null, again = `${mPage}?pay=1&method=${method === 'Bank transfer' ? 'bank' : 'cash'}`;
-    // 26 Nov 2026: the months this payment is for, shown on the receipt and in the WhatsApp message.
-    const pf = S(fdata, 'periodFrom'), pt = S(fdata, 'periodTo') || pf, okP = (x: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(x);
-    if (!okP(pf) || !okP(pt)) go(again, 'Choose the months this payment is for');
-    if (pt < pf) go(again, 'The last month must come after the first month');
-    if (monthsIn(pf, pt) > 24) go(again, 'Choose at most 24 months for one payment');
-    if (method === 'Cash' && !S(fdata, 'ref')) go(again, 'Enter the receipt number you gave the owner');
-    if (method === 'Bank transfer' && !txn) go(again, 'Enter the bank transaction ID');
-    // The photo of the transfer (or the bill receipt): needed for a bank transfer once photo storage is set up.
-    let photo: string | null = null;
-    try { photo = (await photoFor(S(fdata, 'photo'), pid, 'payment'))?.id || null; } catch (e) { go(again, (e as Error).message); }
-    if ((method === 'Bank transfer' || billId) && !photo && photoStore()) go(again, billId ? 'Add the photo of the payment (the bill receipt or the phone screen)' : 'Add the photo of the bank transfer (take it with the camera or choose it from the phone)');
-    const pr = await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, billId || S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null, { photoId: photo, billId, periodFrom: pf, periodTo: pt }), { send: false, manager: true });
-    if (photo) await (await getStore()).linkImage(photo, pr.payId || pr.id).catch(() => undefined);
-    // Straight to the locked "Send the receipt" screen for this customer (Cancel leaves it to the accountant).
-    redirect(`${mPage}?rc=${encodeURIComponent(pr.payId || pr.id)}`);
-  }
   if (!S(fdata, 'ref')) go(ownerPath(pid, oid, fdata) + '?m=recpay', 'Enter the receipt number you gave the owner');
   const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
   redirect(`${ownerPath(pid, oid, fdata)}?doc=receipt:${p.id}&flash=staff`);

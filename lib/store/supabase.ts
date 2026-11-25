@@ -54,7 +54,7 @@ export class SupabaseStore implements Store {
       this.db.from('projects').select('*').eq('id', pid).then(r => r.data || []),
       this.all('templates'), this.db.from('project_settings').select('*').eq('project', pid).then(r => r.data || []), this.all('counters'),
       // approvals arrived with migration 0007: until it has run, there are none (instead of every page failing).
-      ...STATE_TABLES.map(t => t === 'approvals' ? this.all(t, ['project', pid]).catch(() => []) : this.all(t, ['project', pid]))
+      ...STATE_TABLES.map(t => t === 'approvals' || t === 'requests' ? this.all(t, ['project', pid]).catch(() => []) : this.all(t, ['project', pid]))
     ]);
     if (!projRows.length) throw new Error(`Unknown project ${pid}`);
     const proj = fromRow<Project & { sort?: number }>(projRows[0]); delete proj.sort;

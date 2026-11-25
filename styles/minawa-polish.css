@@ -1132,3 +1132,33 @@ main > #modal,#main > #modal{animation:none!important;opacity:1!important;transf
 html:has(.mgr-app){background:var(--bg)!important}
 html:not([data-theme=frost]) body:has(.mgr-app){background-image:radial-gradient(900px 520px at 85% -8%,rgba(217,93,57,.10),transparent 60%),radial-gradient(760px 520px at 8% 110%,rgba(30,126,81,.06),transparent 60%)!important}
 .mgr-search input{background:transparent!important;border:0!important;box-shadow:none!important;outline:0}
+
+/* ---------- Payment requests (26 Nov 2026) ---------- */
+.si-col{--si-a:#6EE7B7;--si-b:#047857;--si-g:rgba(5,150,105,.7)}
+/* Accountant: Collect payments */
+.cq-search{display:flex;align-items:center;gap:8px;flex:1 1 280px;max-width:420px;border:1px solid var(--line-strong);border-radius:12px;padding:0 10px;background:var(--surface);color:var(--muted)}
+.cq-search input{flex:1;min-width:0;border:0!important;background:transparent!important;box-shadow:none!important;padding:9px 0;outline:0}
+.cq-tbl td{vertical-align:middle}
+.cq-who{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--surface-2)}
+.cq-who b{display:block}.cq-who small{color:var(--muted)}
+.cq-apt{flex:none;min-width:52px;height:52px;padding:0 8px;border-radius:14px;display:grid;place-items:center;font-weight:800;background:var(--accent-soft);color:var(--accent-darkest)}
+/* Building manager: Payment requests */
+.mgr-req .mgr-hello h1{margin-top:4px}
+.mgr-req-tabs{margin:0 0 14px}
+.mgr-req-tabs a{display:inline-flex;align-items:center;gap:6px}
+.mgr-rq-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:12px}
+.mgr-rq{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.mgr-rq::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(#F08A5D,#C2410C)}
+.mgr-rq.back::before{background:#E5484D}
+.mgr-rq-top{display:flex;align-items:center;gap:10px}
+.mgr-rq-who{flex:1;min-width:0}.mgr-rq-who b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mgr-rq-who small{display:block;font-size:12px;color:var(--muted)}
+.mgr-rq-amt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}.mgr-rq-amt b{font-size:20px;font-weight:800}
+.mgr-rq-meta{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.mgr-rq-meta span{display:flex;gap:6px;align-items:flex-start}.mgr-rq-meta .ico{flex:none;margin-top:2px}.mgr-rq-meta b{color:var(--fg)}
+.mgr-rq-back{margin:0}
+.mgr-rq-go{max-width:none!important;width:100%;margin:0!important;display:flex!important;align-items:center;justify-content:center;gap:6px;padding:12px!important;font-size:15px!important}
+.tag.mgr-cash{background:color-mix(in srgb,#16A34A 14%,transparent);color:#15803D;display:inline-flex;gap:4px;align-items:center}
+.tag.mgr-bank{background:color-mix(in srgb,#7C3AED 14%,transparent);color:#6D28D9;display:inline-flex;gap:4px;align-items:center}
+.mgr-rq-empty{padding:34px 20px}
+.mgr-rq-ok{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 10px;border-radius:50%;background:color-mix(in srgb,#22C55E 14%,transparent);color:#16A34A}
+:root[data-theme=dark] .tag.mgr-cash{color:#86EFAC}:root[data-theme=dark] .tag.mgr-bank{color:#C4B5FD}

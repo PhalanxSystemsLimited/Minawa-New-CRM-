@@ -10,17 +10,18 @@ export const TABLES = {
   messages: ['id', 'ownerId', 'project', 'd', 't', 'from', 'kind', 'title', 'text', 'tpl', 'vars', 'pdf', 'status', 'waId', 'error', 'manual', 'shot', 'sentAt'],
   payments: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'method', 'ref', 'source', 'by', 'before', 'applied', 'balAfter', 'receipt', 'collectorId', 'collectorName', 'handoverId', 'reversed', 'enteredBy', 'approvedBy', 'approvedAt', 'txn', 'forWhat', 'entryId', 'photoId', 'billId', 'periodFrom', 'periodTo'],
   handovers: ['id', 'project', 'fromId', 'fromName', 'amount', 'paymentIds', 'd', 't', 'status', 'receivedBy', 'receivedD', 'note', 'reply', 'depositSlip', 'depositD', 'depositedBy'],
-  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'method', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply', 'txn', 'forWhat', 'payId', 'photoId', 'billId', 'periodFrom', 'periodTo'],
+  proofs: ['id', 'ownerId', 'project', 'd', 't', 'amount', 'status', 'msgId', 'doneOn', 'media', 'kind', 'method', 'ref', 'note', 'byId', 'byName', 'paidOn', 'checkedBy', 'reply', 'txn', 'forWhat', 'payId', 'photoId', 'billId', 'periodFrom', 'periodTo', 'requestId'],
   alerts: ['id', 'ownerId', 'project', 'd', 'text', 'done', 'kind'],
   clearances: ['no', 'ownerId', 'project', 'd', 'by'],
   rates: ['id', 'project', 'type', 'from', 'amount'],
   charges: ['id', 'ownerId', 'project', 'period', 'kind', 'amount', 'units', 'note', 'by', 'd', 'billId', 'prevReading', 'curReading'],
   notices: ['id', 'project', 'd', 't', 'kind', 'title', 'text', 'audience', 'count', 'failed', 'by'],
+  requests: ['id', 'project', 'ownerId', 'amount', 'method', 'periodFrom', 'periodTo', 'forWhat', 'note', 'managerId', 'managerName', 'byId', 'byName', 'd', 't', 'status', 'proofId', 'doneD', 'doneT', 'reply'],
   approvals: ['id', 'project', 'ownerId', 'kind', 'change', 'summary', 'before', 'note', 'byId', 'byName', 'd', 't', 'status', 'decidedById', 'decidedByName', 'decidedD', 'decidedT', 'reply', 'undo']
 } as const;
 export type TableName = keyof typeof TABLES;
-export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', messages: 'id', payments: 'id', handovers: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id', approvals: 'id' };
-export const STATE_TABLES: TableName[] = ['owners', 'bills', 'entries', 'messages', 'payments', 'handovers', 'proofs', 'alerts', 'clearances', 'rates', 'charges', 'notices', 'approvals'];
+export const KEY: Record<TableName, string> = { owners: 'id', bills: 'id', entries: 'id', messages: 'id', payments: 'id', handovers: 'id', proofs: 'id', alerts: 'id', clearances: 'no', rates: 'id', charges: 'id', notices: 'id', approvals: 'id', requests: 'id' };
+export const STATE_TABLES: TableName[] = ['owners', 'bills', 'entries', 'messages', 'payments', 'handovers', 'proofs', 'alerts', 'clearances', 'rates', 'charges', 'notices', 'approvals', 'requests'];
 
 export const snake = (s: string) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 export const camel = (s: string) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());

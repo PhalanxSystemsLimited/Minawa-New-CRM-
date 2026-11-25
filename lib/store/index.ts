@@ -66,7 +66,7 @@ export function normalizeState(s: State) {
     if (b.extras == null) b.extras = 0;
     delete b.reminded;
   }
-  s.charges = s.charges || []; s.notices = s.notices || []; s.approvals = s.approvals || []; s.handovers = s.handovers || [];
+  s.charges = s.charges || []; s.notices = s.notices || []; s.approvals = s.approvals || []; s.handovers = s.handovers || []; s.requests = s.requests || [];
   // A reversed payment stays in the database for the record but no longer counts anywhere.
   s.payments = (s.payments || []).filter(p => !p.reversed);
   return s;

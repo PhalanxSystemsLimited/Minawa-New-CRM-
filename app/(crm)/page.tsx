@@ -3,7 +3,7 @@ import { requireStaff, roleName } from '@/lib/session';
 import { projects as listProjects, load } from '@/lib/ops';
 import { duesList } from '@/lib/reports';
 import { buildingStats } from '@/lib/stats';
-import { use, projStats, sortedPayments, ownerById, upcoming, collections, nextBillOf } from '@/lib/engine';
+import { use, projStats, sortedPayments, ownerById, upcoming, collections, nextBillOf, balance } from '@/lib/engine';
 import { pendingCount } from '@/lib/manual-send';
 import { KIND_LABEL } from '@/lib/approvals';
 import { cookies } from 'next/headers';
@@ -151,6 +151,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <NeedTile title="Accountants" icon="coins" tone="green" n={accT.length} label={accT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={accT.length ? `${lateN(accT)} late · ${sendN} owner${sendN === 1 ? '' : 's'} to message` : 'All clear'} />
       </> : <>
         <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? `${lateN(myT)} late · entries, receipts, follow-ups` : 'All clear'} />
+        {(() => { // 26 Nov 2026: customers with dues and no payment request yet, and requests still open.
+          const c = states.reduce((acc, s) => use(s, () => { const open = new Set((s.requests || []).filter(r => r.status === 'open').map(r => r.ownerId));
+            acc.due += s.owners.filter(o => o.status === 'active' && !o.exempt && balance(o) > 0 && !open.has(o.id)).length; acc.open += open.size; return acc; }), { due: 0, open: 0 });
+          return <NeedTile title="Collect" icon="wallet" tone="blue" n={c.due} label={c.due === 1 ? 'customer to request' : 'customers to request'} href="/collect" sub={c.open ? `${c.open} request${c.open === 1 ? '' : 's'} with building managers` : 'Send payment requests'} />; })()}
         <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders, notices, receipts' : 'Nothing waiting'} />
         <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
       </>}

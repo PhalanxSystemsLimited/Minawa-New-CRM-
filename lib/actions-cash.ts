@@ -90,22 +90,22 @@ export async function bulkApproveAction(fdata: FormData) {
   const by = new Map<string, string[]>();
   for (const x of picked) { const [pid, id] = x.split(':'); by.set(pid, [...(by.get(pid) || []), id]); }
   const allowed = new Set((await liveProjects(staff)).map(p => p.id));
-  let n = 0, total = 0, skipped = 0;
+  let n = 0, total = 0, skipped = 0, rcpt = 0;
   for (const [pid, ids] of by) {
     if (!allowed.has(pid)) { skipped += ids.length; continue; }
     const r = await mutate(pid, staff, s => {
-      const hold: Payment[] = []; let k = 0, amt = 0, sk = 0;
+      const hold: Payment[] = []; let k = 0, amt = 0, sk = 0, rc = 0;
       for (const id of ids) {
         const pr = s.proofs.find(x => x.id === id);
         if (!pr || pr.status !== 'pending' || pr.kind !== 'cash') { sk++; continue; }
-        const p = verifyProof(pr, s.today, at(15), staffName(staff), undefined, hold); k++; amt += p.amount;
+        const p = verifyProof(pr, s.today, at(15), staffName(staff), undefined, hold); k++; amt += p.amount; if (pr.requestId) rc++;
       }
       receiveCash(hold, staffName(staff), s.today, at(15));
-      return { k, amt, sk };
+      return { k, amt, sk, rc };
     });
-    n += r.k; total += r.amt; skipped += r.sk;
+    n += r.k; total += r.amt; skipped += r.sk; rcpt += r.rc;
   }
-  go(back, n ? `Approved ${n} entr${n === 1 ? 'y' : 'ies'}: Rs ${total.toLocaleString('en-US')}. The cash is with you; the customers already have their receipts.${skipped ? ` ${skipped} skipped (already handled).` : ''}` : 'Nothing approved: those entries were already handled');
+  go(back, n ? `Approved ${n} entr${n === 1 ? 'y' : 'ies'}: Rs ${total.toLocaleString('en-US')}. The cash is with you.${rcpt ? ` ${rcpt} receipt${rcpt === 1 ? ' is' : 's are'} now in To do › Receipts to send.` : ''}${skipped ? ` ${skipped} skipped (already handled).` : ''}` : 'Nothing approved: those entries were already handled');
 }
 
 /** One entry the money didn't arrive for: back to the building manager with a note (a button inside the bulk form). */

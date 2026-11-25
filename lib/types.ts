@@ -191,8 +191,21 @@ export interface Proof { id: string; ownerId: string; project: string; d: ISODat
   payId?: string | null;
   /** 21 Nov 2026: the photo taken at entry (bank transfer screen or bill receipt), and the electricity bill it is for. */
   photoId?: string | null; billId?: string | null;
-  /** 26 Nov 2026: the months the payment is for ('YYYY-MM'), as the building manager picked them. */
-  periodFrom?: string | null; periodTo?: string | null }
+  /** 26 Nov 2026: the months the payment is for ('YYYY-MM'), from the accountant's payment request. */
+  periodFrom?: string | null; periodTo?: string | null;
+  /** 26 Nov 2026: the accountant's payment request this entry answers (its receipt goes out once approved). */
+  requestId?: string | null }
+/** A payment request (26 Nov 2026): the accountant asks a building manager to collect an amount from a customer, by
+ *  cash or bank transfer, for the months given. The building manager answers it with an entry (the cash book number
+ *  he wrote by hand, or the transfer's ID and photo); the accountant approves the entry and sends the receipt. */
+export interface PayRequest {
+  id: string; project: string; ownerId: string; amount: number; method: 'Cash' | 'Bank transfer';
+  periodFrom: string; periodTo: string; forWhat: 'maintenance' | 'electricity' | null; note: string | null;
+  managerId: string; managerName: string; byId: string | null; byName: string; d: ISODate; t: string;
+  /** open: waiting for the building manager · entered: he made the entry (see proofId) · cancelled by the accountant. */
+  status: 'open' | 'entered' | 'cancelled'; proofId: string | null; doneD: ISODate | null; doneT: string | null;
+  /** Why it was cancelled, or why it came back (the accountant didn't receive the money). */
+  reply: string | null }
 /** A photo stored for the CRM (21 Nov 2026): in Cloudinary (private), with its link kept in Supabase. Staff open it
  *  through the CRM; a customer only sees the photo printed on their own bill. */
 export interface ImageRec {
@@ -243,6 +256,8 @@ export interface State {
   rates: Rate[]; templates: Record<string, Template>; settings: ProjectSettings;
   owners: Owner[]; bills: Bill[]; entries: Entry[]; messages: Message[]; payments: Payment[]; handovers: Handover[];
   proofs: Proof[]; alerts: Alert[]; clearances: Clearance[]; charges: Charge[]; notices: Notice[];
+  /** 26 Nov 2026: payment requests from the accountant to the building managers. */
+  requests: PayRequest[];
   /** Changes to an owner's charges that an accountant asked for, waiting for (or decided by) an admin. */
   approvals: Approval[];
   company?: Company;

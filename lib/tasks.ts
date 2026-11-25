@@ -1,5 +1,5 @@
-// The To do list (Nov 2026). Since 25 Nov 2026 every task is the Accountant's: building managers only enter payments
-// and send the receipt on WhatsApp from the locked screen that follows (a receipt they cancel lands here). The
+// The To do list (Nov 2026). Since 25 Nov 2026 every task is the Accountant's. Since 26 Nov 2026 building managers only
+// answer his payment requests with entries; approving an entry puts its receipt here, to send on WhatsApp. The
 // Accountant: receipts not sent, WhatsApp to send (bills, reminders, notices, links), printed vouchers, numbers to fix,
 // broken promises and late instalments, meter readings, and the money to check: his building managers' entries one by
 // one, owners' bank screenshots, cash to deposit. For his buildings (ticked for him, or his building managers').
@@ -8,7 +8,7 @@
 import type { State, Staff } from './types';
 import { use, ownerById, failedList, instalmentStatus } from './engine';
 import { toDoGroups, pendingGroups } from './manual-send';
-import { addDays, rs, fm } from './fmt';
+import { addDays, rs, fm, periodText } from './fmt';
 import { meterMode, readDay } from './meter';
 import { voucherRows, DUES } from './vouchers';
 import { scoped } from './people';
@@ -37,7 +37,7 @@ export function projectTasks(s: State): Task[] {
       const m = g.msg, o = ownerById(m.ownerId), pay = s.payments.find(p => p.id === m.pdf?.id), entry = pay?.entryId ? s.proofs.find(x => x.id === pay.entryId) : null;
       if (!o) continue;
       out.push({ id: `rcpt:${m.id}`, role: 'accountant', kind: 'receipt', project: s.project, pname: s.proj.name, what: 'Send the receipt',
-        detail: pay ? `${rs(pay.amount)} · ${pay.receipt} · ${/bank/i.test(pay.method) ? 'bank transfer' : 'cash'}${pay.enteredBy ? ` · entered by ${pay.enteredBy}` : ''}` : m.title,
+        detail: pay ? `${rs(pay.amount)}${pay.periodFrom ? ` for ${periodText(pay.periodFrom, pay.periodTo)}` : ''} · ${pay.receipt} · ${/bank/i.test(pay.method) ? 'bank transfer' : 'cash'}${pay.enteredBy ? ` · entered by ${pay.enteredBy}` : ''}` : m.title,
         apt: o.apt, owner: o.name, since: m.d, time: m.t, enteredById: entry?.byId || null, deadline: m.d, overdue: late(m.d), href: `${P}/send?type=queue&kind=receipt&ids=${o.id}&go=1` });
     }
     for (const g of toDoGroups()) {
