@@ -261,34 +261,6 @@ html[data-theme=frost] .signin-page .signin-foot{color:rgba(255,255,255,.88)}
 html[data-theme=frost] .signin-page .signin-foot svg{color:rgba(255,255,255,.7)}
 html[data-theme=frost] .signin-page .callout{background:rgba(255,255,255,.18)!important;border-color:rgba(255,255,255,.35)!important;color:#fff}
 
-/* ---------- Frost: liquid glass (26 Nov 2026, components/LiquidGlass.tsx) ----------
-   A layer laid over the glass surface under the pointer: a drop of liquid glass that follows the pointer, a rim that
-   lights up nearest it, and a soft glow. Never catches clicks; only in Frost. */
-.lg-layer{position:fixed;left:0;top:0;width:0;height:0;z-index:70;pointer-events:none;overflow:hidden;visibility:hidden;contain:layout}
-html[data-theme=frost] .lg-layer.on{visibility:visible}
-.lg-layer>*{position:absolute;pointer-events:none}
-.lg-glow{inset:0;opacity:0;transition:opacity .35s ease;mix-blend-mode:soft-light;
-  background:radial-gradient(240px circle at var(--lx,50%) var(--ly,50%),rgba(255,255,255,.38),rgba(255,255,255,.08) 45%,transparent 72%)}
-.lg-rim{inset:0;border-radius:inherit;padding:1.5px;opacity:0;transition:opacity .3s ease;
-  background:radial-gradient(180px circle at var(--lx,50%) var(--ly,50%),rgba(255,255,255,.95),rgba(255,255,255,.35) 35%,rgba(255,255,255,0) 70%);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
-/* The drop: clear glass with a bright rim, a highlight at the top left and a faint one opposite, like a drop of water. */
-.lg-lens{left:0;top:0;width:100px;height:100px;border-radius:50%;opacity:0;will-change:transform;
-  transition:opacity .3s ease,width .25s ease,height .25s ease;
-  -webkit-backdrop-filter:saturate(1.35) contrast(1.05);backdrop-filter:saturate(1.35) contrast(1.05);
-  background:radial-gradient(60% 40% at 34% 22%,rgba(255,255,255,.34),rgba(255,255,255,0) 70%),radial-gradient(40% 26% at 66% 84%,rgba(255,255,255,.12),rgba(255,255,255,0) 70%);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),inset 1.5px 2px 1px -1px rgba(255,255,255,.9),inset -2px -3px 6px rgba(255,255,255,.18),inset 0 0 14px rgba(255,255,255,.08),0 10px 24px -12px rgba(0,0,0,.45)}
-/* Chrome and Edge: the drop really bends what is under it. */
-html.lg-bend .lg-lens{-webkit-backdrop-filter:url(#lg-lens) saturate(1.35) contrast(1.05);backdrop-filter:url(#lg-lens) saturate(1.35) contrast(1.05)}
-html[data-theme=frost] .lg-layer.on .lg-glow{opacity:1}
-html[data-theme=frost] .lg-layer.on .lg-rim{opacity:1}
-html[data-theme=frost] .lg-layer.on .lg-lens{opacity:1}
-/* Frost glass itself: a brighter rim along the top-left edge and a deeper one along the bottom-right, like thick glass. */
-html[data-theme=frost] .card,html[data-theme=frost] .lv-needs .lv-need,html[data-theme=frost] .kpi,html[data-theme=frost] .stat,html[data-theme=frost] .pcard,html[data-theme=frost] .lv-money,
-html[data-theme=frost] .mgr-card,html[data-theme=frost] .mgr-cu,html[data-theme=frost] .mgr-money{
-  box-shadow:inset 1px 1px 0 rgba(255,255,255,.42),inset -1px -1px 0 rgba(255,255,255,.1),inset 0 0 24px rgba(255,255,255,.06),0 20px 44px -24px rgba(0,0,0,.6)!important}
-html[data-theme=frost] .btn:not(.primary):not(.wa):not(.danger):not(.ghost){background:linear-gradient(160deg,rgba(255,255,255,.26),rgba(255,255,255,.08))!important;border-color:rgba(255,255,255,.34)!important;color:#fff!important;
-  -webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);box-shadow:inset 1px 1px 0 rgba(255,255,255,.5),inset -1px -1px 0 rgba(255,255,255,.12),0 6px 16px -10px rgba(0,0,0,.5)}
 /* The building manager's screen in Frost: the same glass. */
 html[data-theme=frost] .mgr-app{background:transparent;position:relative;z-index:1}
 html[data-theme=frost] .mgr-top{background:rgba(255,255,255,.08);border-bottom-color:rgba(255,255,255,.16)}
@@ -298,8 +270,6 @@ html[data-theme=frost] .mgr-cu,html[data-theme=frost] .mgr-card,html[data-theme=
 html[data-theme=frost] .mgr-n b,html[data-theme=frost] .mgr-hl b{color:#fff}
 html[data-theme=frost] .mgr-money{background:rgba(14,20,19,.55);-webkit-backdrop-filter:blur(24px) saturate(1.3);backdrop-filter:blur(24px) saturate(1.3);border:1px solid rgba(255,255,255,.18)}
 html[data-theme=frost] .mgr-mini>div:not(.cash){background:rgba(255,255,255,.08)}
-@media (prefers-reduced-motion:reduce){.lg-lens{display:none}}
-@media (hover:none){.lg-glow,.lg-rim{transition:opacity .2s}}
 html[data-theme=frost] .mgr-search input{background:transparent!important;border:0!important;box-shadow:none!important;color:#fff}
 html[data-theme=frost] .mgr-search{color:rgba(255,255,255,.75)}
 html[data-theme=frost] .mgr-out,html[data-theme=frost] .mgr-back{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff}
@@ -307,3 +277,40 @@ html[data-theme=frost] .mgr-apt{background:rgba(255,255,255,.2);color:#fff;box-s
 html[data-theme=frost] .mgr-n small,html[data-theme=frost] .mgr-today,html[data-theme=frost] .mgr-hl small,html[data-theme=frost] .mgr-hd small{color:rgba(240,246,244,.75)}
 html[data-theme=frost] .mgr-today b{color:#fff}
 html[data-theme=frost] .mgr-tabs a{background:rgba(255,255,255,.14);color:rgba(255,255,255,.85)}html[data-theme=frost] .mgr-tabs a.on{background:rgba(255,255,255,.92);color:#0F172A}
+
+/* ---------- Frost: liquid glass (26 Nov 2026, after Apple's Liquid Glass; components/LiquidGlass.tsx) ----------
+   The containers are the glass: clearer than before (the mountains show through), with bright rims like thick glass
+   and a light that sweeps across when the pointer comes over one. In Chrome and Edge what is behind is also bent by
+   a liquid ripple, which flows while the container is hovered. Nothing follows the pointer. */
+html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty){
+  background:linear-gradient(105deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.2) 47%,rgba(255,255,255,.06) 52%,rgba(255,255,255,0) 60%) 130% 0/260% 100% no-repeat,
+    linear-gradient(165deg,rgba(255,255,255,.2),rgba(255,255,255,.04) 42%,rgba(255,255,255,.02) 70%,rgba(255,255,255,.1)),rgba(14,24,22,.3)!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  -webkit-backdrop-filter:blur(9px) saturate(1.75) brightness(1.05)!important;backdrop-filter:blur(9px) saturate(1.75) brightness(1.05)!important;
+  box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.75),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.06),
+    inset 0 14px 22px -16px rgba(255,255,255,.35),inset 0 -12px 24px -18px rgba(255,255,255,.22),0 18px 40px -22px rgba(0,0,0,.55)!important;
+  transition:background-position 1.2s cubic-bezier(.2,.7,.2,1),box-shadow .45s ease,border-color .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)!important}
+html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{
+  background-position:-30% 0,0 0,0 0!important;border-color:rgba(255,255,255,.42)!important;
+  box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.95),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.45),inset 0 0 0 1px rgba(255,255,255,.1),
+    inset 0 16px 26px -16px rgba(255,255,255,.45),inset 0 -14px 26px -18px rgba(255,255,255,.3),0 22px 46px -22px rgba(0,0,0,.6)!important}
+/* The small ones also swell a touch, like a drop of liquid. */
+html[data-theme=frost] :is(.lv-needs .lv-need,.kpi,.stat,.lv-kpi:not(.hl),.mgr-cu):hover{transform:scale(1.012)}
+/* The money box, menus, modals, side and top bars: the same glass, keeping their own darker tint for reading. */
+html[data-theme=frost] :is(.lv-money,.mgr-money){-webkit-backdrop-filter:blur(10px) saturate(1.6)!important;backdrop-filter:blur(10px) saturate(1.6)!important;
+  box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.6),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.22),inset 0 14px 22px -16px rgba(255,255,255,.25),0 20px 44px -24px rgba(0,0,0,.6)!important}
+html[data-theme=frost] :is(.m-card,.menu,.more[open] > .menu){background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 45%,rgba(255,255,255,.08)),rgba(30,42,39,.62)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(1.7)!important;backdrop-filter:blur(12px) saturate(1.7)!important;
+  box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.7),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.25),0 30px 70px -20px rgba(0,0,0,.6)!important}
+html[data-theme=frost] :is(.side,.top,.mgr-top){-webkit-backdrop-filter:blur(12px) saturate(1.6)!important;backdrop-filter:blur(12px) saturate(1.6)!important}
+/* Chrome and Edge: the liquid itself. Still at rest; it flows under the container the pointer is on. */
+html.lg-bend[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty){
+  -webkit-backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75) brightness(1.05)!important;backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75) brightness(1.05)!important}
+html.lg-bend[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{
+  -webkit-backdrop-filter:url(#lg-flow) blur(5px) saturate(1.85) brightness(1.07)!important;backdrop-filter:url(#lg-flow) blur(5px) saturate(1.85) brightness(1.07)!important}
+html.lg-bend[data-theme=frost] :is(.lv-money,.mgr-money,.m-card,.menu){-webkit-backdrop-filter:url(#lg-liquid) blur(9px) saturate(1.6)!important;backdrop-filter:url(#lg-liquid) blur(9px) saturate(1.6)!important}
+/* A card holding a long table: no swelling (it would move the table), only the light and the liquid. */
+html[data-theme=frost] .card:hover{transform:none}
+@media (prefers-reduced-motion:reduce){
+  html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi,.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty){transition:none!important;transform:none!important}
+  html.lg-bend[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{-webkit-backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75)!important;backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75)!important}}
