@@ -20,6 +20,7 @@ import { DocModal } from '@/components/views/modals';
 import { ActivityList, lastSeen } from '@/components/views/activity';
 import { getStore } from '@/lib/store';
 import { ManagerHome } from '@/components/views/manager';
+import { reportsToAcc } from '@/lib/people';
 import { ApprovalItem, type ApprovalView } from '@/components/views/approvals';
 import { fmtNumber, freeAt, validNumber } from '@/lib/wa-numbers';
 
@@ -52,12 +53,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   {
     // Admins: accountants and building managers. Accountants: the building managers (their own is under Activity).
     const store = await getStore(); staffList = await store.listStaff();
-    const ids = staffList.filter(x => (x.role === 'manager' && (staff.role === 'admin' || x.reportsTo === staff.id)) || (staff.role === 'admin' && x.role === 'accountant')).map(x => x.id);
+    const ids = staffList.filter(x => (x.role === 'manager' && (staff.role === 'admin' || reportsToAcc(x, staff.id))) || (staff.role === 'admin' && x.role === 'accountant')).map(x => x.id);
     accActs = (await store.getLog({ staffIds: ids, limit: 40 })).filter(e => !['signin', 'signout'].includes(e.kind)).slice(0, 6);
   }
   // WhatsApp sent by hand: everyone's for admins, your own for accountants.
   let wa: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getWaLog']>> = [];
-  try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : staff.role === 'accountant' ? [staff.id, ...staffList.filter(x => x.role === 'manager' && x.reportsTo === staff.id).map(x => x.id)] : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
+  try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : staff.role === 'accountant' ? [staff.id, ...staffList.filter(x => x.role === 'manager' && reportsToAcc(x, staff.id)).map(x => x.id)] : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
   // The WhatsApp tab's counter: messages sent today since this person last opened the tab (kept in a cookie).
   const waSeenName = `mwa_${staff.id.replace(/[^a-z0-9-]/gi, '')}`, waSeen = decodeURIComponent((await cookies()).get(waSeenName)?.value || '');
   const waToday = wa.filter(e => e.d === today), waSent = waToday.filter(e => e.answer === 'sent' && (e.at || '') > waSeen).length;

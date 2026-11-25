@@ -14,7 +14,7 @@ import { projects as listProjects } from '@/lib/ops';
 import { waTestNumber } from '@/lib/whatsapp';
 import { PageIc } from '@/components/views/art';
 import { PersonFields, IdBox } from '@/components/PersonFields';
-import { staffNos, cnicState, cnicNote } from '@/lib/people';
+import { staffNos, cnicState, cnicNote, accountantsOf, reportsToAcc } from '@/lib/people';
 import { todayPKT, fd } from '@/lib/fmt';
 import { DeleteEmployeeForm, RestoreForm } from '@/components/views/staff-leave';
 import { Ic } from '@/components/icons';
@@ -36,8 +36,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const nos = staffNos(staff), today = todayPKT();
   // 25 Nov 2026: who each building manager reports to.
   const accs = staff.filter(x => x.role === 'accountant' && x.active && !x.leftOn), accName = (id?: string | null) => (id && accs.find(a => a.id === id)?.name) || '';
-  const mgrsOf = (id: string) => staff.filter(x => x.role === 'manager' && !x.leftOn && x.reportsTo === id).map(x => x.name + (x.active ? '' : ' (sign-in off)'));
-  const accOpts = accs.map(a => ({ id: a.id, name: a.name })), noAcc = staff.filter(x => x.active && !x.leftOn && x.role === 'manager' && !accName(x.reportsTo));
+  const mgrsOf = (id: string) => staff.filter(x => x.role === 'manager' && !x.leftOn && reportsToAcc(x, id)).map(x => x.name + (x.active ? '' : ' (sign-in off)'));
+  const accsOf = (x: typeof staff[number]) => accountantsOf(x).map(accName).filter(Boolean);
+  const accOpts = accs.map(a => ({ id: a.id, name: a.name })), noAcc = staff.filter(x => x.active && !x.leftOn && x.role === 'manager' && !accsOf(x).length);
   // WhatsApp numbers (20 Nov 2026): every number on someone's details, who uses it, and its use in the last 24 hours.
   const numRows = new Map<string, { number: string; limit: number; people: string[]; labels: Set<string>; on: boolean }>();
   for (const x of staff.filter(y => !y.leftOn)) for (const n of x.waNumbers || []) if (validNumber(n.number)) {
@@ -53,21 +54,21 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
     <div className="proj-head"><PageIc n="users" tone="blue" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
     <div className="card"><div className="card-row"><div className="ptabs" role="tablist"><Go href="/admin" current={!showPast ? 'true' : 'false'} replace>Staff <span className="tab-new">{sorted.length}</span></Go><Go href="/admin?v=past" current={showPast ? 'true' : 'false'} replace>Past employees <span className="tab-new">{pastStaff.length}</span></Go></div><div className="emp-acts"><Go href="/admin?add=1" className="btn primary sm">+ Add someone</Go><Go href="/admin?m=delete" className="btn sm danger"><Ic n="x" s={14} /> Delete employee</Go></div></div>
       {!showPast ? <>
-      {noAcc.length ? <div className="callout warn" style={{ marginBottom: 12 }}><div><b>{noAcc.map(x => x.name).join(', ')}</b> {noAcc.length === 1 ? 'doesn\'t' : 'don\'t'} report to an accountant yet, so no accountant is approving {noAcc.length === 1 ? 'his' : 'their'} payments by name. Pick one with Edit › Reports to.</div></div> : null}
+      {noAcc.length ? <div className="callout warn" style={{ marginBottom: 12 }}><div><b>{noAcc.map(x => x.name).join(', ')}</b> {noAcc.length === 1 ? 'doesn\'t' : 'don\'t'} report to an accountant yet, so no accountant is looking after {noAcc.length === 1 ? 'his' : 'their'} payments by name. Tick one or more with Edit › Reports to.</div></div> : null}
       <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Employee</th><th>Email</th><th>Role</th><th>Access</th><th>Last active</th><th></th></tr></thead><tbody>
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
           <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}<div className="cell-sub num">{nos.map.get(s.id)}{s.cnic ? ` · CNIC ${s.cnic}` : ''}{s.phone ? ` · ${s.phone}` : ''}</div>
             {!s.cnic ? <span className="tag warn">CNIC not on file</span> : cnicState(s.cnicExpiry, today) === 'expired' ? <span className="tag bad">{cnicNote(s.cnicExpiry, today)}</span> : cnicState(s.cnicExpiry, today) === 'soon' ? <span className="tag warn">{cnicNote(s.cnicExpiry, today)}</span> : null}</td>
           <td className="cell-sub">{s.email}{(s.waNumbers || []).length ? <div className="wa-nums-cell">{(s.waNumbers || []).map(n => <span key={n.id} className="num" style={{ whiteSpace: 'nowrap' }}><Wa inl /> {fmtNumber(n.number)} <small>{n.label}{n.active ? '' : ', not in use'}</small></span>)}</div> : s.role === 'manager' ? <div><span className="tag warn">No WhatsApp number</span></div> : null}</td>
-          <td>{roleTag(s.role)}{s.role !== 'admin' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || <span className="tag warn">No building ticked{s.role === 'accountant' ? ': sees every building until you tick them' : ''}</span>}</div> : null}
-            {s.role === 'manager' ? <div className="cell-sub">{accName(s.reportsTo) ? <>Reports to <b>{accName(s.reportsTo)}</b></> : <span className="tag warn">No accountant: pick one with Edit</span>}</div> : null}
+          <td>{roleTag(s.role)}{s.role !== 'admin' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || (s.role === 'accountant' && mgrsOf(s.id).length ? <span>Only his building managers&apos; buildings</span> : <span className="tag warn">No building ticked{s.role === 'accountant' ? ': sees every building until you tick them' : ''}</span>)}</div> : null}
+            {s.role === 'manager' ? <div className="cell-sub">{accsOf(s).length ? <>Reports to <b>{accsOf(s).join(', ')}</b></> : <span className="tag warn">No accountant: pick one or more with Edit</span>}</div> : null}
             {s.role === 'accountant' && mgrsOf(s.id).length ? <div className="cell-sub">Building managers: {mgrsOf(s.id).join(', ')}</div> : null}</td>
           <td>{s.active ? <span className="tag good">Can sign in</span> : <span className="tag bad">Turned off</span>}</td>
           <td className="cell-sub" style={{ whiteSpace: 'nowrap' }}>{l ? lastSeen(l.d, l.t) : 'Not yet'}</td>
           <td className="r" style={{ whiteSpace: 'nowrap' }}><Go href={`/log?who=${encodeURIComponent(s.id)}`} className="btn sm">Activity</Go> <Go href={`/admin?edit=${encodeURIComponent(s.id)}`} className="btn sm">Edit</Go></td>
         </tr>; })}
       </tbody></table></div>
-      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants approve, one by one, the payments their building managers enter, and do the desk work: bills, reminders, notices, fines, discounts, electricity and new customers; their changes go to an Admin for approval. An accountant sees the buildings ticked for him plus his building managers&apos; buildings. Building managers only enter payments and send the receipt on WhatsApp, for the buildings ticked for them, and each reports to one accountant.</p>
+      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Admins (the owner and directors) see every building, change rates, plans and the fine, approve requests and manage staff. Accountants approve, one by one, the payments their building managers enter, and do the desk work: bills, reminders, notices, fines, discounts, electricity and new customers; their changes go to an Admin for approval. An accountant sees the buildings ticked for him plus his building managers&apos; buildings. Building managers only enter payments and send the receipt on WhatsApp, for the buildings ticked for them, and each reports to one or more accountants.</p>
       </> : <>
       {pastStaff.length ? <div className="tbl-wrap"><table className="staff-tbl"><thead><tr><th>Employee</th><th>Role</th><th>Last working day</th><th>Why</th><th></th></tr></thead><tbody>
         {pastStaff.map(s => <GoRow key={s.id} href={`/admin?v=past&past=${encodeURIComponent(s.id)}`} className="row-link">
@@ -119,7 +120,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         <IdBox label="Employee ID" value={nos.map.get(ed.id) || '—'} />
         <PersonFields key={'p' + ed.id} prefix="ed" today={today} required={false} values={{ name: ed.name, cnic: ed.cnic, cnicExpiry: ed.cnicExpiry, cnicAddress: ed.cnicAddress, phone: ed.phone }} />
         <div className="form-row"><label htmlFor="ed-e">Email (they sign in with it)</label><input id="ed-e" name="email" type="email" autoComplete="off" defaultValue={ed.email} required /></div>
-        <StaffAccess key={ed.id} prefix="ed" role={ed.role} projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={ed.role === 'admin' ? [] : ed.projects || []} saving="save" accountants={accOpts} reportsTo={ed.reportsTo || ''} />
+        <StaffAccess key={ed.id} prefix="ed" role={ed.role} projects={projs.map(p => ({ id: p.id, name: p.name }))} picked={ed.role === 'admin' ? [] : ed.projects || []} saving="save" accountants={accOpts} reportsTo={accountantsOf(ed)} />
         <WaNumbersField key={'n' + ed.id} prefix="ed" initial={ed.waNumbers || []} />
         <div className="form-row"><label htmlFor="ed-p">New password <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(leave empty to keep the current one)</span></label><PasswordInput id="ed-p" name="password" autoComplete="new-password" minLength={8} /></div>
         <label className="cb"><input type="checkbox" name="active" defaultChecked={ed.active} /> Can sign in{ed.id === me.id ? ' (you can\'t turn off your own access)' : ''}</label>

@@ -15,7 +15,7 @@ import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
   verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock, GEN, GEN_FEE } from './engine';
 import { fd, rs, ord, waDigits, todayPKT } from './fmt';
-import { normCnic, keepCustIds, staffNos, nextCustId } from './people';
+import { normCnic, keepCustIds, staffNos, nextCustId, accountantsOf, reportsToAcc, withoutAcc } from './people';
 import { finalElec, billFinal } from './meter';
 import { normPhone } from './importer';
 import { blankOwner } from './seed';
@@ -290,7 +290,9 @@ const roleLabel = (r: string) => r === 'admin' ? 'Admin' : r === 'manager' ? 'Bu
 const roleOf = (v: string): Staff['role'] => v === 'admin' ? 'admin' : v === 'manager' ? 'manager' : 'accountant';
 /** The buildings ticked on the staff form (only kept for Building managers). */
 /** A building manager's accountant: an active accountant, or none. */
-const reportsOf = (f: FormData, role: string, list: Staff[]) => { const v = String(f.get('reportsTo') || ''); return role === 'manager' && list.some(x => x.id === v && x.role === 'accountant' && x.active && !x.leftOn) ? v : null; };
+const reportsOf = (f: FormData, role: string, list: Staff[]): string[] => role !== 'manager' ? []
+  : [...new Set(f.getAll('accountants').map(String))].filter(v => list.some(x => x.id === v && x.role === 'accountant' && x.active && !x.leftOn));
+const accNames = (ids: string[], list: Staff[]) => ids.map(i => list.find(x => x.id === i)?.name || i).join(', ');
 const buildingsOf = (f: FormData, role: string) => role === 'manager' || role === 'accountant' ? f.getAll('projects').map(String).filter(Boolean) : [];
 async function authAdmin() {
   const { createClient } = await import('@supabase/supabase-js');
@@ -328,7 +330,7 @@ export async function staffAction(fdata: FormData) {
   if (role !== 'admin' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ')}`);
   if ((role === 'manager' || role === 'accountant') && !projects.length) go(back, 'Please select at least one building for this role before saving.');
   if (active !== st!.active) ch.push(active ? 'can sign in again' : 'sign-in turned off');
-  if ((reportsTo || null) !== (st!.reportsTo || null)) ch.push(`reports to ${reportsTo ? list.find(x => x.id === reportsTo)?.name : 'no accountant'}`);
+  if ([...reportsTo].sort().join(',') !== [...accountantsOf(st!)].sort().join(',')) ch.push(`reports to ${reportsTo.length ? accNames(reportsTo, list) : 'no accountant'}`);
   if (password) ch.push('password changed');
   // WhatsApp numbers this person sends from (20 Nov 2026): checked, and every change logged.
   let waNumbers: WaNumber[] = [], bad = '';
@@ -353,9 +355,9 @@ export async function staffAction(fdata: FormData) {
     const { error } = await (await authAdmin()).updateUserById(id, { ...(email !== st!.email ? { email, email_confirm: true } : {}), ...(password ? { password } : {}) });
     if (error) go(back, `Couldn't update the login: ${error.message}`);
   } else if (password) go(back, 'Local mode has one shared password (LOCAL_PASSWORD). Connect Supabase to give each person their own.');
-  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers, staffNo, cnic, cnicExpiry, cnicAddress, phone, reportsTo });
-  // An accountant who stops being one: his building managers no longer report to anyone (the Admin is told on the page).
-  if (st!.role === 'accountant' && role !== 'accountant') for (const x of list) if (x.reportsTo === st!.id) await store.saveStaff({ ...x, reportsTo: null });
+  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers, staffNo, cnic, cnicExpiry, cnicAddress, phone, accountantIds: reportsTo, reportsTo: reportsTo[0] || null });
+  // An accountant who stops being one: his building managers no longer report to him (the Admin is told on the page).
+  if (st!.role === 'accountant' && role !== 'accountant') for (const x of list) if (reportsToAcc(x, st!.id)) await store.saveStaff(withoutAcc(x, st!.id));
   // A new password or login, or sign-in turned off: sign them out on every device at once (18 Nov 2026).
   let ended = false;
   if (store.kind === 'supabase' && (password || email !== st!.email || (!active && st!.active)) && st!.id !== me.id) ended = await endSessions(st!.id);
@@ -393,8 +395,8 @@ export async function inviteAction(fdata: FormData) {
     id = data.user!.id;
   }
   const reportsTo = reportsOf(fdata, role, list);
-  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers, staffNo, phone: normPhone(phone), cnic, cnicExpiry, cnicAddress, reportsTo });
-  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')}${reportsTo ? `, reports to ${list.find(x => x.id === reportsTo)?.name}` : ''})` : `an accountant (${projects.join(', ')})`;
+  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers, staffNo, phone: normPhone(phone), cnic, cnicExpiry, cnicAddress, accountantIds: reportsTo, reportsTo: reportsTo[0] || null });
+  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')}${reportsTo.length ? `, reports to ${accNames(reportsTo, list)}` : ''})` : `an accountant (${projects.join(', ')})`;
   await staffLog(me, `${name} (${staffNo}, CNIC ${cnic}, ${email}) added as ${as} by ${staffName(me)}${waNumbers.length ? `; WhatsApp numbers: ${numsText(waNumbers)}` : ''}`);
   go('/admin', `${name} (${staffNo}) can now sign in as ${as}`);
 }

@@ -281,9 +281,11 @@ export interface Staff { id: string; email: string; name: string; role: Role; ac
   staffNo?: string | null; phone?: string | null; cnic?: string | null; cnicExpiry?: string | null; cnicAddress?: string | null;
   /** 24 Nov 2026: a past employee (deleted by the Admin): their last working day, why, and who recorded it. They can't sign in. */
   leftOn?: string | null; leftReason?: string | null; leftBy?: string | null;
-  /** 25 Nov 2026: a building manager's accountant (staff id), set by the Admin. The accountant sees his managers'
-   *  buildings and approves their payments; their desk work (bills, reminders, notices) is his. */
-  reportsTo?: string | null }
+  /** 25 Nov 2026: a building manager's accountant (staff id), set by the Admin. Kept as the first of accountantIds. */
+  reportsTo?: string | null;
+  /** 26 Nov 2026: the accountants a building manager reports to (one or more), set by the Admin. Each sees his managers'
+   *  buildings and approves their payments; their desk work (bills, reminders, notices) is theirs. */
+  accountantIds?: string[] | null }
 /** A WhatsApp number staff send from. The limit counts different customers in any 24 hours, per number (a number on
  *  two people's details has one count). */
 export interface WaNumber { id: string; number: string; label: 'Personal' | 'Company'; limit: number; active: boolean }

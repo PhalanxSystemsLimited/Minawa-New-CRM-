@@ -123,5 +123,11 @@ export function scoped(me: Staff, all: Staff[]): Staff {
   for (const m of mine) for (const p of m.projects || []) set.add(p);
   return { ...me, projects: [...set] };
 }
+/** The accountants a building manager reports to (one or more; before 26 Nov 2026 only one, in reportsTo). */
+export const accountantsOf = (x: Staff): string[] => x.accountantIds?.length ? x.accountantIds : x.reportsTo ? [x.reportsTo] : [];
+/** Does this building manager report to that accountant? */
+export const reportsToAcc = (x: Staff, accId: string) => accountantsOf(x).includes(accId);
 /** The active building managers who report to this accountant. */
-export const myManagers = (me: Staff, all: Staff[]) => all.filter(x => x.active && !x.leftOn && x.role === 'manager' && x.reportsTo === me.id);
+export const myManagers = (me: Staff, all: Staff[]) => all.filter(x => x.active && !x.leftOn && x.role === 'manager' && reportsToAcc(x, me.id));
+/** A building manager without one accountant: what is saved (the first stays in reportsTo for older screens). */
+export const withoutAcc = (x: Staff, accId: string): Staff => { const ids = accountantsOf(x).filter(i => i !== accId); return { ...x, accountantIds: ids, reportsTo: ids[0] || null }; };
