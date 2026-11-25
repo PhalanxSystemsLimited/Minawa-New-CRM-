@@ -5,7 +5,7 @@ import { liveProjects, load } from '@/lib/ops';
 import { duesList, monthReport } from '@/lib/reports';
 import { PrintBtn, Go } from '@/components/client';
 import { fd, fds, fm, rs, todayPKT, prevMonth } from '@/lib/fmt';
-import { PageIc, KIc, Empty, SplitBar, BarChart, Donut } from '@/components/views/art';
+import { PageIc, KIc, Empty, BarChart, Donut } from '@/components/views/art';
 import { Ic } from '@/components/icons';
 
 export const dynamic = 'force-dynamic';
@@ -51,16 +51,21 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
           <div className="kpi"><KIc n="alert" tone="amber" /><div className="l">Overdue</div><div className="v num">{rows.filter(x => x.status === 'overdue').length}</div><div className="cell-sub">past the due date</div></div>
           <div className="kpi"><KIc n="ban" tone="red" /><div className="l">Discontinued</div><div className="v num">{rows.filter(x => x.status === 'flagged').length}</div><div className="cell-sub">maintenance stopped</div></div>
         </div>
-        {rows.length ? (() => {
-          const part = (k: 'arrears' | 'bills' | 'fine' | 'other') => rows.reduce((a, x) => a + x[k], 0);
-          const bucket = (lo: number, hi: number) => { const l = rows.filter(x => x.daysOver >= lo && x.daysOver <= hi); return { n: l.length, amt: l.reduce((a, x) => a + x.total, 0) }; };
-          const ages: [string, { n: number; amt: number }][] = [['1 to 15 days late', bucket(1, 15)], ['16 to 30 days', bucket(16, 30)], ['31 to 60 days', bucket(31, 60)], ['Over 60 days', bucket(61, 99999)]];
-          return <div className="viz two no-print-break">
-            <div className="card"><div className="card-row"><h3>What is owed <small>{rs(sum)} in total</small></h3></div>
-              <SplitBar fmt={rs} parts={[{ label: 'Earlier dues', value: part('arrears'), tone: 'amber' }, { label: 'Unpaid bills', value: part('bills'), tone: 'rust' }, { label: 'Fines', value: part('fine'), tone: 'red' }, { label: 'Other charges', value: part('other'), tone: 'slate' }]} /></div>
-            <div className="card"><div className="card-row"><h3>How late <small>by the oldest due date</small></h3></div>
-              <div className="age">{ages.map(([l, b]) => <div key={l}><span>{l}</span><b className="num">{b.n}</b><small className="num">{b.n ? rs(b.amt) : 'none'}</small></div>)}</div></div>
-          </div>; })() : null}
+        {(() => {
+          // Two plain answers (26 Nov 2026), in place of the owed split and the lateness buckets: how many apartments are
+          // paid up, and how much came in this month.
+          const mr = states.map(x => monthReport(x, today.slice(0, 7)));
+          const apts = mr.reduce((a, x) => a + x.aptCount, 0), up = mr.reduce((a, x) => a + x.paidUp, 0), pc = apts ? Math.round(up * 100 / apts) : 0;
+          const got = mr.reduce((a, x) => a + x.collected, 0), nPay = mr.reduce((a, x) => a + x.nPays, 0);
+          return <div className="viz two no-print-break rpt-easy">
+            <div className="card"><div className="card-row"><h3>Paid up <small>active apartments</small></h3></div>
+              <div className="re-big"><b className="num">{up}</b><span>of {apts} apartment{apts === 1 ? '' : 's'} owe nothing</span></div>
+              <div className="re-bar" role="img" aria-label={`${pc}% paid up`}><i style={{ width: `${pc}%` }} /></div>
+              <div className="re-legend"><span className="good">{pc}% paid up</span><span className="bad">{apts - up} still owe</span></div></div>
+            <div className="card"><div className="card-row"><h3>Collected this month <small>{fm(today.slice(0, 7))}</small></h3></div>
+              <div className="re-big"><b className="num">{rs(got)}</b><span>from {nPay} payment{nPay === 1 ? '' : 's'}</span></div>
+              <p className="cell-sub" style={{ margin: '10px 0 0' }}>Day by day and by who collected it: <Go href={qs({ r: 'month' })}>Monthly collection</Go></p></div>
+          </div>; })()}
         <div className="card"><div className="card-row"><h3>{overdue ? 'Defaulters' : 'Who owes'} <small>{rows.length} apartment{rows.length === 1 ? '' : 's'} · worst first</small></h3></div>
           {rows.length ? <div className="tbl-wrap"><table className="rpt-tbl"><thead><tr><th>Apartment</th><th>Owner</th>{pid ? null : <th>Building</th>}<th className="r">Earlier dues</th><th className="r">Unpaid bills</th><th className="r">Fine</th>{rows.some(x => x.other) ? <th className="r">Other</th> : null}<th className="r">Total</th><th>Oldest due</th><th>Status</th></tr></thead><tbody>
             {rows.map(x => <tr key={x.project + x.ownerId}>

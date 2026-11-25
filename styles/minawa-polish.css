@@ -1189,3 +1189,11 @@ html:not([data-theme=frost]) body:has(.mgr-app){background-image:radial-gradient
   .dep-row .dep-slip,.dep-row .dep-date{flex:1 1 auto}
   .dep-row>.btn{width:100%;justify-content:center}
 }
+/* Reports, dues: two plain cards (paid up, collected this month) */
+.rpt-easy .re-big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:4px}
+.rpt-easy .re-big b{font-size:30px;line-height:1.1}
+.rpt-easy .re-big span{color:var(--muted);font-size:14px}
+.rpt-easy .re-bar{height:12px;border-radius:99px;background:color-mix(in srgb,var(--bad) 22%,transparent);overflow:hidden;margin:14px 0 8px}
+.rpt-easy .re-bar i{display:block;height:100%;border-radius:99px;background:var(--good)}
+.rpt-easy .re-legend{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.rpt-easy .re-legend .good{color:var(--good)}.rpt-easy .re-legend .bad{color:var(--bad)}
