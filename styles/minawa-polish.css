@@ -1177,3 +1177,15 @@ html:not([data-theme=frost]) body:has(.mgr-app){background-image:radial-gradient
 .st-sum small{font-size:11.5px;color:var(--muted)}.st-sum b{font-size:17px}
 .st-sum .good b{color:var(--good)}.st-sum .bad b{color:var(--bad)}
 :root[data-theme=frost] .st-sum>div{background:rgba(255,255,255,.12)}
+/* Bank deposit form (payments): slip number takes the free width; stacks on phones */
+.dep-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+.dep-row .form-row{margin:0}
+.dep-row .dep-slip{flex:1 1 320px;min-width:0}
+.dep-row .dep-date{flex:0 0 190px}
+.dep-row .dep-slip input,.dep-row .dep-date input{width:100%;box-sizing:border-box}
+.dep-row>.btn{flex:0 0 auto}
+@media (max-width:640px){
+  .dep-row{flex-direction:column;align-items:stretch;gap:12px}
+  .dep-row .dep-slip,.dep-row .dep-date{flex:1 1 auto}
+  .dep-row>.btn{width:100%;justify-content:center}
+}

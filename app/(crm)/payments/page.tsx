@@ -133,9 +133,9 @@ export default async function Payments({ searchParams }: { searchParams: Promise
           <div className="tbl-wrap" data-nocap><table><thead><tr><th></th><th>Batch</th><th>Building</th><th>From</th><th>Confirmed</th><th className="r">Amount</th></tr></thead><tbody>
             {now.toDeposit.map(({ h, pname }) => <tr key={h.id}><td><input type="checkbox" name="h" value={`${h.project}:${h.id}`} defaultChecked aria-label={`Deposit ${h.id}`} /></td><td>{h.id}</td><td>{pname}</td><td>{h.fromName}</td><td>{h.receivedD ? fds(h.receivedD) : ''}</td><td className="r num">{rs(h.amount)}</td></tr>)}
           </tbody></table></div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 12 }}>
-            <div className="form-row" style={{ margin: 0 }}><label htmlFor="dp-s">Deposit slip number</label><input id="dp-s" name="slip" type="text" required /></div>
-            <div className="form-row" style={{ margin: 0 }}><label htmlFor="dp-d">Deposited on</label><input id="dp-d" name="d" type="date" defaultValue={today} max={today} required /></div>
+          <div className="dep-row">
+            <div className="form-row dep-slip"><label htmlFor="dp-s">Deposit slip number</label><input id="dp-s" name="slip" type="text" required placeholder="e.g. 0045821" autoComplete="off" /></div>
+            <div className="form-row dep-date"><label htmlFor="dp-d">Deposited on</label><input id="dp-d" name="d" type="date" defaultValue={today} max={today} required /></div>
             <Submit className="btn primary">Record bank deposit</Submit></div>
         </form> : <div className="tbl-wrap"><table><thead><tr><th>Batch</th><th>Building</th><th>From</th><th>Confirmed by</th><th className="r">Amount</th></tr></thead><tbody>
             {now.toDeposit.map(({ h, pname }) => <tr key={h.id}><td>{h.id}</td><td>{pname}</td><td>{h.fromName}</td><td>{h.receivedBy} · {h.receivedD ? fds(h.receivedD) : ''}</td><td className="r num">{rs(h.amount)}</td></tr>)}
