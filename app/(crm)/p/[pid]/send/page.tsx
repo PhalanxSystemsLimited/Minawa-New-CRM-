@@ -28,7 +28,7 @@ const KIND: Record<string, string> = { bill: 'Bill', reminder: 'Reminder', notic
 export default async function SendPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
   const me = await requireStaff();
-  if (me.role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('Sending on WhatsApp is the building manager\'s work.')}`);
+  if (me.role !== 'accountant') redirect(`/p/${pid}?flash=${encodeURIComponent('Sending on WhatsApp is the Accountant\'s work.')}`);
   // The person's WhatsApp numbers and how much of each one's daily limit is used (20 Nov 2026).
   const nums = activeNumbers(me);
   let usage: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['waUsage']>> = [];

@@ -28,7 +28,8 @@ export const dynamic = 'force-dynamic';
 export default async function Electricity({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
   return projectPage(pid, sp, () => {
-    const S = cur(), mgr = S.role === 'manager', photos = !!photoStore(), base = `/p/${pid}/electricity`;
+    const S = cur(), mgr = S.role === 'accountant', photos   // 25 Nov 2026: electricity is the Accountant's work
+      = !!photoStore(), base = `/p/${pid}/electricity`;
     if (!S.settings.rules.utilities.includes('Electricity')) return <>{projHead('electricity')}<Empty card kind="done" title="No electricity bills here">Electricity is billed only where it is switched on in Settings (Oakwood).</Empty></>;
     const tab = sp.tab === 'add' && mgr ? 'add' : 'bills', meter = meterMode(), rate = unitRate(S.today);
     const all = S.bills.filter(b => isUtilBill(b) && ownerById(b.ownerId)).sort((a, b) => b.period.localeCompare(a.period) || ownerById(a.ownerId).apt.localeCompare(ownerById(b.ownerId).apt, 'en', { numeric: true }));
@@ -202,7 +203,7 @@ export default async function Electricity({ params, searchParams }: { params: Pr
     const billCell = (b: Bill) => { const c = ch(b); return <>{utilKind(b)} · {fm(b.period)}<div className="cell-sub">{rs(b.net)}{c?.units != null ? ` · ${c.units} units` : ''}{c?.prevReading != null && c?.curReading != null ? ` · meter ${c.prevReading} → ${c.curReading}` : c?.curReading != null ? ` · meter ${c.curReading}` : ''}{b.paid > 0 && left(b) > 0 ? ` · ${rs(b.paid)} paid` : ''}</div></>; };
     return <>
       {projHead('electricity')}
-      <div className="page-head"><div><h2>Electricity bills</h2><p>Who has paid their electricity bill and who hasn&apos;t. {mgr ? <>Correct an unpaid bill with <b>Edit</b>; when a customer pays, press <b>Bill received</b> and add a photo. Paid bills are the history and can&apos;t be changed. New bills are entered under <b>Add electricity bills</b>.</> : 'The building manager enters the bills, corrects unpaid ones and marks them received. Paid bills are the history and can\'t be changed.'} Customers&apos; balances include maintenance and electricity.</p></div></div>
+      <div className="page-head"><div><h2>Electricity bills</h2><p>Who has paid their electricity bill and who hasn&apos;t. {mgr ? <>Correct an unpaid bill with <b>Edit</b>; payments are entered by the building manager (For: Electricity). Paid bills are the history and can&apos;t be changed. New bills are entered under <b>Add electricity bills</b>.</> : 'The Accountant enters the bills and corrects unpaid ones; the building manager enters the payments. Paid bills are the history and can\'t be changed.'} Customers&apos; balances include maintenance and electricity.</p></div></div>
       {top}
       <div className="kpis">
         <div className="kpi"><KIc n="alert" tone="amber" /><div className="l">Not paid</div><div className="v num">{notPaid.length}</div><div className="cell-sub">{rs(sum(notPaid, left))} to collect</div></div>
@@ -234,7 +235,6 @@ export default async function Electricity({ params, searchParams }: { params: Pr
                 <td data-l="Photo of the bill">{photo(b)}</td>
                 <td data-l="Balance" className="r num">{rs(Math.max(0, bal))}<div className="cell-sub">maintenance {rs(Math.max(0, bal - ed))} · electricity {rs(ed)}</div></td>
                 <td className="r" style={{ whiteSpace: 'nowrap' }}>{mgr ? <div className="el-acts">
-                  <Go href={`${base}?${new URLSearchParams({ ...(month ? { period: month } : {}), m: `elecpaid-${b.id}`, oid: o.id })}`} className="btn sm primary"><Ic n="tick" s={15} /> Bill received</Go>
                   {!lock && ch(b) ? <Go href={href({ m: `elecedit-${b.id}`, n: sp.n || '' })} className="btn sm"><Ic n="edit" s={15} /> Edit</Go> : null}
                   {b.dueDate < S.today && !hasFine(b) && fineSteps().length ? pendingFor(o).some(a => a.kind === 'elecfine' && a.change.billId === b.id) ? <span className="tag info">Fine waiting for approval</span>
                     : <Go href={href({ m: `elecfine-${b.id}`, n: sp.n || '' })} className="btn sm"><Ic n="flag" s={15} /> Fine{fineOfferFor(b, S.today).pct ? ` ${fineOfferFor(b, S.today).pct}%` : ''}</Go> : null}

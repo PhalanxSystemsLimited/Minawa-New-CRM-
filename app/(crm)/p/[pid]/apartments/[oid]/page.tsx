@@ -83,8 +83,8 @@ export default async function Apartment({ params, searchParams }: { params: Prom
           <div className="bal"><div className="l">{bal < 0 ? 'Credit' : 'Owes'}</div><div className="v num" style={{ color: bal > 0 ? (st === 'flagged' ? 'var(--bad)' : 'var(--fg)') : 'var(--good)' }}>{rs(Math.abs(bal))}</div><div className="cell-sub">{bal < 0 ? 'Used for the next bills' : bal > 0 ? (elec ? `maintenance ${rs(Math.max(0, bal - elecDue(o)))} · electricity ${rs(elecDue(o))}` : '') : 'All paid'}</div></div>
         </div>
         {closed ? null : <div className="actions">
-          {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">{S.role === 'manager' ? 'Enter payment' : 'Record cash payment'}</Go> : null}
-          {bal > 0 && !o.exempt && S.role === 'manager' ? waBtn(o) : null}
+          {bal > 0 && S.role !== 'admin' ? <Go href={m('recpay')} className="btn primary">Record cash payment</Go> : null}
+          {bal > 0 && !o.exempt && S.role === 'accountant' ? waBtn(o) : null}
           <Go href={`/customers/${pid}/${o.id}`} className="btn"><Ic n="users" s={16} /> View customer details</Go>
         </div>}
       </div>

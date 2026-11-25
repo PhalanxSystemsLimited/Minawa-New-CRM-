@@ -93,8 +93,8 @@ function QuickActions({ projects, pid, role }: { projects: { id: string; name: s
   const path = usePathname(), ref = useRef<HTMLDetailsElement>(null), [pick, setPick] = useState<string | null>(null);
   useEffect(() => { ref.current?.removeAttribute('open'); setPick(null); }, [path]);   // close after going somewhere
   const here = pid ? projects.find(p => p.id === pid) : null;
-  // Sending on WhatsApp is the building manager's work; payments are entered by building managers and accountants.
-  const mgr = role === 'Building manager', all: [string, string, (id: string) => string][] = [
+  // Sending on WhatsApp is the Accountant's work (25 Nov 2026); payments are entered by building managers and accountants.
+  const mgr = role === 'Accountant', all: [string, string, (id: string) => string][] = [
     ['link', 'Send dues on WhatsApp', id => `/p/${id}?m=sendpick`],
     ['pay', 'Record a cash payment', id => `/p/${id}/apartments?f=owing`],
     ['ann', 'Send an announcement', id => `/p/${id}/send?mode=announce`],

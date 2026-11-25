@@ -19,6 +19,7 @@ import { viaHtml, when, ownerHref } from '@/components/views/bits';
 import { DocModal } from '@/components/views/modals';
 import { ActivityList, lastSeen } from '@/components/views/activity';
 import { getStore } from '@/lib/store';
+import { ManagerHome } from '@/components/views/manager';
 import { ApprovalItem, type ApprovalView } from '@/components/views/approvals';
 import { fmtNumber, freeAt, validNumber } from '@/lib/wa-numbers';
 
@@ -27,6 +28,8 @@ export const dynamic = 'force-dynamic';
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams;
   const staff = await requireStaff();
+  // 25 Nov 2026: a building manager's whole screen is his customer list, the money box and Add payment.
+  if (staff.role === 'manager') return <ManagerHome staff={staff} sp={sp} />;
   const projs = await listProjects(staff);
   const live = projs.filter(p => p.live), off = projs.filter(p => !p.live);
   const states = await Promise.all(live.map(p => load(p.id, staff)));
@@ -46,15 +49,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const up = states.flatMap(s => use(s, () => upcoming(14, 6).map(x => ({ ...x, pname: s.proj.name })))).sort((a, b) => a.d.localeCompare(b.d) || oNum(a.e.o.id) - oNum(b.e.o.id)).slice(0, 6);
   // Admins see what the accountants have been doing.
   let accActs: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getLog']>> = [], staffList: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['listStaff']>> = [];
-  if (staff.role !== 'manager') {
+  {
     // Admins: accountants and building managers. Accountants: the building managers (their own is under Activity).
     const store = await getStore(); staffList = await store.listStaff();
-    const ids = staffList.filter(x => x.role === 'manager' || (staff.role === 'admin' && x.role === 'accountant')).map(x => x.id);
+    const ids = staffList.filter(x => (x.role === 'manager' && (staff.role === 'admin' || x.reportsTo === staff.id)) || (staff.role === 'admin' && x.role === 'accountant')).map(x => x.id);
     accActs = (await store.getLog({ staffIds: ids, limit: 40 })).filter(e => !['signin', 'signout'].includes(e.kind)).slice(0, 6);
   }
   // WhatsApp sent by hand: everyone's for admins, your own for accountants.
   let wa: Awaited<ReturnType<Awaited<ReturnType<typeof getStore>>['getWaLog']>> = [];
-  try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : staff.role === 'accountant' ? [staff.id, ...staffList.filter(x => x.role === 'manager').map(x => x.id)] : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
+  try { wa = await (await getStore()).getWaLog({ staffIds: staff.role === 'admin' ? null : staff.role === 'accountant' ? [staff.id, ...staffList.filter(x => x.role === 'manager' && x.reportsTo === staff.id).map(x => x.id)] : [staff.id], limit: 200, since: today.slice(0, 8) + '01' }); } catch { wa = []; }
   // The WhatsApp tab's counter: messages sent today since this person last opened the tab (kept in a cookie).
   const waSeenName = `mwa_${staff.id.replace(/[^a-z0-9-]/gi, '')}`, waSeen = decodeURIComponent((await cookies()).get(waSeenName)?.value || '');
   const waToday = wa.filter(e => e.d === today), waSent = waToday.filter(e => e.answer === 'sent' && (e.at || '') > waSeen).length;
@@ -100,7 +103,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const r0 = st[0]?.s.settings.rules, dueDay = r0 ? r0.dueDays : 15;
   const firstTodo = st.find(x => x.todo)?.p.id || live[0]?.id || '', firstSend = per.find(x => x.send)?.id || live[0]?.id || '', firstNew = per.find(x => x.newN)?.id || live[0]?.id || '';
   // The three To do lists (lib/tasks.ts): managers' work, accountants' work, and this person's own.
-  const allT = states.flatMap(s => projectTasks(s)), mgrT = allT.filter(t => t.role === 'manager'), accT = allT.filter(t => t.role === 'accountant'), myT = myTasks(allT, staff);
+  const allT = states.flatMap(s => projectTasks(s)), accT = allT.filter(t => t.role === 'accountant'), myT = myTasks(allT, staff);
   const lateN = (l: typeof allT) => l.filter(t => t.overdue).length;
   const hr = +nowPKT().slice(0, 2), hello = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
   const apvKinds = Object.entries(apvWait.reduce((a, v) => { a[KIND_LABEL[v.a.kind]] = (a[KIND_LABEL[v.a.kind]] || 0) + 1; return a; }, {} as Record<string, number>)).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(' · ');
@@ -120,10 +123,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <span className="lv-fi-r">{e.answer === 'sent' ? <span className="tag good">Sent</span> : <span className="tag warn">Not sent</span>}</span></div>)}</div>
     : <Empty kind="send" small title="Nothing sent this month">Messages sent from Send on WhatsApp show here with who sent them and when.</Empty>;
 
-  // Past due: first for a building manager (it is his work), after the money and the buildings for the others.
+  // Past due: after the money and the buildings; the Accountant can send a reminder straight away.
   const pastDue = (() => {
       // Past due (Phase 2): customers whose bill (or old arrears) is past its due date, worst first. The building manager
-      // can send a reminder straight away; others open the customer.
+      // (the Accountant) can send a reminder straight away; others open the customer.
       const late = duesList(states, true).slice(0, 8), all = duesList(states, true).length;
       if (!late.length) return null;
       return <><Lbl>Past due</Lbl>
@@ -132,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             {late.map(x => <tr key={x.project + x.ownerId}><td><A href={`/p/${x.project}/apartments/${x.ownerId}`} className="apt-a"><b>{x.apt}</b></A></td><td>{x.name}</td><td>{x.pname}</td>
               <td className="r num"><b>{rs(x.total)}</b>{x.fine ? <div className="cell-sub">incl. fine {rs(x.fine)}</div> : null}</td>
               <td style={{ whiteSpace: 'nowrap' }}>{x.oldestDue ? fds(x.oldestDue) : '—'}<div className="cell-sub">{x.daysOver} day{x.daysOver === 1 ? '' : 's'} late{x.status === 'flagged' ? ' · discontinued' : ''}</div></td>
-              <td className="r">{staff.role === 'manager' && x.phone ? <A href={`/p/${x.project}/send?type=reminder&ids=${x.ownerId}&go=1`} className="btn sm wa">Send reminder</A> : <A href={`/p/${x.project}/apartments/${x.ownerId}`} className="btn sm">Open</A>}</td></tr>)}
+              <td className="r">{staff.role === 'accountant' && x.phone ? <A href={`/p/${x.project}/send?type=reminder&ids=${x.ownerId}&go=1`} className="btn sm wa">Send reminder</A> : <A href={`/p/${x.project}/apartments/${x.ownerId}`} className="btn sm">Open</A>}</td></tr>)}
           </tbody></table></div></div></>;
     })();
 
@@ -144,16 +147,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <div className="lv-needs">
       {staff.role === 'admin' ? <>
         <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="changes to approve" href="/approvals" pulse sub={apvWait.length ? apvKinds : 'Nothing waiting for you'} />
-        <NeedTile title="Building managers" icon="building" tone="red" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={mgrT.length ? `${lateN(mgrT)} late · ${sendN} owner${sendN === 1 ? '' : 's'} to message` : 'All clear'} />
-        <NeedTile title="Accountants" icon="coins" tone="green" n={accT.length} label={accT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={accT.length ? `${lateN(accT)} late · bank transfers to check` : 'All clear'} />
-      </> : staff.role === 'accountant' ? <>
-        <NeedTile title="To do" icon="clip" tone="red" n={accT.length} label={accT.length === 1 ? 'payment to check' : 'payments to check'} href="/tasks" pulse sub={accT.length ? `${lateN(accT)} late` : 'All clear'} />
-        <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
-        <NeedTile title="Building managers" icon="building" tone="green" n={mgrT.length} label={mgrT.length === 1 ? 'task open' : 'tasks open'} href="/tasks?v=managers" sub={mgrT.length ? `${lateN(mgrT)} late · to follow up` : 'All clear'} />
+        <NeedTile title="Accountants" icon="coins" tone="green" n={accT.length} label={accT.length === 1 ? 'task open' : 'tasks open'} href="/tasks" sub={accT.length ? `${lateN(accT)} late · ${sendN} owner${sendN === 1 ? '' : 's'} to message` : 'All clear'} />
       </> : <>
-        <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? (() => { const r = myT.filter(t => t.kind === 'receipt').length; return `${r ? `${r} receipt${r === 1 ? '' : 's'} to send first · ` : ''}${lateN(myT)} late`; })() : 'All clear'} />
-        <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
-        <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your requests waiting" href="/approvals" sub={apvWait.length ? apvKinds : 'Nothing waiting'} />
+        <NeedTile title="To do" icon="clip" tone="red" n={myT.length} label={myT.length === 1 ? 'thing to do' : 'things to do'} href="/tasks" pulse sub={myT.length ? `${lateN(myT)} late · entries, receipts, follow-ups` : 'All clear'} />
+        <NeedTile title="WhatsApp" icon="send" tone="green" n={sendN} label="WhatsApp to send" href={`/p/${firstSend}/send`} sub={sendN ? 'Bills, reminders, notices, receipts' : 'Nothing waiting'} />
+        <NeedTile title="Approvals" icon="shieldok" tone="amber" n={apvWait.length} label="of your changes waiting" href="/approvals" sub={apvWait.length ? apvKinds : apvRejected.length ? `${apvRejected.length} rejected in the last 30 days` : 'Nothing waiting'} />
       </>}
       <NeedTile title="Payments" icon="cash" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`/p/${firstNew}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
     </div>
@@ -165,7 +163,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <div className="strip-t"><b>{n} customer{n === 1 ? '' : 's'} with no possession date</b><span>Due on the 1st until a date is added · {per.map(x => `${x.p.name}: ${x.n}`).join(' · ')}{staff.role === 'admin' ? '' : ' · your dates go to the Admin for approval'}</span></div>
         <A href="/possession" className="btn sm primary"><Ic n="plus" s={14} /> Add possession dates</A></div>;
     })()}
-    {staff.role === 'manager' ? pastDue : null}
     <div className="lv-layout lv-dash">
     <div className="lv-main">
     <Lbl>Money at a glance</Lbl>
@@ -209,7 +206,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           <div className="bs-acts"><A href={`/reports?r=month&p=${b.pid}`} className="btn sm"><Ic n="chart" s={14} /> Monthly report</A><A href={`/reports?o=1&p=${b.pid}`} className="btn sm"><Ic n="alert" s={14} /> Defaulters</A></div>
         </div>)}</div></>;
     })()}
-    {staff.role !== 'manager' ? pastDue : null}
+    {pastDue}
     {!admin && apvRejected.length ? <div className="card apv-card"><div className="card-row"><h3>Rejected by an admin <small>{apvRejected.length} in the last 30 days, with the admin&apos;s note</small></h3><Go href="/approvals?s=done" className="btn sm">See all</Go></div>
       <div className="apv-list">{apvRejected.slice(0, 5).map(v => <ApprovalItem key={v.a.project + v.a.id} v={v} admin={false} meId={staff.id} back="/" />)}</div></div> : null}
 
@@ -241,7 +238,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     <Lbl>What happened</Lbl>
     <div className="card lv-act"><div className="card-row"><h3>Activity</h3><Go href="/log" className="btn sm">See all</Go></div>
         <LiveTabs tabs={[{ key: 'pay', label: 'Payments', badge: newN, body: payFeed }, { key: 'wa', label: 'WhatsApp', badge: waSent, seen: { name: waSeenName, value: waLatest }, body: waFeed },
-          ...(staff.role !== 'manager' ? [{ key: 'staff', label: admin ? 'Staff' : 'Building managers', body: <ActivityList list={accActs} staff={staffList} projects={projs} empty={admin ? 'Nothing yet. What accountants and building managers do shows here.' : 'Nothing yet. What building managers do (cash, possessions, messages) shows here.'} /> }] : [])]} /></div>
+          ...(true ? [{ key: 'staff', label: admin ? 'Staff' : 'Building managers', body: <ActivityList list={accActs} staff={staffList} projects={projs} empty={admin ? 'Nothing yet. What accountants and building managers do shows here.' : 'Nothing yet. What building managers do (cash, possessions, messages) shows here.'} /> }] : [])]} /></div>
     </aside>
     </div>
     {modal}

@@ -58,7 +58,9 @@ export interface Prepared { items: SendItem[]; left: { apt: string; why: string 
 
 /** Writes the messages with today's figures. Nothing is sent. */
 export async function prepareSendAction(input: { pid: string; type: SendType; ids: string[]; title?: string; text?: string; pay?: boolean; notice?: string; only?: string }): Promise<Prepared> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('manager', 'accountant');
+  // 25 Nov 2026: a building manager only sends the receipt of a payment he has just entered; the rest is the Accountant's.
+  if (staff.role === 'manager' && !(input.type === 'queue' && input.only === 'receipt')) return { items: [], left: [], test: waTestNumber() || null };
   setDocBase(await siteOrigin()); setPhotosOn(!!photoStore());
   const type = TYPES.includes(input.type) ? input.type : 'link';
   const ids = new Set((input.ids || []).map(String));
@@ -102,7 +104,7 @@ export async function prepareSendAction(input: { pid: string; type: SendType; id
     }
     // Flats sharing one phone number (21 Nov 2026): their bills and reminders go as one message, in one chat.
     return { items: combineByPhone(items), left };
-  });
+  }, { manager: true });
   // "Being done by" (Phase 4): with two building managers on one building, an owner someone else is sending to right
   // now is left out for 10 minutes, so the same message never goes twice. The batch is held for this person meanwhile.
   const store = await getStore(), holder = `${staff.id}|${staffName(staff)}`;
@@ -114,14 +116,15 @@ export async function prepareSendAction(input: { pid: string; type: SendType; id
 }
 /** Lets go of the owners this person had open in Send on WhatsApp but didn't get to (Stop here). */
 export async function releaseSendAction(input: { pid: string; ownerIds: string[] }) {
-  const staff = await requireRole('manager'), store = await getStore(), holder = `${staff.id}|${staffName(staff)}`;
+  const staff = await requireRole('manager', 'accountant'), store = await getStore(), holder = `${staff.id}|${staffName(staff)}`;
   await Promise.all((input.ownerIds || []).slice(0, 500).map(id => store.release(`claim:${input.pid}:send:${id}`, holder).catch(() => {})));
   return { ok: true };
 }
 
 /** The accountant has sent this message in WhatsApp: record it on the owner's history. */
 export async function recordSentAction(input: { pid: string; item: SendItem; via?: 'prompt' | 'button' }): Promise<{ ok: boolean; error?: string }> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('manager', 'accountant');
+  if (staff.role === 'manager' && input.item.kind !== 'receipt') return { ok: false, error: 'Building managers only send receipts.' };
   const test = waTestNumber();
   // One chat for several flats (21 Nov 2026): each flat's message is recorded as sent, with the text that went.
   const list = input.item.parts?.length ? input.item.parts.map(p => ({ ...p, text: input.item.text, from: input.item.from })) : [input.item];
@@ -147,7 +150,7 @@ export async function recordSentAction(input: { pid: string; item: SendItem; via
       // Staff activity (the admin sees it): who sent what to which owner, with the owner's details.
       log(s.today, t, 'whatsapp', `${staffName(staff)} sent "${it.title}" on WhatsApp to ${who(o)}${owes(o)}${input.via === 'prompt' ? '. Confirmed on returning to the CRM' : ''}${test ? ` (testing: went to +${test})` : ''}`, o.id);
       return waRow(staff, o, it, 'sent', input.via || 'button', m.id, s.today, t);
-    }), { send: false });
+    }), { send: false, manager: true });
     for (const row of rows) await saveWa(row);
     return { ok: true };
   } catch (e) { return { ok: false, error: (e as Error).message }; }
@@ -155,7 +158,7 @@ export async function recordSentAction(input: { pid: string; item: SendItem; via
 
 /** Leaves a prepared message unsent for good (e.g. the owner was told in person). */
 export async function dropPendingAction(input: { pid: string; ids: string[] }): Promise<{ ok: boolean }> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('accountant');
   await mutate(input.pid, staff, s => {
     let n = 0;
     for (const id of input.ids) { const m = s.messages.find(x => x.id === id && x.status === 'pending'); if (m) { m.status = 'skipped'; m.error = `Not sent: set aside by ${staffName(staff)}`; n++; } }
@@ -167,7 +170,8 @@ export async function dropPendingAction(input: { pid: string; ids: string[] }): 
 
 /** The accountant opened the chat but says the message was not sent: kept in staff activity, nothing recorded as sent. */
 export async function recordNotSentAction(input: { pid: string; item: SendItem }): Promise<{ ok: boolean }> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('manager', 'accountant');
+  if (staff.role === 'manager' && input.item.kind !== 'receipt') return { ok: false };
   try {
     const list = input.item.parts?.length ? input.item.parts.map(p => ({ ...p, text: input.item.text })) : [input.item];
     const rows = await mutate(input.pid, staff, s => list.map(it => {
@@ -176,7 +180,7 @@ export async function recordNotSentAction(input: { pid: string; item: SendItem }
       const t = nowPKT();
       log(s.today, t, 'whatsapp', `${staffName(staff)} opened the WhatsApp chat for ${who(o)} but did not send "${it.title}"${owes(o)}`, o.id);
       return waRow(staff, o, it, 'not_sent', 'prompt', null, s.today, t);
-    }), { send: false });
+    }), { send: false, manager: true });
     for (const row of rows) await saveWa(row);
     return { ok: true };
   } catch { return { ok: false }; }
@@ -196,7 +200,7 @@ function resendItem(o: Owner, d: string, t: string, replacesOf: (o: Owner) => st
 /** Save the owner's fixed or new WhatsApp number. The message stays in To do and its WhatsApp chat is ready to open;
  *  it leaves To do only once the accountant confirms it was sent. */
 export async function fixNumberSendAction(input: { pid: string; oid: string; phone: string }): Promise<ResendResult> {
-  const staff = await requireRole('manager'), phone = String(input.phone || '').trim();
+  const staff = await requireRole('accountant'), phone = String(input.phone || '').trim();
   setDocBase(await siteOrigin()); setPhotosOn(!!photoStore());
   if (waDigits(phone).length < 10) return { ok: false, error: 'That doesn\'t look like a full WhatsApp number. Include the country code, e.g. +92.' };
   try {
@@ -219,7 +223,7 @@ export async function fixNumberSendAction(input: { pid: string; oid: string; pho
 
 /** To do: open the chat again for an owner whose number was fixed but whose message wasn't sent yet. */
 export async function resendFixedAction(input: { pid: string; oid: string }): Promise<ResendResult> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('accountant');
   setDocBase(await siteOrigin()); setPhotosOn(!!photoStore());
   try {
     const ready = await mutate(input.pid, staff, s => {
@@ -240,7 +244,7 @@ function pendingDues(s: { messages: import('./types').Message[] }, o: Owner) {
 /** "Add fine" / "Remove fine" in the send runner (Phase 2): the building manager decides on the fine when sending a
  *  late warning or a reminder. Returns the message written again with the new figures. */
 export async function fineAction(input: { pid: string; item: SendItem; add: boolean }): Promise<{ ok: boolean; error?: string; text?: string; fine?: SendItem['fine'] }> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('accountant');
   setDocBase(await siteOrigin()); setPhotosOn(!!photoStore());
   try {
     return await mutate(input.pid, staff, s => {
@@ -257,7 +261,7 @@ export async function fineAction(input: { pid: string; item: SendItem; add: bool
 /* ---------- Printed vouchers (20 Nov 2026) ---------- */
 /** The building manager delivered these customers' printed vouchers by hand: the messages count as delivered (on paper). */
 export async function deliveredVouchersAction(input: { pid: string; ids: string[] }): Promise<{ ok: boolean; n: number; error?: string }> {
-  const staff = await requireRole('manager');
+  const staff = await requireRole('accountant');
   try {
     const n = await mutate(input.pid, staff, s => {
       const now = new Date().toISOString(), t = nowPKT(), done = new Map<string, number>();

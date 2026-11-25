@@ -4,8 +4,8 @@
 //  · Admin: new approval requests.
 //  · Accountant: payments a building manager entered (to confirm) and owners' bank screenshots (to check); their own
 //    requests once the Admin decides them.
-//  · Building manager: new work in To do (receipts first; bills, reminders, notices to send; numbers to fix; broken
-//    promises), their entered payments once the Accountant confirms the money or marks it not received, and their requests once the Admin decides them.
+//  · Accountant (25 Nov 2026): also new work in To do (bills, reminders, notices to send; numbers to fix; follow-ups).
+//  · Building manager: their entered payments once the Accountant confirms the money or marks it not received.
 //  · Cash: the Accountant hears about each hand-over; the building manager hears when it is received or sent back.
 //  · Everyone: payments received in their buildings.
 import type { Staff, State } from './types';
@@ -55,8 +55,9 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
     for (const p of s.payments) if (p.d >= since && !(p.entryId && s.proofs.some(x => x.id === p.entryId && x.byId === staff.id)))
       out.push({ id: `pay:${s.project}:${p.id}`, at: `${p.d} ${p.t}`, tone: 'good', title: 'Payment received', text: `${apt(p.ownerId)} · ${s.proj.name} · ${rs(p.amount)} · ${p.method}`, href: `${P}/payments` });
   });
-  // A building manager's To do: a task is news when it is new, or when more owners are waiting in it.
-  if (staff.role === 'manager') for (const t of myTasks(states.flatMap(s => projectTasks(s)), staff)) if (!(t.kind === 'receipt' && t.enteredById === staff.id))
+  // The Accountant's To do (since 25 Nov 2026 all of it is his): a task is news when it is new, or when more owners are
+  // waiting in it. Not receipts (the building manager is usually sending it that minute) nor entries (above).
+  if (staff.role === 'accountant') for (const t of myTasks(states.flatMap(s => projectTasks(s)), staff)) if (t.kind !== 'receipt' && !t.id.startsWith('proof:'))
     out.push({ id: `task:${t.id}:${t.detail}`, at: `${t.since} 11:00`, tone: t.overdue ? 'bad' : 'info', title: `To do · ${t.what}`, text: `${t.pname}${t.apt ? ` · ${t.apt}` : ''} · ${t.detail}`, href: t.href });
   return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 60);
 }

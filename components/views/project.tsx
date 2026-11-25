@@ -28,12 +28,12 @@ export function newPayments() {
 }
 
 export function projHead(tab: Tab, ownerTitle?: string) {
-  const S = cur(), p = S.proj, n = projectTasks(S).filter(t => t.role === 'manager').length, w = pendingCount(), np = newPayments().length;
+  const S = cur(), p = S.proj, n = projectTasks(S).filter(t => t.role === 'accountant' && !t.id.startsWith('proof:') && !t.id.startsWith('cash')).length, w = pendingCount(), np = newPayments().length;
   const t = ownerTitle || TITLES[tab] || 'Overview';
   return <>
     <div className="proj-head"><PageIc n="building" tone="rust" /><div><div className="eyebrow-b">Maintenance · {p.place}</div><div className="proj-title">{p.name}</div></div>
       <div className="crumb-path"><A href="/">Dashboard</A><span>/</span>Maintenance<span>/</span>{p.name}<span>/</span>{ownerTitle ? <>Apartments<span>/</span></> : null}{t}</div></div>
-    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && k === 'settings') && !((k === 'utilities' || k === 'send' || k === 'generator') && S.role !== 'manager') && !(k === 'follow' && S.role !== 'manager' && (S.managers || []).length) && (k !== 'utilities' || S.settings.rules.utilities.some(u => u !== 'Electricity')) && (k !== 'electricity' || S.settings.rules.utilities.includes('Electricity')) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
+    <TabScroller><nav className="proj-tabs" aria-label={`${p.name} maintenance`}>{TABS.filter(([k]) => !(S.role === 'manager' && k === 'settings') && !((k === 'utilities' || k === 'send' || k === 'generator') && S.role !== 'accountant') && (k !== 'utilities' || S.settings.rules.utilities.some(u => u !== 'Electricity')) && (k !== 'electricity' || S.settings.rules.utilities.includes('Electricity')) && (k !== 'generator' || hasGenerator())).map(([k, l, sub]) =>
       <Go key={k} href={`/p/${p.id}${sub}`} current={tab === k}>{l}{k === 'follow' && n ? <> <span className="tab-b">{n}</span></> : k === 'send' && w ? <> <span className="tab-b">{w}</span></> : k === 'payments' && np && tab !== 'payments' ? <> <span className="tab-new" title={`${np} new payment${np === 1 ? '' : 's'} since you last opened Payments`} aria-label={`${np} new`}>{np}</span></> : null}</Go>)}<Go href={`/customers?p=${p.id}`} current={false}>Customers</Go></nav></TabScroller>
   </>;
 }
@@ -52,7 +52,7 @@ export async function projectPage(pid: string, sp: Record<string, string | undef
     let modal: React.ReactNode = null;
     if (sp.doc) modal = DocModal({ doc: sp.doc, flash: sp.flash });
     else if (sp.m === 'target') modal = TargetModal();
-    else if (sp.m === 'sendpick' && cur().role === 'manager') modal = SendPickModal();
+    else if (sp.m === 'sendpick' && cur().role === 'accountant') modal = SendPickModal();
     else if (sp.m === 'possession') modal = PossessionModal({ preset: sp.flat || '', back: sp.pp || '' });
     else if (sp.m && sp.oid) { const o = ownerById(sp.oid); if (o) modal = OwnerModal({ m: sp.m, o: currentOf(o) }); }
     return <>{body}{modal}</>;

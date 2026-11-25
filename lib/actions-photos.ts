@@ -20,7 +20,7 @@ export async function photoFor(id: string, pid: string, kind: 'payment' | 'bill'
 /** The building manager's photo of an electricity bill: printed on the bill PDF the customer gets. */
 export async function attachBillPhotoAction(input: { pid: string; billId: string; imageId: string }): Promise<{ ok: boolean; error?: string }> {
   try {
-    const staff = await requireRole('manager', 'admin');
+    const staff = await requireRole('accountant', 'admin');
     await photoFor(input.imageId, input.pid, 'bill');
     await mutate(input.pid, staff, s => {
       const b = s.bills.find(x => x.id === input.billId);
@@ -39,7 +39,7 @@ export async function attachBillPhotoAction(input: { pid: string; billId: string
 export async function elecReminderAction(fdata: FormData) {
   const staff = await requireStaff(), pid = String(fdata.get('pid') || ''), ids = String(fdata.get('ids') || '').split(',').filter(Boolean).slice(0, 500);
   const back = `/p/${pid}/electricity`;
-  if (staff.role !== 'manager') redirect(`${back}?flash=${encodeURIComponent('Reminders are sent by the building manager.')}`);
+  if (staff.role !== 'accountant') redirect(`${back}?flash=${encodeURIComponent('Reminders are sent by the Accountant.')}`);
   const owners = await mutate(pid, staff, s => {
     const t = nowPKT(), out = new Set<string>();
     for (const id of ids) { const b = s.bills.find(x => x.id === id); if (b && isUtilBill(b)) { const o = ownerById(b.ownerId); if (o && o.status === 'active' && elecReminder(o, b, s.today, t)) out.add(o.id); } }

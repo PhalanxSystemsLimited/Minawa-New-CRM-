@@ -13,14 +13,14 @@ import type { Owner } from '@/lib/types';
 type Item = { href?: string; ext?: boolean; icon: string; label: string; sub: string; apv?: boolean; danger?: boolean; off?: string; form?: React.ReactNode };
 
 export function customerActions(o: Owner, base: string) {
-  const S = cur(), pid = o.project, bal = balance(o), closed = o.status === 'closed', role = S.role, admin = isAdmin(), mgr = role === 'manager';
+  const S = cur(), pid = o.project, bal = balance(o), closed = o.status === 'closed', role = S.role, admin = isAdmin(), mgr = role === 'accountant';   // the desk work (25 Nov 2026: the Accountant's)
   const m = (k: string) => `${base}?m=${k}`, apv = !admin;
   const genWait = pendingFor(o).some(a => a.kind === 'generator'), activeSusp = o.suspensions.filter(s => !s.to);
   const late = bal > 0 && billsOf(o).some(b => b.dueDate < S.today && b.net > b.paid) || (o.openingLeft > 0 && S.today > openingDue());
   const groups: [string, string, Item[]][] = [];
   if (!closed) {
     groups.push(['Payments & reminders', 'save at once', [
-      ...(bal > 0 && role !== 'admin' ? [{ href: m('recpay'), icon: 'cash', label: mgr ? 'Enter a payment' : 'Record a cash payment', sub: 'cash or bank transfer, with a receipt' }] : []),
+      ...(bal > 0 && role !== 'admin' ? [{ href: m('recpay'), icon: 'cash', label: 'Record a cash payment', sub: 'cash or bank transfer, with a receipt' }] : []),
       ...(bal <= 0 && role !== 'admin' ? [{ href: m('recpay'), icon: 'cash', label: 'Record a payment', sub: 'kept as advance for the next bills' }] : []),
       ...(admin ? [{ href: m('recpay'), icon: 'cash', label: 'Record a payment above the limit', sub: 'for a large amount checked by you' }] : []),
       ...(mgr && bal > 0 && !o.exempt ? [{ href: m('send'), icon: 'send', label: 'Send dues on WhatsApp', sub: 'opens the chat with the message typed in' }] : []),
@@ -63,7 +63,7 @@ export function customerActions(o: Owner, base: string) {
     return <Go key={i} href={x.href} className={'cm-item' + (x.danger ? ' danger' : '')}>{inner}</Go>;
   };
   return <div className="cus-acts no-print">
-    {!closed && bal > 0 && role !== 'admin' ? <Go href={m('recpay')} className="btn primary"><Ic n="cash" s={16} /> {mgr ? 'Enter payment' : 'Record cash payment'}</Go> : null}
+    {!closed && bal > 0 && role !== 'admin' ? <Go href={m('recpay')} className="btn primary"><Ic n="cash" s={16} /> Record cash payment</Go> : null}
     {!closed && bal > 0 && !o.exempt && mgr ? <Go href={m('send')} className="btn wa"><Wa /> Send on WhatsApp</Go> : null}
     <details className="more cm-more"><summary className="btn"><Ic n="menu" s={16} /> More</summary>
       <div className="menu cm-menu" role="menu">

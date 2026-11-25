@@ -26,7 +26,8 @@ export async function reverseAction(fdata: FormData) {
   go(back, failed(r) ? r.error : r);
 }
 
-/** A building manager cancels his own cash entry before the Accountant confirms it. */
+/** A building manager cancels his own cash entry before the Accountant confirms it. Retired 25 Nov 2026 (a wrong
+ *  entry is marked "Not received" by the Accountant; mutate refuses building managers here). */
 export async function cancelCashAction(fdata: FormData) {
   const staff = await requireRole('manager'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), id = S(fdata, 'id'), reason = S(fdata, 'reason');
   const r = await attempt(() => mutate(pid, staff, s => {
@@ -37,7 +38,8 @@ export async function cancelCashAction(fdata: FormData) {
   go(`/p/${pid}/apartments/${oid}`, failed(r) ? r.error : 'Cash entry cancelled. Nothing changed on the owner\'s account.');
 }
 
-/** A building manager hands his confirmed cash in one building over to the Accountant. */
+/** A building manager hands his confirmed cash in one building over to the Accountant. Retired 25 Nov 2026: the
+ *  Accountant's approval of each entry is the hand-over now (mutate refuses building managers here). */
 export async function handOverAction(fdata: FormData) {
   const staff = await requireRole('manager'), pid = S(fdata, 'pid');
   const r = await attempt(() => mutate(pid, staff, s => handOver(staff.id, staffName(staff), S(fdata, 'note'), s.today, at(15)), { send: false }));

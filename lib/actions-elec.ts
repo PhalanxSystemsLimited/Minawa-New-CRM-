@@ -22,7 +22,7 @@ const goTo = (path: string, msg: string): never => redirect(`${path}${path.inclu
 
 
 export async function addElecBillAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), period = S(fdata, 'period'), due = S(fdata, 'due'), photo = S(fdata, 'photo');
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), period = S(fdata, 'period'), due = S(fdata, 'due'), photo = S(fdata, 'photo');
   const back = `/p/${pid}/electricity?tab=add${S(fdata, 'q') ? `&q=${encodeURIComponent(S(fdata, 'q'))}` : ''}&period=${period}`;
   const again = `${back}&m=elecadd&oid=${encodeURIComponent(oid)}`;
   const amount = int(S(fdata, 'amount')), units = int(S(fdata, 'units')), reading = int(S(fdata, 'reading'));
@@ -59,7 +59,7 @@ export async function addElecBillAction(fdata: FormData) {
 }
 
 export async function editElecBillAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), billId = S(fdata, 'bill'), due = S(fdata, 'due'), from = S(fdata, 'from') === 'add' ? 'add' : 'bills';
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), billId = S(fdata, 'bill'), due = S(fdata, 'due'), from = S(fdata, 'from') === 'add' ? 'add' : 'bills';
   const back = from === 'add' ? `/p/${pid}/electricity?tab=add${S(fdata, 'period') ? `&period=${S(fdata, 'period')}` : ''}` : `/p/${pid}/electricity`;
   const again = `${back}${back.includes('?') ? '&' : '?'}m=elecedit-${encodeURIComponent(billId)}`;
   const amount = int(S(fdata, 'amount')), units = int(S(fdata, 'units')), reading = int(S(fdata, 'reading'));
@@ -162,7 +162,7 @@ const meterBack = (pid: string, period: string, q: string) => `/p/${pid}/electri
 
 /** Enter readings: bills every flat with a reading on the page (all or nothing: one wrong reading stops the save). */
 export async function saveReadingsAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), back = meterBack(pid, period, S(fdata, 'q'));
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), back = meterBack(pid, period, S(fdata, 'q'));
   const rows: { oid: string; cur: number; prev: number | null }[] = [];
   for (const [k, v] of fdata.entries()) {
     if (!k.startsWith('cur:') || !String(v).trim()) continue;
@@ -183,7 +183,7 @@ export async function saveReadingsAction(fdata: FormData) {
 
 /** One reading with a photo of the meter. */
 export async function readingAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), period = S(fdata, 'period'), photo = S(fdata, 'photo');
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), period = S(fdata, 'period'), photo = S(fdata, 'photo');
   const back = meterBack(pid, period, S(fdata, 'q')), again = `${back}&m=reading&oid=${encodeURIComponent(oid)}`;
   const cur0 = int(S(fdata, 'cur')), prev = S(fdata, 'prev') ? int(S(fdata, 'prev')) : null;
   if (cur0 == null) goTo(again, 'Enter the reading now');
@@ -199,7 +199,7 @@ export async function readingAction(fdata: FormData) {
 
 /** The building manager asks for a late fine on an overdue electricity bill (the Admin approves; an Admin's applies). */
 export async function elecFineAction(fdata: FormData) {
-  const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), billId = S(fdata, 'bill'), reason = S(fdata, 'reason'), back = `/p/${pid}/electricity`;
+  const staff = await requireRole('accountant', 'admin'), pid = S(fdata, 'pid'), billId = S(fdata, 'bill'), reason = S(fdata, 'reason'), back = `/p/${pid}/electricity`;
   let err = '', msg = '';
   try {
     msg = await mutate(pid, staff, s => {

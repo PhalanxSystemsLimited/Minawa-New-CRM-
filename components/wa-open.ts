@@ -28,3 +28,11 @@ export async function openWhatsApp(a: { pid: string; item: SendItem; to: string;
   try { w.focus(); } catch { /* ignore */ }
   return r;
 }
+
+/** The chat link: WhatsApp Web, or the app on phones (the same choice as in Send on WhatsApp). */
+export function chatUrl(to: string, text: string) {
+  let via: string | null = null;
+  try { via = localStorage.getItem('minawa.waVia'); } catch { /* private mode */ }
+  if (via !== 'app' && via !== 'web') via = window.matchMedia?.('(pointer: coarse)').matches ? 'app' : 'web';
+  return via === 'web' ? `https://web.whatsapp.com/send?phone=${to}&text=${encodeURIComponent(text)}` : `https://wa.me/${to}?text=${encodeURIComponent(text)}`;
+}

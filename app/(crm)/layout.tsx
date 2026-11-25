@@ -9,7 +9,9 @@ import { LiveEffects } from '@/components/Live';
 import { WaReturnPrompt } from '@/components/WaReturnPrompt';
 import { LivePayments } from '@/components/LivePayments';
 import { NavProgress } from '@/components/NavProgress';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { ManagerShell } from '@/components/views/manager';
 import { payKey, paySeenCookie, NEW_DAYS } from '@/lib/pay-seen';
 import { addDays, todayPKT } from '@/lib/fmt';
 
@@ -17,6 +19,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff();
+  // 25 Nov 2026: a building manager has one simple screen (his customers, the money box, Add payment). Any other page,
+  // old link or bookmark brings him back to it.
+  if (staff.role === 'manager') {
+    const path = (await headers()).get('x-path') || '/';
+    if (path !== '/' && !/^\/m\/[a-z0-9]+\/[^/]+$/i.test(path)) redirect('/');
+    return <ManagerShell staff={staff} signOut={signOut}>{children}</ManagerShell>;
+  }
   const projs = await listProjects(staff);
   // Approvals waiting: all of them for admins, your own for accountants.
   let approvals = 0;
@@ -42,7 +51,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
         <div className="side-scrim" data-a="side-close"></div>
         <div className="shell">
           <header className="top">
-            <Suspense><Topbar todo={todo} firstTodo={firstTodo} bell={admin ? { href: '/approvals', label: 'Approvals' } : { href: '/tasks', label: 'To do' }} roleLabel={roleName(staff)} initials={admin ? 'AD' : staff.role === 'manager' ? 'BM' : 'AC'} name={staff.name} defaultPid={defaultPid} signOut={signOut} projects={nav.filter(p => p.live).map(p => ({ id: p.id, name: p.name }))} /></Suspense>
+            <Suspense><Topbar todo={todo} firstTodo={firstTodo} bell={admin ? { href: '/approvals', label: 'Approvals' } : { href: '/tasks', label: 'To do' }} roleLabel={roleName(staff)} initials={admin ? 'AD' : 'AC'} name={staff.name} defaultPid={defaultPid} signOut={signOut} projects={nav.filter(p => p.live).map(p => ({ id: p.id, name: p.name }))} /></Suspense>
           </header>
           <div className="layout wrap">
             <main id="main">{children}</main>
@@ -50,7 +59,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
           <p className="foot-note wrap">Minawa Group ERP · Phase 1 maintenance dues · Built by Phalanx Systems</p>
         </div>
       </div>
-      <Suspense><MobileBar projects={nav} defaultPid={defaultPid} manager={staff.role === 'manager'} /></Suspense>
+      <Suspense><MobileBar projects={nav} defaultPid={defaultPid} manager={staff.role === 'accountant'} /></Suspense>
       <MobileTables />
       <WaReturnPrompt />
       <Suspense><NavProgress /></Suspense>

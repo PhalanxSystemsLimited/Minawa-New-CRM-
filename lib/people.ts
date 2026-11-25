@@ -114,3 +114,14 @@ export function parseFlats(text: string): string[] {
 /* ---------- past employees (24 Nov 2026) ---------- */
 /** Why someone left (Delete employee on Staff & connections). */
 export const LEAVE_REASONS = ['Resigned', 'Contract ended', 'Terminated', 'Retired', 'Transferred out of Minawa', 'Other'];
+
+/** 25 Nov 2026: an accountant works on the buildings ticked for him plus the buildings of the building managers who
+ *  report to him. (Only the signed-in copy is widened: what is saved stays the Admin's ticks.) */
+export function scoped(me: Staff, all: Staff[]): Staff {
+  if (me.role !== 'accountant') return me;
+  const mine = myManagers(me, all), set = new Set(me.projects || []);
+  for (const m of mine) for (const p of m.projects || []) set.add(p);
+  return { ...me, projects: [...set] };
+}
+/** The active building managers who report to this accountant. */
+export const myManagers = (me: Staff, all: Staff[]) => all.filter(x => x.active && !x.leftOn && x.role === 'manager' && x.reportsTo === me.id);

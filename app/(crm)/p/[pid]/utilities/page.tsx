@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function Utilities({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
-  if ((await requireStaff()).role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('Utility bills are entered by the building manager.')}`);
+  if ((await requireStaff()).role !== 'accountant') redirect(`/p/${pid}?flash=${encodeURIComponent('Utility bills are entered by the Accountant.')}`);
   return projectPage(pid, sp, () => {
     const S = cur(), r = S.settings.rules, kinds = r.utilities.length ? r.utilities : ['Electricity'];
     const kind = kinds.includes(sp.kind) ? sp.kind : kinds[0];

@@ -890,3 +890,81 @@ html .tab-b,html[data-theme] .tab-b,html .proj-tabs button[aria-current="page"] 
 .emp-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .del-form .callout{margin:4px 0 8px}
 .del-restore{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+
+/* ---------- Building manager's screen (25 Nov 2026): slim bar, money box, customer list, Add payment, receipt lock ---------- */
+.mgr-app{min-height:100vh;min-height:100dvh;background:var(--bg)}
+.mgr-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--bg) 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.mgr-logo{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#fff;box-shadow:var(--shadow)}
+.mgr-logo img{width:28px;height:28px;object-fit:contain}
+.mgr-who{min-width:0;flex:1}.mgr-who b{display:block;font-size:15px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgr-who small{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgr-out{border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;min-height:40px}
+.mgr-main{max-width:980px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-left,0px)) 110px}
+.mgr-toast{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:var(--good-soft);color:var(--good);font-weight:600;font-size:13.5px}
+.mgr-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.mgr-money{border-radius:22px;background:#141517;color:#fff;padding:18px;box-shadow:0 24px 48px -26px rgba(20,21,23,.6)}
+.mgr-k{font-size:11px;letter-spacing:.12em;color:#a3a9ae;font-weight:700}
+.mgr-big{font-family:var(--f-head);font-size:28px;font-weight:700;margin:2px 0;line-height:1.15}.mgr-big small{font-family:var(--f-ui);font-size:14px;color:#a3a9ae;font-weight:500}
+.mgr-k2{font-size:12.5px;color:#a3a9ae}
+.mgr-bar{height:7px;border-radius:9px;background:#2a2d31;margin:10px 0 14px;overflow:hidden}.mgr-bar i{display:block;height:100%;background:linear-gradient(90deg,#4ADE80,#16A34A);border-radius:9px}
+.mgr-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mgr-mini>div{background:#1f2124;border-radius:14px;padding:10px 12px;min-width:0}
+.mgr-mini b{display:block;font-size:17px;font-weight:700;overflow-wrap:anywhere}.mgr-mini span{font-size:12px;color:#a3a9ae}
+.mgr-mini .cash{background:linear-gradient(135deg,#7a4a12,#a0621a)}.mgr-mini .cash span{color:#fde7c2}
+@media (min-width:760px){.mgr-mini{grid-template-columns:repeat(4,1fr)}.mgr-money{padding:22px 24px}}
+.mgr-search{display:flex;align-items:center;gap:8px;margin:14px 0 8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:14px;padding:0 12px;color:var(--muted)}
+.mgr-search input{flex:1;min-width:0;border:0;background:transparent;padding:13px 0;font-size:16px;outline:0;color:var(--fg)}
+.mgr-search:focus-within{outline:3px solid var(--accent-bright);outline-offset:1px}
+.mgr-clear{font-size:13px}
+.mgr-today{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:0 2px 10px}.mgr-today b{color:var(--fg)}
+.mgr-list{display:flex;flex-direction:column;gap:8px}
+@media (min-width:760px){.mgr-list{display:grid;grid-template-columns:1fr 1fr}}
+.mgr-cu{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.mgr-cu-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:var(--fg);font-weight:400}
+.mgr-cu-main:hover{text-decoration:none;color:var(--fg)}
+.mgr-apt{flex:none;min-width:48px;height:48px;padding:0 6px;border-radius:12px;background:var(--accent-soft);color:var(--accent-darkest);display:grid;place-items:center;font-weight:800;font-size:13px}
+.mgr-n{min-width:0;display:flex;flex-direction:column}.mgr-n b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mgr-n small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgr-n .owe,.mgr-bal .owe{color:var(--bad);font-weight:700;font-size:12.5px}.mgr-n .adv,.mgr-bal .adv,.mgr-hl .adv{color:var(--good);font-weight:700;font-size:12.5px}.mgr-n .paid{color:var(--muted);font-size:12.5px}
+.mgr-pay{flex:none;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:13px;border-radius:12px;padding:11px 12px;min-height:44px;display:grid;place-items:center;white-space:nowrap}
+.mgr-pay:hover{color:var(--accent-ink);background:var(--accent-dark);text-decoration:none}
+.mgr-more{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 2px;font-size:13px;color:var(--muted)}
+.mgr-empty{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;text-align:center}.mgr-empty b{display:block;font-size:15px}.mgr-empty p{margin:4px 0 0;color:var(--muted)}
+.mgr-hd{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.mgr-back{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:24px;line-height:1;color:var(--fg)}
+.mgr-hd b{font-size:16px}.mgr-hd small{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.mgr-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin:0 0 10px}
+.mgr-lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 6px}
+.mgr-bal-r{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.mgr-bal-r>b{font-family:var(--f-head);font-size:26px}.mgr-bal-r>b.owe{font-size:26px}.mgr-bal-r>b.adv{font-size:22px}
+.mgr-tabs{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+.mgr-tabs a{padding:9px 14px;border-radius:999px;font-size:13px;font-weight:700;background:var(--surface-2);color:var(--muted);min-height:40px;display:grid;place-items:center}
+.mgr-tabs a.on{background:var(--fg);color:var(--bg)}.mgr-tabs a:hover{text-decoration:none}
+.mgr-hist{padding:4px 16px}
+.mgr-hl{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}.mgr-hl:first-child{border-top:0}
+.mgr-hl>span:first-child{min-width:0}.mgr-hl small{display:block;color:var(--muted);font-size:12px}.mgr-hl .tag{flex:none}
+.mgr-none{color:var(--muted);margin:10px 0}
+.mgr-sticky{position:fixed;left:0;right:0;bottom:0;z-index:15;padding:12px max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--bg) 35%)}
+.mgr-save{display:block;max-width:560px;margin:0 auto;text-align:center;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:16px;border-radius:15px;padding:15px}
+.mgr-save:hover{color:var(--accent-ink);background:var(--accent-dark);text-decoration:none}
+.mgr-form{display:flex;flex-direction:column;gap:12px}
+.mgr-owes{display:flex;justify-content:space-between;align-items:baseline;background:var(--surface-2);border-radius:14px;padding:12px 14px}.mgr-owes span{color:var(--muted);font-weight:600}.mgr-owes b{font-size:22px;color:var(--bad)}
+.mgr-form .mgr-amt{font-size:22px;font-weight:700;padding:12px 14px}
+.mgr-seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:13px;padding:4px;gap:4px}
+.mgr-seg button{border:0;background:transparent;padding:11px;border-radius:10px;font-weight:700;font-size:14px;color:var(--muted);min-height:44px}
+.mgr-seg button.on{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.mgr-form .mgr-lab{margin:0 0 -6px}
+.mgr-save-btn{width:100%;padding:14px;font-size:16px;font-weight:800}
+.mgr-lockwrap{position:fixed;inset:0;z-index:55;display:grid;place-items:center;padding:16px}
+.mgr-dim{position:absolute;inset:0;background:rgba(20,21,23,.66)}
+.mgr-lock{position:relative;width:100%;max-width:400px;max-height:calc(100dvh - 32px);overflow:auto;background:var(--surface);color:var(--fg);border-radius:24px;padding:22px 18px;text-align:center;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
+.mgr-lk{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:10px}
+.mgr-ok{width:58px;height:58px;border-radius:50%;background:var(--good-soft);color:var(--good);display:grid;place-items:center;font-size:30px;margin:0 auto 10px}
+.mgr-lock h3{font-family:var(--f-head);font-size:21px;margin:0 0 4px}.mgr-lock p{margin:0 0 4px;font-size:14px;color:var(--muted)}
+.mgr-rc{background:var(--surface-2);border-radius:14px;padding:10px 12px;margin:14px 0;font-size:13.5px;text-align:left}
+.mgr-rc div{display:flex;justify-content:space-between;gap:10px;padding:3px 0}.mgr-rc span{color:var(--muted)}.mgr-rc b{text-align:right;overflow-wrap:anywhere}
+.mgr-wa{width:100%;border:0;background:#16A34A;color:#fff;font-weight:800;font-size:16px;border-radius:15px;padding:15px;display:flex;justify-content:center;gap:8px;align-items:center;min-height:52px}
+.mgr-wa:hover{background:#15803D}.mgr-wa:disabled{opacity:.7}.mgr-wa.grey{background:var(--fg);color:var(--bg)}
+.mgr-cancel{width:100%;margin-top:10px;border:1px solid var(--line-strong);background:var(--surface);border-radius:15px;padding:12px;font-weight:700;font-size:14px;color:var(--muted);min-height:46px}
+.mgr-note{font-size:12px;color:var(--muted);margin-top:10px}
+/* No rise-in on the manager's pages: it would hold a transform on the page, and the fixed Add payment bar, the form and
+   the receipt lock must sit on the screen itself. */
+.mgr-main>*{animation:none!important;transform:none!important}

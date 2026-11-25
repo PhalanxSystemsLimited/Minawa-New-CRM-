@@ -13,7 +13,7 @@ export interface GeneratorResult { ok: boolean; changed: number; requested: numb
 
 export async function setGeneratorAction(input: { pid: string; ids: string[]; on: boolean; why?: string; apply?: 'current' | 'next' }): Promise<GeneratorResult> {
   const staff = await requireStaff(), on = !!input.on, ids = [...new Set((input.ids || []).map(String))];
-  if (staff.role !== 'manager') return { ok: false, changed: 0, requested: 0, error: 'The generator charges list is kept by the building manager.' };
+  if (staff.role !== 'accountant') return { ok: false, changed: 0, requested: 0, error: 'The generator charges list is kept by the Accountant.' };
   if (!ids.length) return { ok: false, changed: 0, requested: 0, error: 'Tick at least one apartment.' };
   try {
     const out = await mutate(input.pid, staff, s => {

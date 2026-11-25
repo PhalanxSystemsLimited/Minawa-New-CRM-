@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function GeneratorPage({ params, searchParams }: { params: Promise<{ pid: string }>; searchParams: Promise<Record<string, string>> }) {
   const { pid } = await params, sp = await searchParams;
-  if ((await requireStaff()).role !== 'manager') redirect(`/p/${pid}?flash=${encodeURIComponent('The generator charges list is kept by the building manager.')}`);
+  if ((await requireStaff()).role !== 'accountant') redirect(`/p/${pid}?flash=${encodeURIComponent('The generator charges list is kept by the Accountant.')}`);
   return projectPage(pid, sp, () => {
     const S = cur();
     if (!hasGenerator()) return <>{projHead('generator')}<div className="card allclear"><div className="big">No generator charges here</div><p className="muted">{S.proj.name} has no generator charges. The Admin sets the amount in Settings › Monthly fees (Generator charges).</p></div></>;

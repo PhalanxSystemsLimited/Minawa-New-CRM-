@@ -27,7 +27,10 @@ export async function staffLog(staff: Staff | null, text: string, o: { kind?: st
 
 /** Lock, load the project, run fn on it (synchronously, inside the engine), save, then send what fn queued.
  *  Log entries made by fn carry the staff member; `what` describes the action when fn logs nothing itself. */
-export async function mutate<T>(pid: string, staff: Staff | null, fn: (s: State) => T, opts: { send?: boolean; what?: string | ((s: State, out: T) => string | null) } = {}): Promise<T> {
+export async function mutate<T>(pid: string, staff: Staff | null, fn: (s: State) => T, opts: { send?: boolean; what?: string | ((s: State, out: T) => string | null); manager?: boolean } = {}): Promise<T> {
+  // 25 Nov 2026: a building manager only enters payments and sends their receipts. Every other change refuses him
+  // here, whatever screen or old link it comes from (the few allowed actions pass manager: true).
+  if (staff?.role === 'manager' && !opts.manager) throw new Error('Building managers only enter payments and send the receipt. Ask your accountant.');
   const store = await getStore();
   return store.withLock(async () => {
     const s = await load(pid, staff), before = s.log.length;

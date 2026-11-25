@@ -16,3 +16,6 @@ next-env.d.ts
 
 # real residents' data (names, phone numbers, balances): keep out of git
 supabase/data/
+
+# Mock-ups and other files Claude leaves for review (not part of the app)
+Claude outputs/

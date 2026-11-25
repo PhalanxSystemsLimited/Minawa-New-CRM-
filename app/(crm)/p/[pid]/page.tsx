@@ -32,17 +32,17 @@ export default async function Overview({ params, searchParams }: { params: Promi
     const recent = sortedPayments().slice(0, 5);
     const top = [...owe].sort((a, b) => (+b.flagged - +a.flagged) || balance(b) - balance(a)).slice(0, 5);
     const up = upcoming(14, 5);
-    const mgr = S.role === 'manager', toCheck = S.proofs.filter(p => p.status === 'pending').length;
+    const mgr = S.role === 'accountant', toCheck = S.proofs.filter(p => p.status === 'pending').length;
     const todo = followCount(), ne = nextEvent(), sendN = pendingCount(), np0 = newPayments(), newN = np0.length, newAmt = np0.reduce((a, p) => a + p.amount, 0);
     const badge = (p: typeof recent[number]) => <span className="recv-by"><Ic n="bank" s={12} /> {famOf(p.method)}</span>;
     return <>
       {projHead('dashboard')}
       <Lbl>Needs you in {S.proj.name}</Lbl>
       <div className="lv-needs">
-        <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={mgr ? `${P}/todo` : '/tasks'} pulse sub={todo ? (mgr ? 'Open To do' : 'Building manager\'s work') : 'All clear'} />
-        {mgr ? <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`${P}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} />
-          : <NeedTile title="To check" icon="wallet" tone="green" n={toCheck} label={toCheck === 1 ? 'payment to confirm' : 'payments to confirm'} href="/tasks" sub={toCheck ? 'Entered by the building manager' : 'Nothing waiting'} />}
-        <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`${P}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />
+        <NeedTile title="To do" icon="alert" tone="red" n={todo} label={todo === 1 ? 'thing to do' : 'things to do'} href={mgr ? `${P}/todo` : '/tasks'} pulse sub={todo ? (mgr ? 'Open To do' : 'The Accountant\'s work') : 'All clear'} />
+        {mgr ? <NeedTile title="WhatsApp" icon="phone" tone="green" n={sendN} label="WhatsApp to send" href={`${P}/send`} sub={sendN ? 'Bills, reminders and receipts' : 'Nothing waiting'} /> : null}
+        <NeedTile title="To check" icon="wallet" tone="green" n={toCheck} label={toCheck === 1 ? 'payment to confirm' : 'payments to confirm'} href="/tasks" sub={toCheck ? 'Entered by the building manager' : 'Nothing waiting'} />
+        {mgr ? null : <NeedTile title="Payments" icon="wallet" tone="blue" n={newN} label={newN === 1 ? 'new payment' : 'new payments'} href={`${P}/payments`} sub={newN ? `${rs(newAmt)} since you last looked` : 'No new payments'} />}
         <NeedTile title="Disconnection" icon="alert" tone="amber" n={flagged} label="flagged for disconnection" href={`${P}/apartments?f=flagged`} sub={flagged ? 'Still unpaid after the due date' : 'Nobody flagged'} />
       </div>
       <div className="lv-layout"><div className="lv-main">
@@ -110,7 +110,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
             {mgr ? <Go href={`${P}/send?mode=notice`} className="btn sm">Send a notice</Go> : null}
             {mgr && hasGenerator() ? <Go href={`${P}/generator`} className="btn sm">Generator charges list</Go> : null}
             <Go href={`${P}/apartments?m=possession`} className="btn sm">New possession</Go>
-            {S.role !== 'admin' ? <Go href={`${P}/apartments?f=owing`} className="btn sm">{mgr ? 'Enter a cash payment' : 'Record a cash payment'}</Go> : null}
+            {S.role !== 'admin' ? <Go href={`${P}/apartments?f=owing`} className="btn sm">Record a cash payment</Go> : null}
           </div></div>;
       })()}
       <div className="ov2">

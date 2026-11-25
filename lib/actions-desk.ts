@@ -17,7 +17,7 @@ const go = (path: string, toast?: string): never => redirect(path + (path.includ
 /* ---------- utility bills ---------- */
 /** Saves the month's grid: one amount (and optionally units) per flat. Billed rows are locked; 0 or empty clears. */
 export async function saveChargesAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity', due = S(fdata, 'due');
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity', due = S(fdata, 'due');
   const back = `/p/${pid}/utilities?period=${period}&kind=${encodeURIComponent(kind)}`;
   if (!/^\d{4}-\d{2}$/.test(period)) go(back, 'Pick the month');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) go(back, 'Pick the due date for these bills');
@@ -53,7 +53,7 @@ export async function saveChargesAction(fdata: FormData) {
 
 /** An Excel sheet (.xlsx) or CSV with Apartment, Amount (and optional Units) columns, for the selected month and kind. */
 export async function importChargesAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), period = S(fdata, 'period'), kind = S(fdata, 'kind') || 'Electricity';
   const back = `/p/${pid}/utilities?period=${period}&kind=${encodeURIComponent(kind)}`;
   const file = fdata.get('file') as File | null;
   if (!file || !file.size) go(back, 'Pick the Excel sheet (or a CSV file)');
@@ -88,7 +88,7 @@ export async function importChargesAction(fdata: FormData) {
 
 /** Bills entered after this month's bills went out: bill them now on their own (utilities only) and send. */
 export async function billUtilitiesNowAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), back = `/p/${pid}/utilities?period=${S(fdata, 'period')}&kind=${encodeURIComponent(S(fdata, 'kind'))}`;
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), back = `/p/${pid}/utilities?period=${S(fdata, 'period')}&kind=${encodeURIComponent(S(fdata, 'kind'))}`;
   const n = await mutate(pid, staff, s => {
     const owners = [...new Set(s.charges.filter(c => !c.billId && c.amount && c.period <= s.today.slice(0, 7)).map(c => c.ownerId))].map(ownerById).filter(o => o && o.status === 'active');
     owners.forEach(o => { const b = createBill(o, s.today, { utilitiesOnly: true }); if (b.net) sendBill(o, b, s.today); });
@@ -100,7 +100,7 @@ export async function billUtilitiesNowAction(fdata: FormData) {
 
 /* ---------- maintenance notices ---------- */
 export async function sendNoticeAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=notice`;
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=notice`;
   const kind = S(fdata, 'kind') || 'custom', title = S(fdata, 'title') || 'Notice', text = S(fdata, 'text'), aud = S(fdata, 'aud') || 'all';
   if (!text) go(back, 'Write the message first');
   const picked = new Set(fdata.getAll('apt').map(String));
@@ -208,7 +208,7 @@ export async function dueAction(fdata: FormData) {
 
 /** Discontinue (or resume) a customer's maintenance after the late warning: the building manager asks, the Admin approves. */
 export async function discontinueAction(fdata: FormData) {
-  const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), on = S(fdata, 'on') === '1', reason = S(fdata, 'reason');
+  const staff = await requireRole('accountant', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), on = S(fdata, 'on') === '1', reason = S(fdata, 'reason');
   const back = S(fdata, 'back') === `/customers/${pid}/${oid}` ? `/customers/${pid}/${oid}` : `/p/${pid}/apartments/${oid}`;
   if (staff.role !== 'admin' && !reason) go(`${back}?m=discontinue`, 'Write the reason for the Admin');
   let r = '';
@@ -220,7 +220,7 @@ export async function discontinueAction(fdata: FormData) {
 /** A customer leaves and hands back the keys (Phase 3): only once every charge up to the leaving date is paid. The
  *  building manager asks; the Admin approves (an Admin's own is done at once). */
 export async function leaveAction(fdata: FormData) {
-  const staff = await requireRole('manager', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), date = S(fdata, 'date'), reading = S(fdata, 'reading'), reason = S(fdata, 'reason');
+  const staff = await requireRole('accountant', 'admin'), pid = S(fdata, 'pid'), oid = S(fdata, 'oid'), date = S(fdata, 'date'), reading = S(fdata, 'reading'), reason = S(fdata, 'reason');
   const back = `/p/${pid}/apartments/${oid}/leave?d=${encodeURIComponent(date)}${/^\d+$/.test(reading) ? `&r=${reading}` : ''}`;
   if (staff.role !== 'admin' && !reason) go(back, 'Write a note for the Admin (for example: keys handed back on the leaving date)');
   let r = '';

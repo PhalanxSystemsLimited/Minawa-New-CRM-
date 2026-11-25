@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   try { fd = await req.formData(); } catch { return no('The photo didn\'t arrive. Try again.'); }
   const pid = String(fd.get('pid') || ''), kind = fd.get('kind') === 'bill' ? 'bill' : 'payment', owner = String(fd.get('owner') || '') || null, file = fd.get('file');
   if (!pid || !canOpen(staff, pid)) return no('This building isn\'t assigned to you.', 403);
-  if (kind === 'bill' && staff.role !== 'manager' && staff.role !== 'admin') return no('Bill photos are added by the building manager.', 403);
+  if (kind === 'bill' && staff.role !== 'accountant' && staff.role !== 'admin') return no('Bill photos are added by the Accountant.', 403);
   if (!(file instanceof Blob) || !file.size) return no('No photo was chosen.');
   if (file.size > MAX_BYTES) return no('This photo is too big even after shrinking it. Take it again a little further away.');
   try {

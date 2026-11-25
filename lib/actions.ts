@@ -39,8 +39,11 @@ export async function recordPaymentAction(fdata: FormData) {
   if (!(amt > 0)) go(ownerPath(pid, oid, fdata), 'Enter an amount');
   // Amount checks (21 Nov 2026): above what is owed needs the tick; far above it is blocked, except for the Admin.
   const lim = use(await load(pid, staff), () => { const o = ownerById(oid); if (!o) return null; return { owed: payLimits(o).owed, block: payBlock(o, amt) }; });
-  if (!lim) go(`/p/${pid}`, 'Apartment not found');
-  const formBack = S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
+  if (!lim) go(staff.role === 'manager' ? '/' : `/p/${pid}`, 'Apartment not found');
+  // 25 Nov 2026: a building manager's own screen: the customer's page (/m/…), its payment form, then the locked
+  // "Send the receipt" screen.
+  const mPage = `/m/${pid}/${encodeURIComponent(oid)}`;
+  const formBack = staff.role === 'manager' ? `${mPage}?pay=1` : S(fdata, 'billId') ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(S(fdata, 'billId'))}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${S(fdata, 'method') === 'Bank transfer' ? '-bank' : ''}`;
   // Payments are entered by building managers and accountants only (no online payments); the Admin only enters an
   // amount above what one entry can take (after checking it is right).
   if (staff.role === 'admin') {
@@ -57,16 +60,17 @@ export async function recordPaymentAction(fdata: FormData) {
     const paidOn = /^\d{4}-\d{2}-\d{2}$/.test(S(fdata, 'paidOn')) ? S(fdata, 'paidOn') : todayPKT();
     const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
     // "Bill received" from the Electricity bills screen (21 Nov 2026): pays that electricity bill first.
-    const billId = S(fdata, 'billId') || null, again = billId ? `/p/${pid}/electricity?m=elecpaid-${encodeURIComponent(billId)}&oid=${encodeURIComponent(oid)}` : ownerPath(pid, oid, fdata) + `?m=recpay${method === 'Bank transfer' ? '-bank' : ''}`;
+    const billId = S(fdata, 'billId') || null, again = `${mPage}?pay=1&method=${method === 'Bank transfer' ? 'bank' : 'cash'}`;
     if (method === 'Cash' && !S(fdata, 'ref')) go(again, 'Enter the receipt number you gave the owner');
     if (method === 'Bank transfer' && !txn) go(again, 'Enter the bank transaction ID');
     // The photo of the transfer (or the bill receipt): needed for a bank transfer once photo storage is set up.
     let photo: string | null = null;
     try { photo = (await photoFor(S(fdata, 'photo'), pid, 'payment'))?.id || null; } catch (e) { go(again, (e as Error).message); }
     if ((method === 'Bank transfer' || billId) && !photo && photoStore()) go(again, billId ? 'Add the photo of the payment (the bill receipt or the phone screen)' : 'Add the photo of the bank transfer (take it with the camera or choose it from the phone)');
-    const pr = await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, billId || S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null, { photoId: photo, billId }), { send: false });
+    const pr = await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, billId || S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null, { photoId: photo, billId }), { send: false, manager: true });
     if (photo) await (await getStore()).linkImage(photo, pr.payId || pr.id).catch(() => undefined);
-    go(`/p/${pid}/send?type=queue&kind=receipt&ids=${encodeURIComponent(oid)}&go=1`, `${method === 'Cash' ? 'Cash' : 'Bank transfer'} of Rs ${amt.toLocaleString('en-US')} entered. Send the receipt now.`);
+    // Straight to the locked "Send the receipt" screen for this customer (Cancel leaves it to the accountant).
+    redirect(`${mPage}?rc=${encodeURIComponent(pr.payId || pr.id)}`);
   }
   if (!S(fdata, 'ref')) go(ownerPath(pid, oid, fdata) + '?m=recpay', 'Enter the receipt number you gave the owner');
   const p = await mutate(pid, staff, s => officeCash(needOwner(s, oid), amt, S(fdata, 'ref'), s.today, at(15), staff.id, staffName(staff)));
@@ -190,7 +194,7 @@ export async function editOwnerAction(fdata: FormData) {
   go(ownerPath(pid, oid, fdata), list.length ? `Saved. Sent to an admin for approval: ${list.join('; ')}. It applies once approved.` : 'Saved');
 }
 export async function pickAction(fdata: FormData) {
-  await requireRole('manager');
+  await requireRole('accountant');
   redirect(ownerPath(S(fdata, 'pid'), S(fdata, 'oid')) + '?m=send');
 }
 
@@ -211,13 +215,13 @@ export async function rejectAction(fdata: FormData) {
   go(back || `/p/${pid}/todo`, kind === 'cash' ? 'Marked as not received. The building manager sees your note.' : 'Owner told on WhatsApp');
 }
 export async function alertDoneAction(fdata: FormData) {
-  // A building manager's follow-up: only he marks it done (21 Nov 2026).
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), id = S(fdata, 'id');
+  // A follow-up: the Accountant marks it done (since 25 Nov 2026 it is his work, not the building manager's).
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), id = S(fdata, 'id');
   await mutate(pid, staff, s => { const a = s.alerts.find(x => x.id === id); if (a) a.done = true; return a; }, { send: false, what: (_s, a) => a ? `Alert for ${ownerById(a.ownerId)?.apt || 'an apartment'} marked done by ${staffName(staff)}: ${a.text.slice(0, 120)}` : null });
   go(`/p/${pid}/todo`);
 }
 export async function retryMessageAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back') || `/p/${pid}/messages`;
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), id = S(fdata, 'id'), back = S(fdata, 'back') || `/p/${pid}/messages`;
   await mutate(pid, staff, s => { const m = s.messages.find(x => x.id === id); if (m && (m.status === 'failed' || m.status === 'skipped')) { m.status = 'pending'; m.error = null; log(s.today, at(15), 'message', `Message ${m.id} to ${ownerById(m.ownerId)?.apt} put back in Send on WhatsApp by ${staffName(staff)}`, m.ownerId); } });
   go(back, 'Added to Send on WhatsApp, ready to send by hand');
 }
@@ -262,7 +266,7 @@ export async function fineAction(fdata: FormData) {
   go(back, failed(r) ? r.error : r.text);
 }
 export async function announceAction(fdata: FormData) {
-  const staff = await requireRole('manager'), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=announce`;
+  const staff = await requireRole('accountant'), pid = S(fdata, 'pid'), back = `/p/${pid}/send?mode=announce`;
   if (!S(fdata, 'text')) go(back, 'Write the message first');
   const r = await attempt(() => mutate(pid, staff, () => changeOrRequest(null, 'announce', { aud: S(fdata, 'aud') || 'all', text: S(fdata, 'text') }, S(fdata, 'why'))));
   go(back, failed(r) ? r.error : r.text);
@@ -285,6 +289,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const roleLabel = (r: string) => r === 'admin' ? 'Admin' : r === 'manager' ? 'Building manager' : 'Accountant';
 const roleOf = (v: string): Staff['role'] => v === 'admin' ? 'admin' : v === 'manager' ? 'manager' : 'accountant';
 /** The buildings ticked on the staff form (only kept for Building managers). */
+/** A building manager's accountant: an active accountant, or none. */
+const reportsOf = (f: FormData, role: string, list: Staff[]) => { const v = String(f.get('reportsTo') || ''); return role === 'manager' && list.some(x => x.id === v && x.role === 'accountant' && x.active && !x.leftOn) ? v : null; };
 const buildingsOf = (f: FormData, role: string) => role === 'manager' || role === 'accountant' ? f.getAll('projects').map(String).filter(Boolean) : [];
 async function authAdmin() {
   const { createClient } = await import('@supabase/supabase-js');
@@ -309,6 +315,7 @@ export async function staffAction(fdata: FormData) {
   if (!st) go('/admin', 'Not found');
   const name = S(fdata, 'name') || st!.name, email = S(fdata, 'email').toLowerCase() || st!.email, role = roleOf(S(fdata, 'role')), projects = buildingsOf(fdata, role),
     active = !!fdata.get('active'), password = String(fdata.get('password') ?? '');
+  const reportsTo = reportsOf(fdata, role, list);
   if (!EMAIL_RE.test(email)) go(back, 'Enter a valid email');
   if (list.some(x => x.id !== id && x.email.toLowerCase() === email)) go(back, 'Someone else already signs in with that email');
   if (password && password.length < 8) go(back, 'The new password needs at least 8 characters');
@@ -321,6 +328,7 @@ export async function staffAction(fdata: FormData) {
   if (role !== 'admin' && [...(st!.projects || [])].sort().join(',') !== [...projects].sort().join(',')) ch.push(`buildings: ${projects.join(', ')}`);
   if ((role === 'manager' || role === 'accountant') && !projects.length) go(back, 'Please select at least one building for this role before saving.');
   if (active !== st!.active) ch.push(active ? 'can sign in again' : 'sign-in turned off');
+  if ((reportsTo || null) !== (st!.reportsTo || null)) ch.push(`reports to ${reportsTo ? list.find(x => x.id === reportsTo)?.name : 'no accountant'}`);
   if (password) ch.push('password changed');
   // WhatsApp numbers this person sends from (20 Nov 2026): checked, and every change logged.
   let waNumbers: WaNumber[] = [], bad = '';
@@ -345,7 +353,9 @@ export async function staffAction(fdata: FormData) {
     const { error } = await (await authAdmin()).updateUserById(id, { ...(email !== st!.email ? { email, email_confirm: true } : {}), ...(password ? { password } : {}) });
     if (error) go(back, `Couldn't update the login: ${error.message}`);
   } else if (password) go(back, 'Local mode has one shared password (LOCAL_PASSWORD). Connect Supabase to give each person their own.');
-  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers, staffNo, cnic, cnicExpiry, cnicAddress, phone });
+  await store.saveStaff({ ...st!, name, email, role, active, projects, waNumbers, staffNo, cnic, cnicExpiry, cnicAddress, phone, reportsTo });
+  // An accountant who stops being one: his building managers no longer report to anyone (the Admin is told on the page).
+  if (st!.role === 'accountant' && role !== 'accountant') for (const x of list) if (x.reportsTo === st!.id) await store.saveStaff({ ...x, reportsTo: null });
   // A new password or login, or sign-in turned off: sign them out on every device at once (18 Nov 2026).
   let ended = false;
   if (store.kind === 'supabase' && (password || email !== st!.email || (!active && st!.active)) && st!.id !== me.id) ended = await endSessions(st!.id);
@@ -382,8 +392,9 @@ export async function inviteAction(fdata: FormData) {
     if (error || !data.user) go('/admin?add=1', `Couldn't add: ${error?.message}`);
     id = data.user!.id;
   }
-  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers, staffNo, phone: normPhone(phone), cnic, cnicExpiry, cnicAddress });
-  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')})` : `an accountant (${projects.join(', ')})`;
+  const reportsTo = reportsOf(fdata, role, list);
+  await store.saveStaff({ id, email, name, role, active: true, projects, waNumbers, staffNo, phone: normPhone(phone), cnic, cnicExpiry, cnicAddress, reportsTo });
+  const as = role === 'admin' ? 'an admin' : role === 'manager' ? `a building manager (${projects.join(', ')}${reportsTo ? `, reports to ${list.find(x => x.id === reportsTo)?.name}` : ''})` : `an accountant (${projects.join(', ')})`;
   await staffLog(me, `${name} (${staffNo}, CNIC ${cnic}, ${email}) added as ${as} by ${staffName(me)}${waNumbers.length ? `; WhatsApp numbers: ${numsText(waNumbers)}` : ''}`);
   go('/admin', `${name} (${staffNo}) can now sign in as ${as}`);
 }

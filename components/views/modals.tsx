@@ -103,7 +103,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
   if (m.startsWith('instal')) return InstalModal({ o, n: Math.min(24, Math.max(2, +m.split('-')[1] || 3)) });
   if (m === 'discontinue') {
     const on = !o.flagged, admin = isAdmin();
-    if (S.role === 'accountant') return <ModalShell title="Discontinue maintenance"><div className="callout">The building manager asks for this; the Admin approves it.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    if (S.role === 'manager') return <ModalShell title="Discontinue maintenance"><div className="callout">The Accountant asks for this; the Admin approves it.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
     return <ModalShell title={on ? 'Discontinue maintenance' : 'Resume maintenance'}><form action={discontinueAction} style={col}>{hidden(o)}<input type="hidden" name="on" value={on ? '1' : '0'} />
       <div className={`callout ${on ? 'bad' : ''}`}><div>{on ? `${o.name} still owes ${rs(Math.max(0, bal))} after the late warning. Maintenance services for ${o.apt} stop once ${admin ? 'you confirm' : 'the Admin approves'}. Charges keep running and are still owed.` : `Maintenance for ${o.apt} starts again once ${admin ? 'you confirm' : 'the Admin approves'}.`}</div></div>
       <div className="form-row"><label htmlFor="dc-r">Reason{admin ? ' (optional)' : ''}</label><input id="dc-r" name="reason" type="text" required={!admin} placeholder={on ? 'e.g. No payment after the warning of 30 Dec; owner not answering' : 'e.g. Paid in full on 5 Jan'} /></div>
@@ -183,7 +183,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <div className="form-row"><label htmlFor="rc-n">Note (optional)</label><input id="rc-n" name="note" type="text" placeholder="e.g. Paid at the site office" /></div>
       <div className="m-actions"><CloseBtn /><Submit>Save and send the receipt</Submit></div></form></ModalShell>; }
       return <ModalShell title="Record a cash payment"><form action={act.recordPaymentAction} style={col}>{hidden(o)}
-      <div className="callout">Cash {o.name} paid at the office. It counts straight away and the receipt is made for the building manager to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
+      <div className="callout">Cash {o.name} paid at the office. It counts straight away and the receipt waits in your Receipts to send. {o.name} owes {rs(Math.max(0, bal))}.</div>
       <div className="form-row"><label htmlFor="rp-amt">Amount (Rs)</label><input id="rp-amt" name="amt" type="number" min="1" step="1" required defaultValue={Math.max(0, bal) || ''} /></div>
       {guard(o)}
       <input type="hidden" name="method" value="Cash" />
@@ -250,7 +250,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       {isAdmin() ? <div className="callout">Shows in the apartment&apos;s history with your name and the reason.</div>
         : <div className="callout warn"><div>An admin has to approve this first, and sees your reason. Once approved, it shows in the apartment&apos;s history with your name and the reason.</div></div>}
       <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? 'Save adjustment' : 'Send for approval'}</Submit></div></form></ModalShell>;
-    case 'generator': { if (cur().role !== 'manager') return <ModalShell title="Generator charges"><div className="callout">The generator charges list is kept by the building manager.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    case 'generator': { if (cur().role !== 'accountant') return <ModalShell title="Generator charges"><div className="callout">The generator charges list is kept by the Accountant.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
       const on = !o.generator;
       return <ModalShell title={on ? 'Add generator charges' : 'Remove generator charges'}><form action={toggleGeneratorAction} style={col}>{hidden(o)}<input type="hidden" name="on" value={on ? '1' : '0'} />
         <div className="callout">{on ? `${o.apt} goes on the Generator Charges List` : `${o.apt} comes off the Generator Charges List`}.</div>
@@ -258,7 +258,7 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
         {isAdmin() ? null : <><div className="form-row"><label htmlFor="gn-w">Reason for the admin <span className="req">(required)</span></label><input id="gn-w" name="why" type="text" required placeholder="e.g. Generator connection installed on 10 Nov" /></div>
           <div className="callout warn"><div>An admin has to approve this first.</div></div></>}
         <div className="m-actions"><CloseBtn /><Submit>{isAdmin() ? (on ? 'Add generator charges' : 'Remove generator charges') : 'Send for approval'}</Submit></div></form></ModalShell>; }
-    case 'send': return cur().role === 'manager' ? SendModal({ o }) : <ModalShell title="Send on WhatsApp"><div className="callout">Sending on WhatsApp is the building manager&apos;s work.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
+    case 'send': return cur().role === 'accountant' ? SendModal({ o }) : <ModalShell title="Send on WhatsApp"><div className="callout">Sending on WhatsApp is the Accountant&apos;s work.</div><div className="m-actions"><CloseBtn label="Close" /></div></ModalShell>;
     default: return null;
   }
 }

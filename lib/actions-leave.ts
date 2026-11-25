@@ -40,6 +40,8 @@ export async function deleteStaffAction(f: FormData) {
   if (st!.role === 'admin' && !staff.some(x => x.role === 'admin' && x.active && !x.leftOn && x.id !== st!.id)) back('Not deleted: keep at least one Admin who can sign in');
   const who = staffName(me), why = `${reason}${note ? `: ${note}` : ''}`;
   await store.saveStaff({ ...st!, active: false, leftOn, leftReason: why, leftBy: who });
+  // A past accountant's building managers report to no one until the Admin picks another accountant.
+  for (const x of staff) if (x.reportsTo === st!.id) await store.saveStaff({ ...x, reportsTo: null });
   const ended = await endSessions(st!.id);
   await staffLog(me, `${st!.name} (${st!.email}) deleted by ${who}: moved to past employees, last working day ${fd(leftOn)}, ${why}. Sign-in turned off.`, { kind: 'admin' });
   back(`${st!.name} moved to Past employees. Their login is turned off${ended ? ' and signed out everywhere' : ' (they lose access on their next click)'}.`, 'v=past');

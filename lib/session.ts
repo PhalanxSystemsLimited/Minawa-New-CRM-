@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@supabase/ssr';
 import type { Staff } from './types';
 import { getStore } from './store';
+import { scoped } from './people';
 
 export const supabaseOn = () => !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
 export const LOCAL_COOKIE = 'minawa_local_user';
@@ -25,14 +26,17 @@ export async function currentStaff(): Promise<Staff | null> {
     const sb = await supabaseServer();
     const { data } = await sb.auth.getUser();
     if (!data.user) return null;
-    const staff = (await store.listStaff()).find(s => s.id === data.user!.id);
-    return staff && staff.active ? staff : null;
+    const all = await store.listStaff(), staff = all.find(s => s.id === data.user!.id);
+    return staff && staff.active ? scoped(staff, all) : null;
   }
   const jar = await cookies();
   const id = jar.get(LOCAL_COOKIE)?.value;
   if (!id) return null;
-  return (await store.listStaff()).find(s => s.id === id && s.active) || null;
+  const all = await store.listStaff(), me = all.find(s => s.id === id && s.active);
+  return me ? scoped(me, all) : null;
 }
+
+
 
 export async function requireStaff(): Promise<Staff> {
   const s = await currentStaff();
