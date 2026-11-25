@@ -24,21 +24,27 @@ import { ReceiptLock } from '@/components/MgrReceipt';
 import { WaReturnPrompt } from '@/components/WaReturnPrompt';
 import { NavProgress } from '@/components/NavProgress';
 import { Suspense } from 'react';
+import { ThemeSwitch } from '@/components/Shell';
 import { photoStore } from '@/lib/images';
 
 const FIRST = 30, MORE = 50;
 const digits = (v: string) => v.replace(/\D/g, '');
 
-/** The slim shell around a building manager's pages. */
+/** The slim shell around a building manager's pages: logo, building, his name, the theme (Light, Dark or Frost, his
+ *  choice, kept in this browser) and Sign out. */
 export async function ManagerShell({ staff, signOut, children }: { staff: Staff; signOut: () => Promise<void>; children: React.ReactNode }) {
   const projs = await liveProjects(staff);
   const where = projs.length === 1 ? projs[0].name : projs.length ? `${projs.length} buildings` : 'No building yet';
+  const ini = staff.name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'BM';
   return <>
+    <div className="lv-aurora mgr-aurora" aria-hidden="true"><i className="a1"></i><i className="a2"></i><i className="a3"></i></div>
     <div className="mgr-app">
       <header className="mgr-top">
         <Go href="/" className="mgr-logo" ariaLabel="Home"><img src="/assets/minawa-mark.png" alt="" /></Go>
-        <div className="mgr-who"><b>{where}</b><small>{staff.name} · {roleName(staff)}</small></div>
-        <form action={signOut}><button type="submit" className="mgr-out">Sign out</button></form>
+        <div className="mgr-who"><b>{where}</b><small>Minawa Group · Maintenance</small></div>
+        <div className="mgr-thm"><ThemeSwitch /></div>
+        <div className="mgr-me"><span className="mgr-av" aria-hidden="true">{ini}</span><span className="mgr-me-t"><b>{staff.name}</b><small>{roleName(staff)}</small></span></div>
+        <form action={signOut}><button type="submit" className="mgr-out"><Ic n="logout" s={16} /><span>Sign out</span></button></form>
       </header>
       <main id="main" className="mgr-main">{children}</main>
     </div>
@@ -54,30 +60,47 @@ const isBank = (p: { method?: string | null }) => (p.method || 'Cash') === 'Bank
 /** The money box figures for his buildings. */
 function money(states: State[], me: Staff) {
   const today = todayPKT();
-  let coll = 0, target = 0, outstanding = 0, owing = 0, cash = 0, cashN = 0, bank = 0, bankN = 0, todayN = 0, todayAmt = 0;
+  let coll = 0, target = 0, outstanding = 0, owing = 0, flats = 0, cash = 0, cashN = 0, bank = 0, bankN = 0, todayN = 0, todayAmt = 0, mine = 0, mineN = 0;
   for (const s of states) use(s, () => {
-    const st = projStats(); coll += st.coll; target += st.target; outstanding += st.outstanding; owing += st.owing;
+    const st = projStats(); coll += st.coll; target += st.target; outstanding += st.outstanding; owing += st.owing; flats += st.flats;
     for (const p of myEntries(s, me)) {
       if (p.status === 'pending') { if (isBank(p)) { bank += p.amount; bankN++; } else { cash += p.amount; cashN++; } }
       if (p.d === today && p.status !== 'cancelled') { todayN++; todayAmt += p.amount; }
+      if (p.d.slice(0, 7) === today.slice(0, 7) && p.status !== 'cancelled' && p.status !== 'rejected') { mine += p.amount; mineN++; }
     }
   });
   const waitToday = states.reduce((a, s) => a + myEntries(s, me).filter(p => p.d === today && p.status === 'pending').length, 0);
-  return { coll, target, pct: target ? Math.round(100 * coll / target) : 0, outstanding, owing, cash, cashN, bank, bankN, todayN, todayAmt, waitToday };
+  return { coll, target, pct: target ? Math.round(100 * coll / target) : 0, outstanding, owing, flats, cash, cashN, bank, bankN, todayN, todayAmt, waitToday, mine, mineN };
+}
+
+/** The progress ring: collected of the month's target (or the share of customers paid up when there is no target). */
+function Ring({ pct, label }: { pct: number; label: string }) {
+  const r = 46, c = 2 * Math.PI * r, v = Math.max(0, Math.min(100, pct));
+  return <div className="mgr-ring" role="img" aria-label={`${v}% ${label}`}>
+    <svg viewBox="0 0 108 108" width="108" height="108" aria-hidden="true"><circle cx="54" cy="54" r={r} className="t" /><circle cx="54" cy="54" r={r} className="v" strokeDasharray={`${(c * v / 100).toFixed(1)} ${c.toFixed(1)}`} /></svg>
+    <span><b className="num">{v}%</b><small>{label}</small></span>
+  </div>;
 }
 
 function MoneyBox({ m }: { m: ReturnType<typeof money> }) {
-  const mon = MONL[+todayPKT().slice(5, 7) - 1];
+  const mon = MONL[+todayPKT().slice(5, 7) - 1], paidUp = m.flats ? Math.round(100 * (m.flats - m.owing) / m.flats) : 0;
+  const tile = (icon: string, tone: string, v: string, l: string, sub?: string) => <div className={`mgr-kpi t-${tone}`}><span className="mgr-kic"><Ic n={icon} s={18} /></span><span><b className="num">{v}</b><small>{l}</small>{sub ? <em>{sub}</em> : null}</span></div>;
   return <section className="mgr-money" aria-label="Money at a glance">
-    <div className="mgr-k">{mon.toUpperCase()}</div>
-    <div className="mgr-big num">{rs(m.coll)} <small>collected</small></div>
-    <div className="mgr-k2">{m.target ? `of ${rs(m.target)} target · ${m.pct}%` : 'no target set for this month'}</div>
-    <div className="mgr-bar" role="progressbar" aria-valuenow={Math.min(100, m.pct)} aria-valuemin={0} aria-valuemax={100} aria-label="Collected of the target"><i style={{ width: `${Math.min(100, m.pct)}%` }}></i></div>
+    <div className="mgr-money-top">
+      <Ring pct={m.target ? m.pct : paidUp} label={m.target ? `${mon.slice(0, 3)} target` : 'paid up'} />
+      <div className="mgr-money-t">
+        <div className="mgr-k">{mon.toUpperCase()} · YOUR BUILDING{m.flats ? `S · ${m.flats} CUSTOMERS` : ''}</div>
+        <div className="mgr-big num">{rs(m.coll)} <small>collected</small></div>
+        <div className="mgr-k2">{m.target ? `of ${rs(m.target)} target · ${m.pct}%` : `${m.flats - m.owing} of ${m.flats} customers are paid up`}</div>
+        <div className="mgr-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, m.target ? m.pct : paidUp)}%` }}></i></div>
+        <div className="mgr-k2">You entered <b>{rs(m.mine)}</b> this month · {m.mineN} payment{m.mineN === 1 ? '' : 's'}</div>
+      </div>
+    </div>
     <div className="mgr-mini">
-      <div><b className="num">{rs(m.outstanding)}</b><span>Still to collect</span></div>
-      <div><b className="num">{m.owing}</b><span>Apartments owing</span></div>
-      <div className="cash"><b className="num">{rs(m.cash)}</b><span>Cash in my hand{m.cashN ? ` · ${m.cashN} entr${m.cashN === 1 ? 'y' : 'ies'}` : ''}</span></div>
-      <div><b className="num">{m.bankN}</b><span>Bank payment{m.bankN === 1 ? '' : 's'} waiting{m.bankN ? ` · ${rs(m.bank)}` : ''}</span></div>
+      {tile('wallet', 'rust', rs(m.outstanding), 'Still to collect')}
+      {tile('building', 'blue', String(m.owing), 'Apartments owing', m.flats ? `of ${m.flats}` : undefined)}
+      {tile('cash', 'cash', rs(m.cash), 'Cash in my hand', m.cashN ? `${m.cashN} entr${m.cashN === 1 ? 'y' : 'ies'} to hand over` : 'nothing to hand over')}
+      {tile('bank', 'violet', String(m.bankN), `Bank payment${m.bankN === 1 ? '' : 's'} waiting`, m.bankN ? rs(m.bank) : 'none waiting')}
     </div>
   </section>;
 }
@@ -88,43 +111,87 @@ const match = (o: Owner, q: string) => {
   return o.apt.toLowerCase().includes(t) || o.name.toLowerCase().includes(t) || custId(o).toLowerCase().includes(t)
     || (d.length >= 3 && (digits(o.phone || '').includes(d.replace(/^0/, '')) || digits(o.cnic || '').includes(d)));
 };
+const FILTERS = [['', 'All'], ['owe', 'Owes'], ['paid', 'Paid up'], ['adv', 'Advance'], ['nowa', 'No WhatsApp']] as const;
+const hello = () => { const h = +new Date().toLocaleString('en-GB', { timeZone: 'Asia/Karachi', hour: '2-digit', hour12: false }); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
 
-/** Home: the money box, search and the customer list. */
+/** Home: greeting, the money box, today and his latest entries, search, filters and the customer list. */
 export async function ManagerHome({ staff, sp }: { staff: Staff; sp: Record<string, string> }) {
   const projs = await liveProjects(staff);
   if (!projs.length) return <div className="mgr-empty"><b>No building assigned yet</b><p>Ask the Admin to tick your building on Staff &amp; connections.</p></div>;
   const states = await Promise.all(projs.map(p => load(p.id, staff)));
   const pick = projs.length > 1 && projs.some(p => p.id === sp.b) ? sp.b : '', shown = pick ? states.filter(s => s.project === pick) : states;
-  const m = money(shown, staff), q = String(sp.q || '').trim().slice(0, 60);
-  const rows = shown.flatMap(s => use(s, () => s.owners.filter(o => o.status === 'active' && match(o, q))
-    .map(o => ({ o, s, bal: balance(o), pname: s.proj.name }))))
-    .sort((a, b) => a.pname.localeCompare(b.pname) || a.o.apt.localeCompare(b.o.apt, 'en', { numeric: true }));
+  const m = money(shown, staff), q = String(sp.q || '').trim().slice(0, 60), f = FILTERS.some(x => x[0] === sp.f) ? sp.f : '', sort = sp.s === 'owed' ? 'owed' : 'flat';
+  const all = shown.flatMap(s => use(s, () => s.owners.filter(o => o.status === 'active').map(o => ({ o, s, bal: balance(o), pname: s.proj.name, hit: match(o, q) }))));   // match() needs the building's state (customer IDs)
+  const noWa = (o: Owner) => !o.phone || o.noPhone || o.invalidPhone;
+  const isF = (k: string, x: typeof all[number]) => !k || (k === 'owe' ? x.bal > 0 : k === 'paid' ? x.bal === 0 : k === 'adv' ? x.bal < 0 : noWa(x.o));
+  const count = (k: string) => all.filter(x => x.hit && isF(k, x)).length;
+  const rows = all.filter(x => x.hit && isF(f, x))
+    .sort((a, b) => sort === 'owed' ? b.bal - a.bal : a.pname.localeCompare(b.pname) || a.o.apt.localeCompare(b.o.apt, 'en', { numeric: true }));
   const n = sp.n === 'all' ? rows.length : Math.min(rows.length, Math.max(FIRST, Math.round(+(sp.n || 0)) || FIRST)), list = rows.slice(0, n);
-  const href = (k: Record<string, string>) => '/?' + new URLSearchParams(Object.entries({ b: pick, q, ...k }).filter(([, v]) => v)).toString();
+  const href = (k: Record<string, string>) => '/?' + new URLSearchParams(Object.entries({ b: pick, q, f, s: sort === 'owed' ? 'owed' : '', ...k }).filter(([, v]) => v)).toString();
+  // His latest entries, newest first, with where each one stands.
+  const latest = shown.flatMap(s => use(s, () => myEntries(s, staff).map(p => ({ p, s, apt: ownerById(p.ownerId)?.apt || '', name: ownerById(p.ownerId)?.name || '' }))))
+    .sort((a, b) => `${b.p.d} ${b.p.t}`.localeCompare(`${a.p.d} ${a.p.t}`)).slice(0, 6);
+  const today = todayPKT(), first = staff.name.trim().split(/\s+/)[0] || 'there';
+  const stTag = (p: Proof) => p.status === 'pending' ? <span className="tag warn">Waiting</span> : p.status === 'verified' ? <span className="tag good">Approved</span> : p.status === 'rejected' ? <span className="tag bad">Not received</span> : <span className="tag">Cancelled</span>;
   return <div className="mgr-home">
-    {projs.length > 1 ? <nav className="mgr-chips" aria-label="Buildings">
-      <a href={href({ b: '' })} className={'chipbtn' + (!pick ? ' on' : '')}>All buildings</a>
-      {projs.map(p => <a key={p.id} href={href({ b: p.id })} className={'chipbtn' + (pick === p.id ? ' on' : '')}>{p.name}</a>)}
-    </nav> : null}
-    <MoneyBox m={m} />
-    <form className="mgr-search" action="/" role="search">
-      {pick ? <input type="hidden" name="b" value={pick} /> : null}
-      <Ic n="search" s={18} />
-      <input name="q" type="search" defaultValue={q} placeholder="Search flat, name, phone, CNIC" aria-label="Search customers" autoComplete="off" />
-      {q ? <a href={href({ q: '' })} className="mgr-clear">Clear</a> : null}
-    </form>
-    <div className="mgr-today"><span>Today: <b>{m.todayN} payment{m.todayN === 1 ? '' : 's'}</b> · {rs(m.todayAmt)}</span><span><b>{m.waitToday}</b> waiting for accountant</span></div>
-    {list.length ? <div className="mgr-list">{list.map(({ o, s, bal }) => <div className="mgr-cu" key={s.project + o.id}>
-      <a href={`/m/${s.project}/${encodeURIComponent(o.id)}`} className="mgr-cu-main">
-        <span className="mgr-apt">{o.apt}</span>
-        <span className="mgr-n"><b>{o.name}</b><small>{o.phone || 'No WhatsApp number'}{projs.length > 1 && !pick ? ` · ${s.proj.name}` : ''}</small>
-          {bal > 0 ? <span className="owe">Owes {rs(bal)}</span> : bal < 0 ? <span className="adv">{rs(-bal)} advance</span> : <span className="paid">Paid up</span>}</span>
-      </a>
-      <a href={`/m/${s.project}/${encodeURIComponent(o.id)}?pay=1`} className="mgr-pay">Add payment</a>
-    </div>)}</div> : <div className="mgr-empty"><b>{q ? `Nobody matches "${q}"` : 'No customers yet'}</b><p>{q ? 'Try the flat number, part of the name, or the phone number.' : 'Customers appear here once the accountant adds them.'}</p></div>}
-    {rows.length > list.length ? <div className="mgr-more"><span>Showing {list.length} of {rows.length}</span>
-      <a className="btn" href={href({ n: String(list.length + MORE) })}>Show {Math.min(MORE, rows.length - list.length)} more</a>
-      <a className="btn ghost" href={href({ n: 'all' })}>Show all</a></div> : null}
+    <div className="mgr-hello">
+      <div><div className="mgr-eyebrow">{new Date(today + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</div>
+        <h1>{hello()}, <span>{first}</span></h1>
+        <p>{pick ? projs.find(p => p.id === pick)?.name : projs.map(p => p.name).join(' · ')} · {all.length} customers</p></div>
+      {projs.length > 1 ? <nav className="mgr-chips" aria-label="Buildings">
+        <a href={href({ b: '', n: '' })} className={'chipbtn' + (!pick ? ' on' : '')}>All buildings</a>
+        {projs.map(p => <a key={p.id} href={href({ b: p.id, n: '' })} className={'chipbtn' + (pick === p.id ? ' on' : '')}>{p.name}</a>)}
+      </nav> : null}
+    </div>
+    <div className="mgr-grid">
+      <div className="mgr-col-main">
+        <MoneyBox m={m} />
+        <div className="mgr-sec"><h2><Ic n="users" s={18} /> Customers</h2><span>Tap a customer for their history, or Add payment</span></div>
+        <form className="mgr-search" action="/" role="search">
+          {pick ? <input type="hidden" name="b" value={pick} /> : null}{f ? <input type="hidden" name="f" value={f} /> : null}{sort === 'owed' ? <input type="hidden" name="s" value="owed" /> : null}
+          <Ic n="search" s={18} />
+          <input name="q" type="search" defaultValue={q} placeholder="Search flat, name, phone, CNIC" aria-label="Search customers" autoComplete="off" />
+          {q ? <a href={href({ q: '', n: '' })} className="mgr-clear">Clear</a> : null}
+        </form>
+        <div className="mgr-filters">
+          <nav className="mgr-chips" aria-label="Show">{FILTERS.map(([k, l]) => <a key={k} href={href({ f: k, n: '' })} className={'chipbtn' + (f === k ? ' on' : '')} aria-current={f === k ? 'true' : undefined}>{l} <span className="mgr-cnt">{count(k)}</span></a>)}</nav>
+          <a href={href({ s: sort === 'owed' ? '' : 'owed', n: '' })} className="mgr-sort"><Ic n="filter" s={15} /> {sort === 'owed' ? 'Most owed first' : 'By flat number'}</a>
+        </div>
+        {list.length ? <div className="mgr-list">{list.map(({ o, s, bal }) => { const st = bal > 0 ? 'owe' : bal < 0 ? 'adv' : 'paid';
+          return <div className={`mgr-cu st-${st}`} key={s.project + o.id}>
+            <a href={`/m/${s.project}/${encodeURIComponent(o.id)}`} className="mgr-cu-main">
+              <span className="mgr-apt">{o.apt}</span>
+              <span className="mgr-n"><b>{o.name}</b><small>{noWa(o) ? <span className="mgr-nowa">No WhatsApp number</span> : o.phone}{projs.length > 1 && !pick ? ` · ${s.proj.name}` : ''}</small>
+                {bal > 0 ? <span className="owe">Owes {rs(bal)}</span> : bal < 0 ? <span className="adv">{rs(-bal)} advance</span> : <span className="paid"><Ic n="okc" s={13} /> Paid up</span>}</span>
+            </a>
+            <a href={`/m/${s.project}/${encodeURIComponent(o.id)}?pay=1`} className="mgr-pay"><Ic n="plus" s={15} /><span>Add payment</span></a>
+          </div>; })}</div>
+          : <div className="mgr-empty"><b>{q ? `Nobody matches "${q}"` : f ? 'Nobody in this list' : 'No customers yet'}</b><p>{q ? 'Try the flat number, part of the name, or the phone number.' : f ? 'Choose All to see every customer.' : 'Customers appear here once the accountant adds them.'}</p></div>}
+        {rows.length > list.length ? <div className="mgr-more"><span>Showing {list.length} of {rows.length}</span>
+          <a className="btn" href={href({ n: String(list.length + MORE) })}>Show {Math.min(MORE, rows.length - list.length)} more</a>
+          <a className="btn ghost" href={href({ n: 'all' })}>Show all</a></div> : null}
+      </div>
+      <aside className="mgr-col-side" aria-label="Today">
+        <section className="mgr-card mgr-today-card">
+          <h3><Ic n="cal" s={17} /> Today</h3>
+          <div className="mgr-today-grid">
+            <div><b className="num">{m.todayN}</b><small>payment{m.todayN === 1 ? '' : 's'} entered</small></div>
+            <div><b className="num">{rs(m.todayAmt)}</b><small>received today</small></div>
+            <div className={m.waitToday ? 'warn' : ''}><b className="num">{m.waitToday}</b><small>waiting for the accountant</small></div>
+          </div>
+          <p className="mgr-tip"><Ic n="info" s={14} /> Bring today&apos;s cash and your list to your accountant: he approves each entry.</p>
+        </section>
+        <section className="mgr-card mgr-latest">
+          <h3><Ic n="history" s={17} /> Your latest entries</h3>
+          {latest.length ? <div className="mgr-lat-list">{latest.map(({ p, s, apt, name }) => <a key={s.project + p.id} href={`/m/${s.project}/${encodeURIComponent(p.ownerId)}`} className="mgr-lat">
+            <span className={`mgr-lat-ic ${isBank(p) ? 'bank' : 'cash'}`}><Ic n={isBank(p) ? 'bank' : 'cash'} s={15} /></span>
+            <span className="mgr-lat-t"><b>{apt} · {rs(p.amount)}</b><small>{name}{p.periodFrom ? ` · ${periodText(p.periodFrom, p.periodTo)}` : ''} · {p.d === today ? t12(p.t) : fds(p.d)}</small></span>
+            {stTag(p)}</a>)}</div>
+            : <p className="mgr-none">Payments you enter show here, with whether the accountant has approved them.</p>}
+        </section>
+      </aside>
+    </div>
   </div>;
 }
 
