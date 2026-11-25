@@ -968,3 +968,56 @@ html .tab-b,html[data-theme] .tab-b,html .proj-tabs button[aria-current="page"] 
 /* No rise-in on the manager's pages: it would hold a transform on the page, and the fixed Add payment bar, the form and
    the receipt lock must sit on the screen itself. */
 .mgr-main>*{animation:none!important;transform:none!important}
+
+/* ---------- Customer › More menu (26 Nov 2026): a colour per icon, and a small animation on hover ---------- */
+.cm-ic[data-tone=green]{--tc:#16A34A}.cm-ic[data-tone=teal]{--tc:#0D9488}.cm-ic[data-tone=amber]{--tc:#D97706}.cm-ic[data-tone=blue]{--tc:#2563EB}
+.cm-ic[data-tone=violet]{--tc:#7C3AED}.cm-ic[data-tone=indigo]{--tc:#4F46E5}.cm-ic[data-tone=rose]{--tc:#E11D48}.cm-ic[data-tone=orange]{--tc:#EA580C}
+.cm-ic[data-tone=red]{--tc:#DC2626}.cm-ic[data-tone=rust]{--tc:var(--accent-dark,var(--accent))}
+.cm-item .cm-ic[data-tone]{background:color-mix(in srgb,var(--tc) 13%,transparent);color:var(--tc);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tc) 18%,transparent);
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),background-color .2s,color .2s,box-shadow .25s}
+.cm-item .cm-ic[data-tone] svg{transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.cm-item{transition:background-color .2s,transform .25s cubic-bezier(.34,1.56,.64,1)!important}
+.cm-item .cm-t b{transition:color .2s}
+.cm-item:hover:not([disabled]):has(.cm-ic[data-tone]),.cm-item:focus-visible:has(.cm-ic[data-tone]){background:color-mix(in srgb,var(--tc,var(--accent)) 9%,transparent)!important}
+.cm-item:has(.cm-ic[data-tone]){--tc:var(--accent)}
+.cm-item:has(.cm-ic[data-tone=green]){--tc:#16A34A}.cm-item:has(.cm-ic[data-tone=teal]){--tc:#0D9488}.cm-item:has(.cm-ic[data-tone=amber]){--tc:#D97706}.cm-item:has(.cm-ic[data-tone=blue]){--tc:#2563EB}
+.cm-item:has(.cm-ic[data-tone=violet]){--tc:#7C3AED}.cm-item:has(.cm-ic[data-tone=indigo]){--tc:#4F46E5}.cm-item:has(.cm-ic[data-tone=rose]){--tc:#E11D48}.cm-item:has(.cm-ic[data-tone=orange]){--tc:#EA580C}.cm-item:has(.cm-ic[data-tone=red]){--tc:#DC2626}
+.cm-item:hover:not([disabled]),.cm-item:focus-visible{transform:translateX(3px)}
+.cm-item:hover:not([disabled]) .cm-t b,.cm-item:focus-visible .cm-t b{color:var(--tc,var(--fg))}
+.cm-item:hover:not([disabled]) .cm-ic[data-tone],.cm-item:focus-visible .cm-ic[data-tone]{background:var(--tc);color:#fff;transform:scale(1.1) rotate(-4deg);box-shadow:0 6px 14px -6px var(--tc)}
+/* Each icon does its own little thing. */
+@keyframes cmSlide{0%,100%{transform:translateX(0)}40%{transform:translateX(3px)}70%{transform:translateX(-2px)}}
+@keyframes cmSwing{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}60%{transform:rotate(10deg)}85%{transform:rotate(-4deg)}}
+@keyframes cmSpin{to{transform:rotate(360deg)}}
+@keyframes cmSpinBack{to{transform:rotate(-360deg)}}
+@keyframes cmFly{0%{transform:translate(0,0)}45%{transform:translate(5px,-5px);opacity:0}46%{transform:translate(-5px,5px);opacity:0}100%{transform:translate(0,0);opacity:1}}
+@keyframes cmWiggle{0%,100%{transform:rotate(0)}20%{transform:rotate(-12deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(4deg)}}
+@keyframes cmFlip{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}100%{transform:scaleX(1)}}
+@keyframes cmLift{0%,100%{transform:translateY(0)}45%{transform:translateY(-3px)}}
+@keyframes cmPulse{0%,100%{transform:scale(1)}45%{transform:scale(1.25)}}
+@keyframes cmRing{0%,100%{transform:rotate(0)}10%,30%,50%{transform:rotate(-12deg)}20%,40%,60%{transform:rotate(12deg)}70%{transform:rotate(0)}}
+@keyframes cmFlash{0%,100%{opacity:1}30%{opacity:.25}55%{opacity:1}75%{opacity:.5}}
+@keyframes cmTurn{0%,100%{transform:rotate(0)}50%{transform:rotate(-35deg)}}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=cash] svg{animation:cmSlide .6s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=cal] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=clip] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=door] svg{animation:cmSwing .7s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=clock] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=percent] svg{animation:cmSpin .7s cubic-bezier(.4,0,.2,1)}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=history] svg{animation:cmSpinBack .7s cubic-bezier(.4,0,.2,1)}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=send] svg{animation:cmFly .6s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=edit] svg{animation:cmWiggle .6s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=swap] svg{animation:cmFlip .6s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=receipt] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=file] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=list] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=fuel] svg{animation:cmLift .5s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=shieldok] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=okc] svg,.cm-item:hover:not([disabled]) .cm-ic[data-ic=ban] svg{animation:cmPulse .5s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=phone] svg{animation:cmRing .7s ease-in-out}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=bolt] svg{animation:cmFlash .6s linear}
+.cm-item:hover:not([disabled]) .cm-ic[data-ic=key] svg{animation:cmTurn .6s ease-in-out}
+/* The menu's items come in one after another when it opens. */
+@keyframes cmIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+details.cm-more[open] .cm-group{animation:cmIn .32s cubic-bezier(.2,.8,.2,1) both}
+details.cm-more[open] .cm-group:nth-child(2){animation-delay:.04s}details.cm-more[open] .cm-group:nth-child(3){animation-delay:.08s}
+details.cm-more[open] .cm-group:nth-child(4){animation-delay:.12s}details.cm-more[open] .cm-group:nth-child(5){animation-delay:.16s}
+/* Dark themes: lighter colours on the dark menu. */
+:root[data-theme=dark] .cm-item .cm-ic[data-tone],:root[data-theme=frost] .cm-item .cm-ic[data-tone]{background:color-mix(in srgb,var(--tc) 24%,transparent);color:color-mix(in srgb,var(--tc) 55%,#fff)}
+:root[data-theme=dark] .cm-item:hover:not([disabled]) .cm-ic[data-tone],:root[data-theme=frost] .cm-item:hover:not([disabled]) .cm-ic[data-tone]{background:var(--tc);color:#fff}
+:root[data-theme=dark] .cm-item:hover:not([disabled]) .cm-t b,:root[data-theme=frost] .cm-item:hover:not([disabled]) .cm-t b{color:color-mix(in srgb,var(--tc) 45%,#fff)}
+@media (prefers-reduced-motion:reduce){.cm-item,.cm-item .cm-ic[data-tone],.cm-item .cm-ic[data-tone] svg,details.cm-more[open] .cm-group{animation:none!important;transition:none!important}
+  .cm-item:hover:not([disabled]),.cm-item:hover:not([disabled]) .cm-ic[data-tone]{transform:none!important}}

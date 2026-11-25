@@ -12,6 +12,13 @@ import type { Owner } from '@/lib/types';
 
 type Item = { href?: string; ext?: boolean; icon: string; label: string; sub: string; apv?: boolean; danger?: boolean; off?: string; form?: React.ReactNode };
 
+/** Each action's icon colour (26 Nov 2026), so the menu reads at a glance: money green, dates amber, documents blue… */
+const TONE: Record<string, string> = {
+  cash: 'green', send: 'teal', cal: 'amber', receipt: 'blue', edit: 'violet', phone: 'teal', clip: 'indigo',
+  swap: 'blue', percent: 'rose', list: 'amber', clock: 'indigo', fuel: 'orange', ban: 'red',
+  file: 'blue', history: 'violet', shieldok: 'green', door: 'amber', key: 'orange', bolt: 'red', okc: 'green',
+};
+
 export function customerActions(o: Owner, base: string) {
   const S = cur(), pid = o.project, bal = balance(o), closed = o.status === 'closed', role = S.role, admin = isAdmin(), mgr = role === 'accountant';   // the desk work (25 Nov 2026: the Accountant's)
   const m = (k: string) => `${base}?m=${k}`, apv = !admin;
@@ -52,12 +59,12 @@ export function customerActions(o: Owner, base: string) {
     if (role !== 'accountant') out.push({ href: `/p/${pid}/apartments/${o.id}/leave`, icon: 'door', label: 'Customer left', sub: 'hand back the keys; charges must be cleared', apv });
     if (admin) out.push({ href: m('transfer'), icon: 'key', label: 'Transfer to a new owner', sub: 'after all dues are cleared' });
     if (o.flagged) out.push({ href: m('disconnect'), icon: 'bolt', label: 'Record disconnection', sub: 'a service cut for unpaid dues', danger: true });
-    if (activeSusp.length && bal <= 0) out.push({ icon: 'okc', label: 'Record restoration', sub: 'services back on', form: <form action={restoreAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><button type="submit" className="cm-item"><span className="cm-ic"><Ic n="okc" s={16} /></span><span className="cm-t"><b>Record restoration</b><small>services back on</small></span></button></form> });
+    if (activeSusp.length && bal <= 0) out.push({ icon: 'okc', label: 'Record restoration', sub: 'services back on', form: <form action={restoreAction}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} /><button type="submit" className="cm-item"><span className="cm-ic" data-tone="green" data-ic="okc"><Ic n="okc" s={16} /></span><span className="cm-t"><b>Record restoration</b><small>services back on</small></span></button></form> });
     if (out.length) groups.push(['Leaving & services', '', out]);
   }
   const item = (x: Item, i: number) => {
     if (x.form) return <div key={i}>{x.form}</div>;
-    const inner = <><span className="cm-ic"><Ic n={x.icon} s={16} /></span><span className="cm-t"><b>{x.label}</b><small>{x.off || x.sub}</small></span>{x.apv ? <span className="cm-apv" title="Waits for the Admin's approval">Approval</span> : null}</>;
+    const inner = <><span className="cm-ic" data-tone={x.danger ? 'red' : TONE[x.icon] || 'rust'} data-ic={x.icon}><Ic n={x.icon} s={16} /></span><span className="cm-t"><b>{x.label}</b><small>{x.off || x.sub}</small></span>{x.apv ? <span className="cm-apv" title="Waits for the Admin's approval">Approval</span> : null}</>;
     if (!x.href) return <button key={i} type="button" className="cm-item" aria-disabled="true" disabled>{inner}</button>;
     if (x.ext) return <a key={i} className="cm-item menu-a" href={x.href} target="_blank" rel="noopener">{inner}</a>;
     return <Go key={i} href={x.href} className={'cm-item' + (x.danger ? ' danger' : '')}>{inner}</Go>;

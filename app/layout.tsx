@@ -10,6 +10,7 @@ import '../styles/minawa-themes.css';
 import '../styles/minawa-icons.css';
 import '../styles/minawa-polish.css';
 import { Toasts, Behaviour } from '@/components/client';
+import { LiquidGlass } from '@/components/LiquidGlass';
 
 export const metadata: Metadata = { title: 'Minawa Group ERP · Maintenance', description: 'Maintenance dues, WhatsApp bills and payments for Minawa Group', icons: { icon: '/assets/minawa-mark.png', apple: '/icons/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'Minawa CRM', statusBarStyle: 'default' } };
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Suspense><Toasts /></Suspense>
         <Behaviour />
+        <LiquidGlass />
       </body>
     </html>
   );
