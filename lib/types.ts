@@ -39,7 +39,7 @@ export interface Rules {
    *  the due date (negative = before), and the late-fine steps (from N days late, P% of the unpaid bill). */
   elecMode?: 'bill' | 'meter'; elecReadDay?: number; elecDueDays?: number; elecRemind?: number[]; elecFine?: { days: number; pct: number }[];
 }
-export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null, billLead: 15, warnAfter: 15 };
+export const DEFAULT_RULES: Rules = { billDay: 25, dueDays: 15, remindOn: [3, 7], feePct: 10, flagDays: 15, sendHour: 11, utilities: [], fineArrears: false, graceDays: 25, startOn: null, billLead: 16, warnAfter: 15 };
 export function normRules(r: Partial<Rules> & Record<string, unknown>): Rules {
   const x = { ...DEFAULT_RULES, ...r } as Rules & { autoSend?: unknown };
   delete x.autoSend;   // from before: WhatsApp is only sent by hand now

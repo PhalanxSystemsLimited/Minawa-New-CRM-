@@ -1165,3 +1165,15 @@ html:not([data-theme=frost]) body:has(.mgr-app){background-image:radial-gradient
 .cq-years{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .cq-years span{font-size:12px;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,#E5484D 10%,transparent);color:var(--fg)}
 :root[data-theme=frost] .cq-years span{background:rgba(255,255,255,.16);color:#fff}
+/* Statements (26 Nov 2026) */
+.si-st{--si-a:#93C5FD;--si-b:#1D4ED8;--si-g:rgba(37,99,235,.7)}
+.st-dates{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.st-dates label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.st-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 10px}
+.st-head b{display:block;font-size:16px}.st-head small{color:var(--muted)}
+.st-dl{display:flex;gap:6px;flex-wrap:wrap}
+.st-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+.st-sum b{overflow-wrap:anywhere}.st-tbl td:last-child .btn{white-space:nowrap}
+.st-sum>div{background:var(--surface-2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column}
+.st-sum small{font-size:11.5px;color:var(--muted)}.st-sum b{font-size:17px}
+.st-sum .good b{color:var(--good)}.st-sum .bad b{color:var(--bad)}
+:root[data-theme=frost] .st-sum>div{background:rgba(255,255,255,.12)}

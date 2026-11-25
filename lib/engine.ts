@@ -556,7 +556,7 @@ function sendNotice(o: Owner, b: Bill, d: string, newBill?: Bill) {
   let text = fill(S.templates.notice.text, vars);
   if (newBill) text += `\n\nThis total includes your new ${periodLabel(newBill)} bill.`;
   pushMsg(o, d, t, { kind: 'notice', title: 'Late payment warning', text, tpl: 'notice', vars, pdf: { kind: 'bill', id: (newBill || b).id } });
-  if (!o.invalidPhone) log(d, t, 'message', `Late payment warning ready to send to ${o.apt}: ${rs(bal)} unpaid since ${fd(b.dueDate)} (the building manager decides on the fine)`, o.id);
+  if (!o.invalidPhone) log(d, t, 'message', `Late payment warning ready to send to ${o.apt}: ${rs(bal)} unpaid since ${fd(b.dueDate)} (the accountant decides on the fine when sending it)`, o.id);
 }
 // A friendly reminder before the due date.
 function sendReminder(o: Owner, b: Bill, d: string) {
@@ -748,7 +748,7 @@ export function runDaily(d: string) {
       const was = o.promiseUntil; o.promiseUntil = null;
       if (balance(o) > 0) {
         S.alerts.push({ id: 'AL' + nid('al'), ownerId: o.id, project: S.project, d, text: `Promise to pay by ${fd(was)} not kept. ${rs(balance(o))} still owed.`, done: false });
-        log(d, '11:00', 'alert', `Promise to pay broken: ${o.apt} still owes ${rs(balance(o))}. The building manager is alerted; the late warning resumes`, o.id);
+        log(d, '11:00', 'alert', `Promise to pay broken: ${o.apt} still owes ${rs(balance(o))}. The accountant is alerted; the late warning resumes`, o.id);
         c.alerts++;
         const sk = billsOf(o).filter(b => b.noticeSkipped && unpaid(b) > 0);
         if (sk.length) { box(o.id).notice = sk[sk.length - 1]; sk.forEach(b => { b.noticeSkipped = false; }); }

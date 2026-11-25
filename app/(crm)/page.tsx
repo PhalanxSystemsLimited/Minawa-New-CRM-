@@ -184,7 +184,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       </div>
       <div className="lv-next"><div className="l">{starts ? 'BILLING STARTS' : 'NEXT BILLS'}</div>
         <div className="lv-next-r"><CalBadge date={nextBill} /><div><b className="H">{daysTo === 0 ? 'Today' : daysTo === 1 ? 'Tomorrow' : <><Num v={daysTo}>{daysTo}</Num> days to go</>}</b><small>{starts ? `Statements of dues · monthly charges from ${fm(st.find(x => x.firstBill === starts)?.s.goLive.slice(0, 7) || starts.slice(0, 7))}` : `${fd(nextBill)}`}{r0 ? ` · ${hour12(r0.sendHour)}` : ''}</small></div></div>
-        {r0 ? <div className="lv-mini-cycle" title="Each customer is billed on their own billing date; due on the 15th of the next month"><span><b>Own</b>Bill date</span>{r0.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{ord(dueDay)}</b>Due</span></div> : null}</div>
+        {r0 ? <div className="lv-mini-cycle" title="Each customer has their own due date (their possession day, by plan): the bill goes out before it, the late warning after it"><span><b>{r0.billLead}d</b>Bill before due</span><span><b>Own</b>Due date</span><span><b>{r0.warnAfter}d</b>Late warning after</span><span><b>{r0.feePct}%</b>Fine</span></div> : null}</div>
     </section>
 
     {(() => {

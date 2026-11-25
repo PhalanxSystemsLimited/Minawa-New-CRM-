@@ -114,7 +114,7 @@ export default async function Collect({ searchParams }: { searchParams: Promise<
             <td data-l="Owes" className="r num"><b>{rs(bal)}</b>{years ? <div className="cell-sub">{years}</div> : null}</td>
             <td data-l="Unpaid bills">{bills ? <>{bills} bill{bills === 1 ? '' : 's'}{oldest ? <div className="cell-sub">{oldest < today ? 'overdue since' : 'due'} {fds(oldest)}</div> : null}</> : <span className="cell-sub">old dues</span>}</td>
             <td data-l="Request">{req ? <span className="tag info">{rs(req.amount)} · {req.managerName}</span> : <span className="cell-sub">none</span>}</td>
-            <td className="r">{req ? <Go href={href({ v: 'requests', st: 'open', n: '' })} className="btn sm">See request</Go> : <Go href={href({ req: `${s.project}:${o.id}` })} className="btn sm primary"><Ic n="send" s={14} /> Request collection</Go>}</td>
+            <td className="r"><a className="btn sm ghost" href={`/api/pdf/${s.project}/account/${encodeURIComponent(o.id)}?from=${today.slice(0, 4)}-01-01&to=${today}`} target="_blank" rel="noopener" title="Statement of account, this year"><Ic n="file" s={14} /></a> {req ? <Go href={href({ v: 'requests', st: 'open', n: '' })} className="btn sm">See request</Go> : <Go href={href({ req: `${s.project}:${o.id}` })} className="btn sm primary"><Ic n="send" s={14} /> Request collection</Go>}</td>
           </tr>)}
         </tbody></table></div>
         <MoreBar shown={n} total={dues.length} noun="customer" href={k => href({ n: k })} /></>

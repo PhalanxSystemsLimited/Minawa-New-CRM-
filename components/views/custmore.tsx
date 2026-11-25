@@ -51,6 +51,7 @@ export function customerActions(o: Owner, base: string) {
   }
   groups.push(['Documents', 'PDF', [
     { href: `/api/pdf/${pid}/history/${o.id}`, ext: true, icon: 'file', label: 'Payment history', sub: 'every payment, with receipts' },
+    { href: `/api/pdf/${pid}/account/${o.id}?from=${S.today.slice(0, 4)}-01-01&to=${S.today}`, ext: true, icon: 'receipt', label: 'Statement of account', sub: `this year: opening, every charge and payment, closing` },
     { href: `/api/pdf/${pid}/apthistory/${o.id}`, ext: true, icon: 'history', label: 'Apartment history', sub: `everyone who had ${o.apt}` },
     ...(closed ? [] : [{ href: m('clearance'), icon: 'shieldok', label: 'Dues clearance certificate', sub: 'only when nothing is owed' }]),
   ]]);

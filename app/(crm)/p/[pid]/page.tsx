@@ -51,7 +51,7 @@ export default async function Overview({ params, searchParams }: { params: Promi
           <div className="lv-next-r big"><CalBadge date={firstBill} /><div><b className="H">{Math.max(0, diff(firstBill, S.today))} days to go</b><small>{S.settings.rules.startOn ? <>On {fd(firstBill)} at {hour12(S.settings.rules.sendHour)} every customer with a balance gets a statement, due {fd(openingDue())}. Monthly charges start in {fm(S.goLive.slice(0, 7))}.</> : <>The first bill goes out on {fd(firstBill)} at {hour12(S.settings.rules.sendHour)}, for {fm(S.goLive.slice(0, 7))}</>}</small></div></div>
           {(() => { const r = S.settings.rules, open = act.reduce((a, o) => a + (o.opening || 0), 0), rec = Math.max(0, open - arrears), rp = open ? Math.round(100 * rec / open) : 0, onBill = S.settings.rules.startOn ? act.filter(o => balance(o) > 0).length : act.filter(o => o.possession <= firstBill).length;
             return <>
-              <div className="lv-mini-cycle lv-pre-cyc"><span><b>{fds(firstBill)}</b>{r.startOn ? 'Statement' : 'Bill'}</span>{r.remindOn.map(d => <span key={d}><b>{ord(d)}</b>Reminder</span>)}<span><b>{fds(openingDue())}</b>Due</span><span><b>{r.feePct}%</b>Fine after</span></div>
+              <div className="lv-mini-cycle lv-pre-cyc"><span><b>{fds(firstBill)}</b>{r.startOn ? 'Statement' : 'Bill'}</span><span><b>{fds(openingDue())}</b>Due</span><span><b>{fds(addDays(openingDue(), r.warnAfter))}</b>Late warning</span><span><b>{r.feePct}%</b>Fine after</span></div>
               <div className="lv-pre">
                 {open ? <div><span className="lv-pre-h"><KIcon icon="bank" tone="teal" /><span className="k">Old arrears recovered</span></span><b className="H"><Num v={rec}>{rs(rec)}</Num> <small>of {rs(open)}</small></b><div className="lv-bar g"><span style={{ width: `${Math.min(100, rp)}%` }}></span></div><small>{rp}% recovered so far</small></div>
                   : <div><span className="lv-pre-h"><KIcon icon="bank" tone="teal" /><span className="k">Old arrears</span></span><b className="H">None</b><small>No earlier dues were brought in</small></div>}
@@ -95,14 +95,16 @@ export default async function Overview({ params, searchParams }: { params: Promi
         const stmt = !!firstBill && next === firstBill && !!r.startOn;
         const toBill = stmt ? flats.filter(o => !o.exempt && balance(o) > 0).length : flats.filter(o => isBillingDay(o, next)).length;
         const ut = r.utilities[0], utDone = ut ? flats.filter(o => S.charges.some(c => c.ownerId === o.id && c.period === np && c.kind === ut && c.amount)).length : 0;
-        const rem = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => unpaidMaint(b) > 0 && b.dueDate > S.today && b.reminders.length < r.remindOn.length).length;
-        const due = stmt ? openingDue() : dayIn(nextMonth(np), r.dueDays), flag = addDays(due, r.flagDays);
-        const remDate = (d: number) => dayIn(due.slice(0, 7), d);
+        // 26 Nov 2026: what the engine really does: each bill goes out `billLead` days before the customer's own due
+        // date (it is the first reminder, in the accountant's To do), and a late warning `warnAfter` days after it if
+        // still unpaid (the accountant chooses whether to add the fine when sending it).
+        const due = stmt ? openingDue() : addDays(next, r.billLead), warn = addDays(due, r.warnAfter);
+        const late = S.owners.filter(o => o.status === 'active').flatMap(o => billsOf(o)).filter(b => b.months > 0 && unpaidMaint(b) > 0 && b.dueDate < S.today && !b.fined).length;
         const steps = [
-          { k: String(+next.slice(8)), title: stmt ? 'Statements go out' : 'Bills go out', sub: `${fds(next)} · ${hour12(r.sendHour)}`, tag: `${toBill} flat${toBill === 1 ? '' : 's'}`, tone: 'blue' as const },
-          ...r.remindOn.map((d, i) => ({ k: String(d), title: `${ord(i + 2)} reminder`, sub: fds(remDate(d)), tag: i === 0 && rem ? `${rem} to come` : 'if unpaid', tone: 'amber' as const })),
-          { k: String(+due.slice(8)), title: 'Due date', sub: fds(due), tag: `fine ${r.feePct}% next day`, tone: 'red' as const },
-          { k: '⚑', title: 'Flag', sub: fds(flag), tag: 'if still unpaid', tone: 'grey' as const }];
+          { k: String(+next.slice(8)), title: stmt ? 'Statements go out' : 'Bills go out', sub: `${fds(next)} · ${hour12(r.sendHour)} · ${stmt ? 'to every customer with a balance' : `${r.billLead} days before the due date`}`, tag: `${toBill} flat${toBill === 1 ? '' : 's'}`, tone: 'blue' as const },
+          { k: String(+due.slice(8)), title: 'Due date', sub: fds(due), tag: stmt ? 'old dues' : 'each customer\'s own day', tone: 'red' as const },
+          { k: '!', title: 'Late warning', sub: `${fds(warn)} · ${r.warnAfter} days after`, tag: late ? `${late} bill${late === 1 ? '' : 's'} past due now` : 'if still unpaid', tone: 'amber' as const },
+          { k: '%', title: `Fine ${r.feePct}%`, sub: 'with the late warning', tag: 'the accountant chooses', tone: 'grey' as const }];
         return <div className="card lv-cyclecard"><div className="card-row"><h3>Billing cycle <small>{stmt ? `Go-live statements on ${fd(next)}` : `Next bills on ${fd(next)}`} at {hour12(r.sendHour)} · each customer on their own billing date</small></h3><Go href={`${P}/settings#fine`} className="btn sm">Fine {r.feePct}%</Go></div>
           <Cycle steps={steps} at={0} />
           <div className="desk-acts">

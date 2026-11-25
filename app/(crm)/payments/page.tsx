@@ -11,7 +11,7 @@ import { receivedRows, type RecRow } from '@/lib/received';
 import { cashNow, dayCash } from '@/lib/cash';
 import { handOverAction, receiveHandoverAction, returnHandoverAction, depositAction } from '@/lib/actions-cash';
 import { Go, PrintBtn, Submit } from '@/components/client';
-import { fd, fds, fm, rs, todayPKT, t12, prevMonth, diff } from '@/lib/fmt';
+import { fd, fds, fm, rs, todayPKT, t12, prevMonth, diff, periodText } from '@/lib/fmt';
 import type { Handover } from '@/lib/types';
 import { PageIc, KIc, Empty } from '@/components/views/art';
 import { Ic } from '@/components/icons';
@@ -56,7 +56,7 @@ export default async function Payments({ searchParams }: { searchParams: Promise
   const table = (rows: RecRow[], kind: 'waiting' | 'confirmed') => <div className="tbl-wrap"><table><thead><tr><th>Date</th><th>Apartment</th><th>Customer</th>{pid ? null : <th>Building</th>}<th className="r">Amount</th><th>Received as</th><th>Entered by</th><th>{kind === 'waiting' ? 'Waiting' : 'Confirmed by'}</th><th>Receipt</th></tr></thead><tbody>
     {rows.map(r => <tr key={r.p.project + r.p.id}><td style={{ whiteSpace: 'nowrap' }}>{fds(r.p.d)} <span className="cell-sub">{t12(r.p.t)}</span></td>
       <td><Go href={`/p/${r.p.project}/apartments/${r.p.ownerId}?tab=payments`}><b>{r.apt}</b></Go></td><td>{r.owner}</td>{pid ? null : <td>{r.pname}</td>}
-      <td className="r num"><b>{rs(r.p.amount)}</b></td>
+      <td className="r num"><b>{rs(r.p.amount)}</b>{r.p.periodFrom ? <div className="cell-sub">for {periodText(r.p.periodFrom, r.p.periodTo)}</div> : null}</td>
       <td>{r.via === 'Cash' ? <span className="tag warn">Cash</span> : <span className="tag info">Bank transfer</span>}{r.p.forWhat === 'electricity' ? <> <span className="tag">Electricity</span></> : null}{r.p.txn ? <div className="cell-sub">{r.p.txn}</div> : null}{r.p.photoId ? <PhotoLink pid={r.p.project} id={r.p.photoId} /> : null}</td>
       <td>{r.enteredBy || '—'}{r.enteredById === me.id ? <div className="cell-sub">you</div> : null}</td>
       <td>{kind === 'waiting' ? <span className={`tag ${diff(today, r.p.d) > 2 ? 'bad' : 'warn'}`}>{diff(today, r.p.d) === 0 ? 'Since today' : `${diff(today, r.p.d)} day${diff(today, r.p.d) === 1 ? '' : 's'}`}</span>

@@ -9,7 +9,7 @@ import { fd, fm, fmShort, rs, periodText } from './fmt';
 
 export interface DocRow { label: string; sub?: string; amount: string; bold?: boolean; tot?: boolean }
 export interface DocData {
-  kind: 'bill' | 'receipt' | 'statement' | 'clearance' | 'history' | 'apthistory';
+  kind: 'bill' | 'receipt' | 'statement' | 'clearance' | 'history' | 'apthistory' | 'account' | 'closing';
   filename: string; project: string; subtitle: string; refNo: string; refSub: string;
   stamp?: { sp: boolean; title: string; text: string; amount: string } | null;
   certificate?: string | null;
