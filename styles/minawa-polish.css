@@ -1021,3 +1021,14 @@ details.cm-more[open] .cm-group:nth-child(4){animation-delay:.12s}details.cm-mor
 :root[data-theme=dark] .cm-item:hover:not([disabled]) .cm-t b,:root[data-theme=frost] .cm-item:hover:not([disabled]) .cm-t b{color:color-mix(in srgb,var(--tc) 45%,#fff)}
 @media (prefers-reduced-motion:reduce){.cm-item,.cm-item .cm-ic[data-tone],.cm-item .cm-ic[data-tone] svg,details.cm-more[open] .cm-group{animation:none!important;transition:none!important}
   .cm-item:hover:not([disabled]),.cm-item:hover:not([disabled]) .cm-ic[data-tone]{transform:none!important}}
+/* Add payment: the months the payment is for (26 Nov 2026). */
+.mgr-period{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mgr-period label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.mgr-period select{min-height:46px;font-size:15px;font-weight:600}
+.mgr-hint{margin:-4px 0 0;font-size:12px;color:var(--muted)}
+/* 26 Nov 2026: a modal is not part of the page's rise-in. Its animation (opacity) made the modal a "backdrop root",
+   so the blur behind the form never reached the page and the page's text showed through crisp in every theme. */
+main > #modal,#main > #modal{animation:none!important;opacity:1!important;transform:none!important}
+/* The Accountant's role tag has its own colour (26 Nov 2026). */
+.tag.role-acc{background:color-mix(in srgb,#0D9488 14%,transparent);color:#0F766E}
+:root[data-theme=dark] .tag.role-acc{background:rgba(45,212,191,.18);color:#99F6E4}

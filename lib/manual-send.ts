@@ -5,7 +5,7 @@
 import { bankOf } from './bank';
 import type { Message, Owner } from './types';
 import { cur, balance, duesBreakdown, billsOf, unpaidMaint, periodLabel, ownerById, feePct, fineOffer, utilKind, isUtilBill, elecDue } from './engine';
-import { rs, fd, fm, fill, addDays } from './fmt';
+import { rs, fd, fm, fill, addDays, periodText } from './fmt';
 import { intl } from './dispatch';
 import { docToken, type DocKind } from './doclink';
 
@@ -140,7 +140,7 @@ export function compose(o: Owner, type: Exclude<SendType, 'queue'>, d: string, t
     const p = (payId && S.payments.find(x => x.id === payId)) || f.lastPay; if (!p) return null;
     const after = p.balAfter, l = after > 0 && bal > 0;   // "how to pay the rest" only if this payment left something owing
     const text = lines(head(o, '✅ Payment received', 'Thank you! We have received your maintenance payment.'), details(o), '',
-      '*Payment details*', `• Amount received: *${rs(p.amount)}*`, `• Date: ${fd(p.d)}`, `• Receipt no: ${p.receipt}`, p.method ? `• Paid by: ${p.method}` : null, RULE,
+      '*Payment details*', `• Amount received: *${rs(p.amount)}*`, p.periodFrom ? `• Paid for: *${periodText(p.periodFrom, p.periodTo)}*${p.forWhat === 'electricity' ? ' (electricity)' : ''}` : null, `• Date: ${fd(p.d)}`, `• Receipt no: ${p.receipt}`, p.method ? `• Paid by: ${p.method}` : null, RULE,
       `*Remaining balance: ${after > 0 ? rs(after) : after < 0 ? `Rs 0 (advance credit ${rs(-after)})` : 'Rs 0, all paid up'}*`,
       l ? payBlock() : null, foot());
     return out('receipt', 'Payment received', text, { kind: 'receipt', id: p.id });

@@ -17,7 +17,7 @@
 // them by hand from Send on WhatsApp. Payments are entered by staff (building managers' wait for the accountant).
 import type { State, Owner, Bill, Message, Handover, Payment, Applied, Target, Breakdown, Proof, LogEntry, BillLine } from './types';
 import { PLAN_MONTHS } from './types';
-import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT, addMonths, monthsBetween, dayIn } from './fmt';
+import { addDays, diff, dim, fd, fds, fm, rs, first, fill, MON, MONL, nextMonth, nowPKT, addMonths, monthsBetween, dayIn, periodText } from './fmt';
 
 let S: State = null as unknown as State;
 let SEEDING = false, QUIET = false;
@@ -787,7 +787,7 @@ export function recordPayment(o: Owner, amt: number, method: string, ref: string
     const susp = o.suspensions.some(s => !s.to);
     log(d, t, 'flag', `${o.apt} flag cleared: all dues paid${susp ? '. Restore suspended services' : ''}`, o.id);
   }
-  const vars = { name: first(o.name), paid: rs(amt), apt: o.apt, date: fd(d), balance: bal > 0 ? rs(bal) : bal < 0 ? `Rs 0 (credit ${rs(-bal)})` : 'Rs 0' };
+  const vars = { name: first(o.name), paid: rs(amt), apt: o.apt, date: fd(d), balance: bal > 0 ? rs(bal) : bal < 0 ? `Rs 0 (credit ${rs(-bal)})` : 'Rs 0', period: p.periodFrom ? periodText(p.periodFrom, p.periodTo) : '' };
   pushMsg(o, d, t, { kind: 'receipt', title: 'Payment received', text: fill(S.templates.receipt.text, vars), tpl: 'receipt', vars, pdf: { kind: 'receipt', id: pid } });
   return p;
 }
@@ -822,7 +822,7 @@ export function verifyProof(p: Proof, d: string, t: string, by: string, amount?:
     } else {
       // An entry made before 19 Nov 2026: only now does it count (receipt, balance, message to the owner).
       pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, `${p.byName || 'Building manager'}, approved by ${by}`,
-        { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: by, approvedAt: `${d} ${t}`, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id });
+        { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: by, approvedAt: `${d} ${t}`, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id, periodFrom: p.periodFrom || null, periodTo: p.periodTo || null });
       p.payId = pay.id;
     }
     if (!bank) { if (hold) hold.push(pay); else receiveCash([pay], by, d, t); }
@@ -834,7 +834,7 @@ export function verifyProof(p: Proof, d: string, t: string, by: string, amount?:
 function entryPayment(o: Owner, p: Proof, d: string, t: string) {
   const m = p.method || 'Cash', bank = m === 'Bank transfer';
   const pay = recordPayment(o, p.amount, `${m}${p.paidOn && p.paidOn !== d ? ` (paid ${fd(p.paidOn)})` : ''}`, p.ref || p.txn || `${m} #${p.id}`, d, 'staff', t, p.byName || 'Building manager',
-    { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: null, approvedAt: null, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id, photoId: p.photoId || null, billId: p.billId || null });
+    { collectorId: bank ? null : p.byId || null, collectorName: bank ? null : p.byName || 'Building manager', enteredBy: p.byName || 'Building manager', approvedBy: null, approvedAt: null, txn: p.txn || null, forWhat: p.forWhat || null, entryId: p.id, periodFrom: p.periodFrom || null, periodTo: p.periodTo || null, photoId: p.photoId || null, billId: p.billId || null });
   p.payId = pay.id;
   return pay;
 }
@@ -857,12 +857,12 @@ export function receiveCash(pays: Payment[], by: string, d: string, t: string) {
  *  customer straight away. The entry also waits for the Accountant, whose approval confirms the money reached him
  *  (verifyProof); "not received" takes the payment back (rejectProof). */
 export const MANAGER_METHODS = ['Cash', 'Bank transfer'];
-export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash', txn = '', forWhat: 'maintenance' | 'electricity' | null = null, more: { photoId?: string | null; billId?: string | null } = {}) {
+export function recordCash(o: Owner, amount: number, paidOn: string, ref: string, note: string, d: string, t: string, byId: string | null, byName: string, method = 'Cash', txn = '', forWhat: 'maintenance' | 'electricity' | null = null, more: { photoId?: string | null; billId?: string | null; periodFrom?: string | null; periodTo?: string | null } = {}) {
   const pr: Proof = { id: 'PR' + nid('pr'), ownerId: o.id, project: S.project, d, t, amount, status: 'pending', msgId: null, doneOn: null, media: null,
-    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null, forWhat, payId: null, photoId: more.photoId || null, billId: more.billId || null };
+    kind: 'cash', method, ref: ref || null, note: note || null, byId, byName, paidOn, checkedBy: null, reply: null, txn: txn || null, forWhat, payId: null, photoId: more.photoId || null, billId: more.billId || null, periodFrom: more.periodFrom || null, periodTo: more.periodTo || more.periodFrom || null };
   S.proofs.push(pr);
   const pay = entryPayment(o, pr, d, t);
-  log(d, t, 'payment', `${rs(amount)} ${method === 'Cash' ? 'cash' : 'bank transfer'} for ${o.apt} entered by ${byName}${ref ? ` (receipt ${ref})` : ''}${txn ? ` (transaction ${txn})` : ''}, paid ${fd(paidOn)}. Receipt ${pay.receipt} ready to send; the Accountant confirms the money`, o.id);
+  log(d, t, 'payment', `${rs(amount)} ${method === 'Cash' ? 'cash' : 'bank transfer'} for ${o.apt} entered by ${byName}${ref ? ` (receipt ${ref})` : ''}${txn ? ` (transaction ${txn})` : ''}${more.periodFrom ? ` for ${periodText(more.periodFrom, more.periodTo)}` : ''}, paid ${fd(paidOn)}. Receipt ${pay.receipt} ready to send; the Accountant confirms the money`, o.id);
   return pr;
 }
 export function rejectProof(p: Proof, d: string, t: string, by = '', reason = '') {

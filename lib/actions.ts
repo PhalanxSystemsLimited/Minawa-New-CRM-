@@ -14,7 +14,7 @@ import { photoStore } from './images';
 import {
   ownerById, balance, recordPayment, createBill, sendBill, isBillingDay, unitOf, log, at, nid, rateTypes,
   verifyProof, rejectProof, sendDues, setTargetOption, pushMsg, resyncFines, apartments, monthsToBill, billDateOf, recordCash, officeCash, payLimits, payBlock, GEN, GEN_FEE } from './engine';
-import { fd, rs, ord, waDigits, todayPKT } from './fmt';
+import { fd, rs, ord, waDigits, todayPKT, monthsIn } from './fmt';
 import { normCnic, keepCustIds, staffNos, nextCustId, accountantsOf, reportsToAcc, withoutAcc } from './people';
 import { finalElec, billFinal } from './meter';
 import { normPhone } from './importer';
@@ -61,13 +61,18 @@ export async function recordPaymentAction(fdata: FormData) {
     const method = S(fdata, 'method') === 'Bank transfer' ? 'Bank transfer' : 'Cash', txn = S(fdata, 'txn').slice(0, 80);
     // "Bill received" from the Electricity bills screen (21 Nov 2026): pays that electricity bill first.
     const billId = S(fdata, 'billId') || null, again = `${mPage}?pay=1&method=${method === 'Bank transfer' ? 'bank' : 'cash'}`;
+    // 26 Nov 2026: the months this payment is for, shown on the receipt and in the WhatsApp message.
+    const pf = S(fdata, 'periodFrom'), pt = S(fdata, 'periodTo') || pf, okP = (x: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(x);
+    if (!okP(pf) || !okP(pt)) go(again, 'Choose the months this payment is for');
+    if (pt < pf) go(again, 'The last month must come after the first month');
+    if (monthsIn(pf, pt) > 24) go(again, 'Choose at most 24 months for one payment');
     if (method === 'Cash' && !S(fdata, 'ref')) go(again, 'Enter the receipt number you gave the owner');
     if (method === 'Bank transfer' && !txn) go(again, 'Enter the bank transaction ID');
     // The photo of the transfer (or the bill receipt): needed for a bank transfer once photo storage is set up.
     let photo: string | null = null;
     try { photo = (await photoFor(S(fdata, 'photo'), pid, 'payment'))?.id || null; } catch (e) { go(again, (e as Error).message); }
     if ((method === 'Bank transfer' || billId) && !photo && photoStore()) go(again, billId ? 'Add the photo of the payment (the bill receipt or the phone screen)' : 'Add the photo of the bank transfer (take it with the camera or choose it from the phone)');
-    const pr = await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, billId || S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null, { photoId: photo, billId }), { send: false, manager: true });
+    const pr = await mutate(pid, staff, s => recordCash(needOwner(s, oid), amt, paidOn, S(fdata, 'ref'), S(fdata, 'note'), s.today, at(15), staff.id, staffName(staff), method, txn, billId || S(fdata, 'forWhat') === 'electricity' ? 'electricity' : null, { photoId: photo, billId, periodFrom: pf, periodTo: pt }), { send: false, manager: true });
     if (photo) await (await getStore()).linkImage(photo, pr.payId || pr.id).catch(() => undefined);
     // Straight to the locked "Send the receipt" screen for this customer (Cancel leaves it to the accountant).
     redirect(`${mPage}?rc=${encodeURIComponent(pr.payId || pr.id)}`);

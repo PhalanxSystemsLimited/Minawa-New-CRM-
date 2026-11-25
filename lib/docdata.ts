@@ -5,7 +5,7 @@ import { bankOf, bankLine } from './bank';
 import type { Bill, Payment, Owner, Clearance } from './types';
 import { t12 } from '@/lib/fmt';
 import { cur, ownerById, duesBreakdown, balance, feePct, periodLabel, billsOf, unpaidMaint, openingDue, fineBase } from './engine';
-import { fd, fm, fmShort, rs } from './fmt';
+import { fd, fm, fmShort, rs, periodText } from './fmt';
 
 export interface DocRow { label: string; sub?: string; amount: string; bold?: boolean; tot?: boolean }
 export interface DocData {
@@ -76,7 +76,7 @@ export function billDoc(b: Bill): DocData {
 export function receiptDoc(p: Payment): DocData {
   const o = ownerById(p.ownerId), proj = S().proj;
   const stamp = { sp: false, title: `Received · ${p.method.replace(' (screenshot checked)', '')}`, text: `${/bank/i.test(p.method) ? 'Paid by bank transfer' : 'Paid in cash'} · ${p.enteredBy ? `entered by ${p.enteredBy}${p.approvedBy && p.approvedBy !== p.enteredBy ? `, approved by ${p.approvedBy}` : ''}` : `recorded by ${p.by}`}`, amount: rs(p.amount) };
-  const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${t12(p.t)}`],
+  const kv: [string, string][] = [['Apartment', `${o.apt} · Block ${o.block} · ${o.type}`], ['Received from', `${o.name}, owner`], ['Paid on', `${fd(p.d)}, ${t12(p.t)}`], ...(p.periodFrom ? [['Paid for', `${periodText(p.periodFrom, p.periodTo)}${p.forWhat === 'electricity' ? ' · electricity' : ' · maintenance'}`] as [string, string]] : []),
     ['Payment method', p.method], ['Reference', p.ref], ...(p.txn ? [['Bank transaction ID', p.txn] as [string, string]] : []), ['Payment ID', p.id]];
   const rank = { dues: 0, fee: 1, credit: 2 }, rows = (p.applied || []).slice().sort((a, b) => rank[a.kind] - rank[b.kind]);
   const bal = p.balAfter < 0 ? `${rs(-p.balAfter)} advance credit` : p.balAfter > 0 ? rs(p.balAfter) : 'Rs 0 · all paid';

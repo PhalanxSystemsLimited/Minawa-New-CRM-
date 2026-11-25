@@ -279,38 +279,40 @@ html[data-theme=frost] .mgr-today b{color:#fff}
 html[data-theme=frost] .mgr-tabs a{background:rgba(255,255,255,.14);color:rgba(255,255,255,.85)}html[data-theme=frost] .mgr-tabs a.on{background:rgba(255,255,255,.92);color:#0F172A}
 
 /* ---------- Frost: liquid glass (26 Nov 2026, after Apple's Liquid Glass; components/LiquidGlass.tsx) ----------
-   The containers are the glass: clearer than before (the mountains show through), with bright rims like thick glass
-   and a light that sweeps across when the pointer comes over one. In Chrome and Edge what is behind is also bent by
-   a liquid ripple, which flows while the container is hovered. Nothing follows the pointer. */
+   The containers are the glass: clearer than before (the mountains show through), with bright rims like thick glass.
+   In Chrome and Edge what is behind is also bent by a still liquid ripple. 26 Nov (later): no light sweep and no
+   change of filter or size on hover — both made a white flash and made the background stutter. Hovering only lights
+   the rim, at once. Nothing follows the pointer. */
 html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty){
-  background:linear-gradient(105deg,rgba(255,255,255,0) 38%,rgba(255,255,255,.2) 47%,rgba(255,255,255,.06) 52%,rgba(255,255,255,0) 60%) 130% 0/260% 100% no-repeat,
-    linear-gradient(165deg,rgba(255,255,255,.2),rgba(255,255,255,.04) 42%,rgba(255,255,255,.02) 70%,rgba(255,255,255,.1)),rgba(14,24,22,.3)!important;
+  background:linear-gradient(165deg,rgba(255,255,255,.2),rgba(255,255,255,.04) 42%,rgba(255,255,255,.02) 70%,rgba(255,255,255,.1)),rgba(14,24,22,.3)!important;
   border:1px solid rgba(255,255,255,.28)!important;
   -webkit-backdrop-filter:blur(9px) saturate(1.75) brightness(1.05)!important;backdrop-filter:blur(9px) saturate(1.75) brightness(1.05)!important;
   box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.75),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.06),
     inset 0 14px 22px -16px rgba(255,255,255,.35),inset 0 -12px 24px -18px rgba(255,255,255,.22),0 18px 40px -22px rgba(0,0,0,.55)!important;
-  transition:background-position 1.2s cubic-bezier(.2,.7,.2,1),box-shadow .45s ease,border-color .45s ease,transform .5s cubic-bezier(.34,1.56,.64,1)!important}
-html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{
-  background-position:-30% 0,0 0,0 0!important;border-color:rgba(255,255,255,.42)!important;
-  box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.95),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.45),inset 0 0 0 1px rgba(255,255,255,.1),
-    inset 0 16px 26px -16px rgba(255,255,255,.45),inset 0 -14px 26px -18px rgba(255,255,255,.3),0 22px 46px -22px rgba(0,0,0,.6)!important}
-/* The small ones also swell a touch, like a drop of liquid. */
-html[data-theme=frost] :is(.lv-needs .lv-need,.kpi,.stat,.lv-kpi:not(.hl),.mgr-cu):hover{transform:scale(1.012)}
+  transition:none!important;transform:none!important}
+html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{border-color:rgba(255,255,255,.45)!important}
 /* The money box, menus, modals, side and top bars: the same glass, keeping their own darker tint for reading. */
 html[data-theme=frost] :is(.lv-money,.mgr-money){-webkit-backdrop-filter:blur(10px) saturate(1.6)!important;backdrop-filter:blur(10px) saturate(1.6)!important;
   box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.6),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.22),inset 0 14px 22px -16px rgba(255,255,255,.25),0 20px 44px -24px rgba(0,0,0,.6)!important}
-html[data-theme=frost] :is(.m-card,.menu,.more[open] > .menu){background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 45%,rgba(255,255,255,.08)),rgba(30,42,39,.62)!important;
+html[data-theme=frost] :is(.menu,.more[open] > .menu){background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 45%,rgba(255,255,255,.08)),rgba(30,42,39,.62)!important;
   -webkit-backdrop-filter:blur(12px) saturate(1.7)!important;backdrop-filter:blur(12px) saturate(1.7)!important;
   box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.7),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.25),0 30px 70px -20px rgba(0,0,0,.6)!important}
 html[data-theme=frost] :is(.side,.top,.mgr-top){-webkit-backdrop-filter:blur(12px) saturate(1.6)!important;backdrop-filter:blur(12px) saturate(1.6)!important}
-/* Chrome and Edge: the liquid itself. Still at rest; it flows under the container the pointer is on. */
+/* Chrome and Edge: the liquid ripple behind the glass (still, so nothing has to be redrawn on hover). */
 html.lg-bend[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty){
   -webkit-backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75) brightness(1.05)!important;backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75) brightness(1.05)!important}
-html.lg-bend[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{
-  -webkit-backdrop-filter:url(#lg-flow) blur(5px) saturate(1.85) brightness(1.07)!important;backdrop-filter:url(#lg-flow) blur(5px) saturate(1.85) brightness(1.07)!important}
-html.lg-bend[data-theme=frost] :is(.lv-money,.mgr-money,.m-card,.menu){-webkit-backdrop-filter:url(#lg-liquid) blur(9px) saturate(1.6)!important;backdrop-filter:url(#lg-liquid) blur(9px) saturate(1.6)!important}
-/* A card holding a long table: no swelling (it would move the table), only the light and the liquid. */
-html[data-theme=frost] .card:hover{transform:none}
-@media (prefers-reduced-motion:reduce){
-  html[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi,.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty){transition:none!important;transform:none!important}
-  html.lg-bend[data-theme=frost] :is(.card,.stat,.kpi,.pcard,.offp,.lv-needs .lv-need,.lv-kpi:not(.hl),.lv-next,.mgr-cu,.mgr-card,.mgr-search,.mgr-empty):hover{-webkit-backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75)!important;backdrop-filter:url(#lg-liquid) blur(6px) saturate(1.75)!important}}
+html.lg-bend[data-theme=frost] :is(.lv-money,.mgr-money){-webkit-backdrop-filter:url(#lg-liquid) blur(9px) saturate(1.6)!important;backdrop-filter:url(#lg-liquid) blur(9px) saturate(1.6)!important}
+
+/* Frost modals and menus (26 Nov 2026): the page behind is blurred like frosted liquid glass, so the form reads
+   clearly; the form itself is thicker glass. */
+html[data-theme=frost] .m-back{background:rgba(8,14,12,.38)!important;-webkit-backdrop-filter:blur(14px) saturate(1.3)!important;backdrop-filter:blur(14px) saturate(1.3)!important}
+html[data-theme=frost] :is(#modal .m-card,.wa-ask .m-card){background:linear-gradient(165deg,rgba(255,255,255,.18),rgba(255,255,255,.04) 40%,rgba(255,255,255,.08)),rgba(28,40,37,.74)!important;
+  -webkit-backdrop-filter:blur(30px) saturate(1.6)!important;backdrop-filter:blur(30px) saturate(1.6)!important}
+html.lg-bend[data-theme=frost] :is(#modal .m-card,.wa-ask .m-card,.more[open] > .menu){-webkit-backdrop-filter:blur(30px) saturate(1.6)!important;backdrop-filter:blur(30px) saturate(1.6)!important}
+html[data-theme=frost] :is(.menu,.more[open] > .menu){background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 45%,rgba(255,255,255,.08)),rgba(28,40,37,.8)!important}
+/* Role tags (Accountant had no colour and was hard to read on glass). */
+html[data-theme=frost] .tag.role-acc{background:rgba(45,212,191,.26)!important;color:#CCFBF1!important;border:1px solid rgba(153,246,228,.35)}
+html[data-theme=frost] .tag:not(.good):not(.bad):not(.warn):not(.info):not(.role-acc){background:rgba(255,255,255,.22);color:#fff}
+html[data-theme=frost] .tag.info{background:rgba(96,165,250,.32);color:#DBEAFE}
+html[data-theme=frost] .tag.warn{background:rgba(251,191,36,.3);color:#FEF3C7}
+html[data-theme=frost] :is(#modal .m-card,.wa-ask .m-card){box-shadow:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.7),inset -1.5px -1.5px 0 -.5px rgba(255,255,255,.25),0 30px 70px -20px rgba(0,0,0,.6)!important;border-color:rgba(255,255,255,.3)!important}

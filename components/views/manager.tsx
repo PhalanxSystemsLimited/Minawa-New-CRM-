@@ -13,7 +13,9 @@ import { liveProjects, load } from '@/lib/ops';
 import { use, ownerById, balance, billsOf, unpaid, periodLabel, projStats, payLimits, isUtilBill } from '@/lib/engine';
 import { custId } from '@/lib/people';
 import { roleName } from '@/lib/session';
-import { rs, fd, fds, t12, MONL, todayPKT } from '@/lib/fmt';
+import { rs, fd, fds, t12, MONL, todayPKT, fm, periodText } from '@/lib/fmt';
+
+const addMonths = (p: string, n: number) => { const d = new Date(Date.UTC(+p.slice(0, 4), +p.slice(5, 7) - 1 + n, 1)); return d.toISOString().slice(0, 7); };
 import { Go, Submit, ModalShell } from '@/components/client';
 import { Ic } from '@/components/icons';
 import { recordPaymentAction } from '@/lib/actions';
@@ -150,6 +152,11 @@ export async function ManagerCustomer({ staff, pid, oid, sp }: { staff: Staff; p
     const hist = s.entries.filter(e => e.ownerId === o.id).map(e => { run += e.amount; return { e, run }; }).reverse().slice(0, 80);
     const tab = sp.tab === 'bills' || sp.tab === 'history' ? sp.tab : 'payments', base = `/m/${pid}/${encodeURIComponent(o.id)}`;
     const elec = s.settings.rules.utilities.includes('Electricity') && bills.some(b => isUtilBill(b));
+    // The months the payment is for (26 Nov 2026): suggested from the unpaid bills (oldest to newest), else this month.
+    const span = (list: typeof bills) => { const u = list.filter(b => unpaid(b) > 0); return u.length ? [u.map(b => b.period).sort()[0], u.map(b => b.periodEnd || b.period).sort().pop()!] as [string, string] : [s.today.slice(0, 7), s.today.slice(0, 7)] as [string, string]; };
+    const pMaint = span(bills.filter(b => !isUtilBill(b))), pElec = span(bills.filter(b => isUtilBill(b)));
+    const first = [pMaint[0], pElec[0], addMonths(s.today.slice(0, 7), -12)].sort()[0], months: string[] = [];
+    for (let m = first; m <= addMonths(s.today.slice(0, 7), 12); m = addMonths(m, 1)) months.push(m);
     const rcPay = sp.rc ? s.payments.find(p => p.id === sp.rc && p.ownerId === o.id) || null : null;
     const lim = payLimits(o);
     return <div className="mgr-cust">
@@ -165,7 +172,7 @@ export async function ManagerCustomer({ staff, pid, oid, sp }: { staff: Staff; p
         {tab === 'payments' ? (pays.length || old.length ? <>
           {old.map((p: Proof) => <div className="mgr-hl" key={p.id}><span><b className="num">{rs(p.amount)}</b> {isBank(p) ? 'bank transfer' : 'cash'}<small>{fds(p.d)} {t12(p.t)}{p.ref ? ` · ${p.ref}` : ''} · entered by {p.byId === staff.id ? 'you' : p.byName}</small></span><span className="tag warn">Waiting</span></div>)}
           {pays.map(p => <div className="mgr-hl" key={p.id}><span><b className="num">{rs(p.amount)}</b> {/bank/i.test(p.method) ? 'bank transfer' : 'cash'}
-            <small>{p.d === todayPKT() ? `Today ${t12(p.t)}` : fds(p.d)} · {p.receipt}{p.txn ? ` · TXN ${p.txn}` : ''}{p.enteredBy ? ` · entered by ${p.enteredBy === staff.name ? 'you' : p.enteredBy}` : ''}</small></span>{payState(p, s)}</div>)}
+            <small>{p.periodFrom ? `For ${periodText(p.periodFrom, p.periodTo)} · ` : ''}{p.d === todayPKT() ? `Today ${t12(p.t)}` : fds(p.d)} · {p.receipt}{p.txn ? ` · TXN ${p.txn}` : ''}{p.enteredBy ? ` · entered by ${p.enteredBy === staff.name ? 'you' : p.enteredBy}` : ''}</small></span>{payState(p, s)}</div>)}
         </> : <p className="mgr-none">No payments yet.</p>) : null}
         {tab === 'bills' ? (bills.length ? [...bills].reverse().map(b => { const left = unpaid(b); return <div className="mgr-hl" key={b.id}>
           <span><b>{isUtilBill(b) ? 'Electricity' : 'Maintenance'} · {periodLabel(b)}</b><small>{rs(b.net + b.fine)} · due {fd(b.dueDate)}</small></span>
@@ -179,12 +186,13 @@ export async function ManagerCustomer({ staff, pid, oid, sp }: { staff: Staff; p
           <input type="hidden" name="pid" value={pid} /><input type="hidden" name="oid" value={o.id} />
           {sp.t ? <div className="callout bad" role="alert"><div>{sp.t}</div></div> : null}
           <div className="mgr-owes"><span>{o.name} owes</span><b className="num">{rs(Math.max(0, bal))}</b></div>
-          <MgrPayFields pid={pid} oid={o.id} who={o.name} owed={lim.owed} cap={lim.cap} def={Math.max(0, bal)} today={s.today} method={sp.method === 'bank' ? 'bank' : 'cash'} elec={elec} photos={!!photoStore()} />
+          <MgrPayFields pid={pid} oid={o.id} who={o.name} owed={lim.owed} cap={lim.cap} def={Math.max(0, bal)} today={s.today} method={sp.method === 'bank' ? 'bank' : 'cash'} elec={elec} photos={!!photoStore()} months={months.map(m => [m, fm(m)] as [string, string])} periods={{ maintenance: pMaint, electricity: pElec }} />
           <Submit className="btn primary mgr-save-btn">Save payment</Submit>
         </form>
       </ModalShell> : null}
       {rcPay ? <ReceiptLock pid={pid} oid={o.id} name={o.name} apt={o.apt} phone={o.noPhone || o.invalidPhone ? '' : o.phone || ''}
-        amount={rs(rcPay.amount)} method={/bank/i.test(rcPay.method) ? 'Bank transfer' : 'Cash'} receipt={rcPay.receipt} back={base} /> : null}
+        amount={rs(rcPay.amount)} method={/bank/i.test(rcPay.method) ? 'Bank transfer' : 'Cash'} receipt={rcPay.receipt} back={base}
+        period={rcPay.periodFrom ? periodText(rcPay.periodFrom, rcPay.periodTo) : ''} /> : null}
     </div>;
   });
 }

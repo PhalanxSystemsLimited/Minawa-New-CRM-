@@ -52,3 +52,13 @@ export function addMonths(p: string, n: number) { const t = +p.slice(0, 4) * 12 
 export const monthsBetween = (a: string, b: string) => (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5, 7) - +a.slice(5, 7));
 /** Day `day` of month p, or the month's last day when it is shorter ("2027-02", 31 → "2027-02-28"). */
 export const dayIn = (p: string, day: number) => `${p}-${String(Math.min(day, dim(+p.slice(0, 4), +p.slice(5, 7)))).padStart(2, '0')}`;
+
+/** The months a payment is for (26 Nov 2026): "November 2026", "Oct – Dec 2026", "Nov 2026 – Jan 2027". */
+export function periodText(from?: string | null, to?: string | null) {
+  if (!from || !/^\d{4}-\d{2}$/.test(from)) return '';
+  const t = to && /^\d{4}-\d{2}$/.test(to) && to > from ? to : from, m = (p: string) => MON[+p.slice(5, 7) - 1];
+  if (t === from) return fm(from);
+  return from.slice(0, 4) === t.slice(0, 4) ? `${m(from)} – ${m(t)} ${t.slice(0, 4)}` : `${m(from)} ${from.slice(0, 4)} – ${m(t)} ${t.slice(0, 4)}`;
+}
+/** Months between two 'YYYY-MM' (inclusive). */
+export const monthsIn = (from: string, to: string) => (+to.slice(0, 4) - +from.slice(0, 4)) * 12 + (+to.slice(5, 7) - +from.slice(5, 7)) + 1;

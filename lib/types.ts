@@ -168,6 +168,8 @@ export interface Payment {
   entryId?: string | null;
   /** 21 Nov 2026: the photo of the bank transfer (or bill receipt) taken at entry, and the electricity bill it paid. */
   photoId?: string | null; billId?: string | null;
+  /** 26 Nov 2026: the months this payment is for ('YYYY-MM'), picked by the building manager; shown on the receipt. */
+  periodFrom?: string | null; periodTo?: string | null;
 }
 /** Cash a building manager hands over to the Accountant (or cash paid at the office), followed to the bank deposit. */
 export interface Handover {
@@ -188,7 +190,9 @@ export interface Proof { id: string; ownerId: string; project: string; d: ISODat
   /** The payment recorded when the entry was made (19 Nov 2026). */
   payId?: string | null;
   /** 21 Nov 2026: the photo taken at entry (bank transfer screen or bill receipt), and the electricity bill it is for. */
-  photoId?: string | null; billId?: string | null }
+  photoId?: string | null; billId?: string | null;
+  /** 26 Nov 2026: the months the payment is for ('YYYY-MM'), as the building manager picked them. */
+  periodFrom?: string | null; periodTo?: string | null }
 /** A photo stored for the CRM (21 Nov 2026): in Cloudinary (private), with its link kept in Supabase. Staff open it
  *  through the CRM; a customer only sees the photo printed on their own bill. */
 export interface ImageRec {

@@ -11,8 +11,8 @@ import { openWhatsApp, chatUrl } from './wa-open';
 import type { WaAnswer } from './WaReturnPrompt';
 import { Wa } from './icons';
 
-export function ReceiptLock({ pid, oid, name, apt, phone, amount, method, receipt, back }: {
-  pid: string; oid: string; name: string; apt: string; phone: string; amount: string; method: string; receipt: string; back: string;
+export function ReceiptLock({ pid, oid, name, apt, phone, amount, method, receipt, back, period = '' }: {
+  pid: string; oid: string; name: string; apt: string; phone: string; amount: string; method: string; receipt: string; back: string; period?: string;
 }) {
   const router = useRouter(), box = useRef<HTMLDivElement>(null);
   const [item, setItem] = useState<SendItem | null>(null), [state, setState] = useState<'loading' | 'ready' | 'none' | 'sent' | 'opened'>('loading'), [err, setErr] = useState(''), [busy, setBusy] = useState(false);
@@ -63,6 +63,7 @@ export function ReceiptLock({ pid, oid, name, apt, phone, amount, method, receip
       <div className="mgr-rc">
         <div><span>Flat</span><b>{apt} · {name}</b></div>
         <div><span>Amount</span><b>{amount} · {method}</b></div>
+        {period ? <div><span>Paid for</span><b>{period}</b></div> : null}
         <div><span>Receipt</span><b>{receipt}</b></div>
         <div><span>WhatsApp</span><b>{phone || 'none'}</b></div>
       </div>
