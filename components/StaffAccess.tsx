@@ -27,6 +27,12 @@ export function StaffAccess({ prefix, role: role0, projects, picked, saving, acc
     first.addEventListener('invalid', bad);
     return () => first.removeEventListener('invalid', bad);
   }, []);
+  // 26 Nov 2026: building managers send no WhatsApp messages, so the form's WhatsApp numbers are hidden (and not sent)
+  // while Building manager is chosen.
+  useEffect(() => {
+    const wa = box.current?.closest('form')?.querySelector<HTMLFieldSetElement>('fieldset.wa-nums');
+    if (wa) { wa.disabled = role === 'manager'; wa.hidden = role === 'manager'; }
+  }, [role]);
   const flip = (id: string, on: boolean) => setTicked(s => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
   return <>
     <div className="form-row"><label htmlFor={`${prefix}-r`}>Role</label>
@@ -37,7 +43,7 @@ export function StaffAccess({ prefix, role: role0, projects, picked, saving, acc
       <legend>Reports to (one or more accountants)</legend>
       {accountants.length ? accountants.map(a => <label key={a.id} className="cb"><input type="checkbox" name="accountants" value={a.id} defaultChecked={reportsTo.includes(a.id)} /> {a.name}</label>)
         : <p className="cell-sub" style={{ margin: 0 }}>No accountants yet. Add one first, then tick them here.</p>}
-      <p className="cell-sub" style={{ margin: '4px 0 0' }}>Each accountant ticked sees this manager&apos;s buildings, approves the payments he enters and sends the bills, reminders and notices there.</p>
+      <p className="cell-sub" style={{ margin: '4px 0 0' }}>Each accountant ticked sees this manager&apos;s buildings, sends him payment requests, approves the payments he enters and sends the bills, reminders, notices and receipts there. A building manager sends no WhatsApp messages, so he needs no WhatsApp number.</p>
     </fieldset> : null}
     <fieldset ref={box} className={'bld-pick' + (admin ? ' off' : '') + (tried && missing ? ' bad' : '')} disabled={admin} aria-describedby={`${prefix}-bh`}>
       <legend>Buildings {admin ? '(not needed for an Admin)' : <>(at least one) <span className="req">required</span></>}</legend>

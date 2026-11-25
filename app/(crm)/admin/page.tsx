@@ -41,14 +41,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const accOpts = accs.map(a => ({ id: a.id, name: a.name })), noAcc = staff.filter(x => x.active && !x.leftOn && x.role === 'manager' && !accsOf(x).length);
   // WhatsApp numbers (20 Nov 2026): every number on someone's details, who uses it, and its use in the last 24 hours.
   const numRows = new Map<string, { number: string; limit: number; people: string[]; labels: Set<string>; on: boolean }>();
-  for (const x of staff.filter(y => !y.leftOn)) for (const n of x.waNumbers || []) if (validNumber(n.number)) {
+  for (const x of staff.filter(y => !y.leftOn && y.role !== 'manager')) for (const n of x.waNumbers || []) if (validNumber(n.number)) {
     const r = numRows.get(n.number) || { number: n.number, limit: n.limit, people: [], labels: new Set<string>(), on: false };
     r.limit = Math.min(r.limit, n.limit); r.people.push(x.name + (x.active ? '' : ' (sign-in off)')); r.labels.add(n.label); r.on = r.on || (n.active && x.active); numRows.set(n.number, r);
   }
   let waUse: Awaited<ReturnType<typeof store.waUsage>> = [];
   try { waUse = await store.waUsage([...numRows.values()].map(r => ({ number: r.number, limit: r.limit }))); } catch (e) { console.error('wa usage', (e as Error).message); }
   const useOf = (n: string) => waUse.find(u => u.number === n), extraN = sp.extra ? numRows.get(sp.extra) : undefined;
-  const noNumber = staff.filter(x => x.active && x.role === 'manager' && !(x.waNumbers || []).some(n => n.active));
+  // Accountants send all WhatsApp messages (building managers send none since 26 Nov 2026).
+  const noNumber = staff.filter(x => x.active && !x.leftOn && x.role === 'accountant' && !(x.waNumbers || []).some(n => n.active));
   const row = (name: string, ok: boolean, what: string, tag?: string) => <div className="li"><div className="t"><div className="a">{name}</div><div className="b">{what}</div></div>{ok ? <span className={`tag ${tag === 'warn' ? 'warn' : 'good'}`}>{tag && tag !== 'warn' ? tag : 'On'}</span> : <span className="tag bad">Not set up</span>}</div>;
   return <>
     <div className="proj-head"><PageIc n="users" tone="blue" /><div><div className="eyebrow-b">Minawa Group</div><div className="proj-title">Staff &amp; connections</div></div><div className="crumb-path">Dashboard<span>/</span>Staff &amp; connections</div></div>
@@ -59,7 +60,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
         {sorted.map(s => { const l = last.get(s.id); return <tr key={s.id}>
           <td><b>{s.name}</b>{s.id === me.id ? <span className="cell-sub"> · you</span> : null}<div className="cell-sub num">{nos.map.get(s.id)}{s.cnic ? ` · CNIC ${s.cnic}` : ''}{s.phone ? ` · ${s.phone}` : ''}</div>
             {!s.cnic ? <span className="tag warn">CNIC not on file</span> : cnicState(s.cnicExpiry, today) === 'expired' ? <span className="tag bad">{cnicNote(s.cnicExpiry, today)}</span> : cnicState(s.cnicExpiry, today) === 'soon' ? <span className="tag warn">{cnicNote(s.cnicExpiry, today)}</span> : null}</td>
-          <td className="cell-sub">{s.email}{(s.waNumbers || []).length ? <div className="wa-nums-cell">{(s.waNumbers || []).map(n => <span key={n.id} className="num" style={{ whiteSpace: 'nowrap' }}><Wa inl /> {fmtNumber(n.number)} <small>{n.label}{n.active ? '' : ', not in use'}</small></span>)}</div> : s.role === 'manager' ? <div><span className="tag warn">No WhatsApp number</span></div> : null}</td>
+          <td className="cell-sub">{s.email}{(s.waNumbers || []).length ? <div className="wa-nums-cell">{(s.waNumbers || []).map(n => <span key={n.id} className="num" style={{ whiteSpace: 'nowrap' }}><Wa inl /> {fmtNumber(n.number)} <small>{n.label}{n.active ? '' : ', not in use'}</small></span>)}</div> : s.role === 'accountant' ? <div><span className="tag warn">No WhatsApp number</span></div> : null}</td>
           <td>{roleTag(s.role)}{s.role !== 'admin' ? <div className="cell-sub">{(s.projects || []).map(id => projs.find(p => p.id === id)?.name || id).join(', ') || (s.role === 'accountant' && mgrsOf(s.id).length ? <span>Only his building managers&apos; buildings</span> : <span className="tag warn">No building ticked{s.role === 'accountant' ? ': sees every building until you tick them' : ''}</span>)}</div> : null}
             {s.role === 'manager' ? <div className="cell-sub">{accsOf(s).length ? <>Reports to <b>{accsOf(s).join(', ')}</b></> : <span className="tag warn">No accountant: pick one or more with Edit</span>}</div> : null}
             {s.role === 'accountant' && mgrsOf(s.id).length ? <div className="cell-sub">Building managers: {mgrsOf(s.id).join(', ')}</div> : null}</td>

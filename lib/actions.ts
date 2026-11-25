@@ -317,7 +317,8 @@ export async function staffAction(fdata: FormData) {
   if (password) ch.push('password changed');
   // WhatsApp numbers this person sends from (20 Nov 2026): checked, and every change logged.
   let waNumbers: WaNumber[] = [], bad = '';
-  try { waNumbers = parseNumbers(S(fdata, 'waNumbers'), st!.waNumbers || []); } catch (e) { bad = (e as Error).message; }
+  // 26 Nov 2026: a building manager sends no WhatsApp messages: he has no numbers.
+  if (role !== 'manager') try { waNumbers = parseNumbers(S(fdata, 'waNumbers'), st!.waNumbers || []); } catch (e) { bad = (e as Error).message; }
   if (bad) go(back, bad);
   if (numsText(st!.waNumbers || []) !== numsText(waNumbers)) ch.push(`WhatsApp numbers: ${numsText(waNumbers) || 'none'}`);
   // CNIC details and phone (21 Nov 2026): checked when given.
@@ -356,7 +357,7 @@ export async function inviteAction(fdata: FormData) {
   if ((role === 'manager' || role === 'accountant') && !projects.length) go('/admin?add=1', 'Please select at least one building for this role before creating the account.');
   if (!EMAIL_RE.test(email)) go('/admin?add=1', 'Enter a valid email');
   let waNumbers: WaNumber[] = [], bad = '';
-  try { waNumbers = parseNumbers(S(fdata, 'waNumbers')); } catch (e) { bad = (e as Error).message; }
+  if (role !== 'manager') try { waNumbers = parseNumbers(S(fdata, 'waNumbers')); } catch (e) { bad = (e as Error).message; }
   if (bad) go('/admin?add=1', bad);
   // 21 Nov 2026: their CNIC details and phone (an expired CNIC only warns on the form).
   const cnic = normCnic(S(fdata, 'cnic')), cnicExpiry = S(fdata, 'cnicExpiry'), cnicAddress = S(fdata, 'cnicAddress').replace(/\s+/g, ' '), phone = S(fdata, 'phone');
