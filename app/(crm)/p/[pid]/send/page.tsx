@@ -8,6 +8,7 @@ import { NoticeComposer } from '@/components/NoticeComposer';
 import { sendNoticeAction } from '@/lib/actions-desk';
 import { announceAction } from '@/lib/actions';
 import { Go, Submit } from '@/components/client';
+import { Ic } from '@/components/icons';
 import { ApprovalItem } from '@/components/views/approvals';
 import { waTestNumber } from '@/lib/whatsapp';
 import { SEND_TYPES, cantSend, ownerFacts, pendingGroups, type SendType } from '@/lib/manual-send';
@@ -37,12 +38,12 @@ export default async function SendPage({ params, searchParams }: { params: Promi
   return projectPage(pid, sp, () => {
     const S = cur(), mode = sp.mode === 'notice' || sp.mode === 'announce' || sp.mode === 'print' ? sp.mode : 'send', base = `/p/${pid}/send`;
     const vrows = voucherRows(), vN = vrows.filter(r => r.items.length).length;
-    const modes = <div className="ptabs" role="tablist">
-      <Go href={base} current={mode === 'send' ? 'true' : 'false'} replace>Send to owners</Go>
-      <Go href={`${base}?mode=notice`} current={mode === 'notice' ? 'true' : 'false'} replace>Maintenance notice</Go>
-      <Go href={`${base}?mode=announce`} current={mode === 'announce' ? 'true' : 'false'} replace>Announcement</Go>
-      <Go href={`${base}?mode=print`} current={mode === 'print' ? 'true' : 'false'} replace>Printed vouchers{vN ? <> <span className="tab-b">{vN}</span></> : null}</Go>
-    </div>;
+    const modes = <nav className="subnav" aria-label="Send on WhatsApp">
+      <Go href={base} current={mode === 'send' ? 'page' : false} replace><Ic n="send" s={16} /><span>Send to owners</span></Go>
+      <Go href={`${base}?mode=notice`} current={mode === 'notice' ? 'page' : false} replace><Ic n="tool" s={16} /><span>Maintenance notice</span></Go>
+      <Go href={`${base}?mode=announce`} current={mode === 'announce' ? 'page' : false} replace><Ic n="megaphone" s={16} /><span>Announcement</span></Go>
+      <Go href={`${base}?mode=print`} current={mode === 'print' ? 'page' : false} replace><Ic n="print" s={16} /><span>Printed vouchers</span>{vN ? <span className="tab-b">{vN}</span> : null}</Go>
+    </nav>;
     if (mode === 'print') return <>
       {projHead('send')}{modes}
       <div className="page-head"><div><h2>Printed vouchers</h2><p>For customers without WhatsApp ({vrows.length} here: no number, or a number not on WhatsApp). Their bills, late warnings and receipts wait here instead of on WhatsApp: print them in one PDF, deliver them by hand, then mark them delivered. This system sends no email.</p></div></div>

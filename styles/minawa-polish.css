@@ -1197,3 +1197,31 @@ html:not([data-theme=frost]) body:has(.mgr-app){background-image:radial-gradient
 .rpt-easy .re-bar i{display:block;height:100%;border-radius:99px;background:var(--good)}
 .rpt-easy .re-legend{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
 .rpt-easy .re-legend .good{color:var(--good)}.rpt-easy .re-legend .bad{color:var(--bad)}
+/* ===== Update 145: Printed vouchers as one list (rows start at the checkbox) ===== */
+.vb-list .vb-li{display:flex;align-items:center;gap:12px;justify-content:flex-start}
+.vb-list .vb-li .t{flex:1 1 auto;min-width:0;text-align:left}
+.vb-list .vb-li .vb-bal{flex:0 0 auto;min-width:96px;text-align:right}
+.vb-list .vb-li > .btn{flex:0 0 auto}
+.vb-div{display:flex;align-items:center;gap:10px;margin:14px 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.vb-div::before,.vb-div::after{content:"";height:1px;background:var(--line);flex:1}
+.vb-div::before{flex:0 0 14px}
+.vb-opt .vb-bal{color:var(--muted);font-weight:600}
+@media (max-width:640px){.vb-list .vb-li{flex-wrap:wrap;gap:6px 10px}.vb-list .vb-li .t{flex:1 1 calc(100% - 40px)}.vb-list .vb-li .vb-bal{margin-left:28px;min-width:0;text-align:left}.vb-list .vb-li > .btn{margin-left:auto}}
+
+/* ===== Update 145: sub navigation (Send on WhatsApp: Send to owners, Maintenance notice, Announcement, Printed vouchers) ===== */
+.subnav{display:flex;gap:4px;padding:5px;margin:-2px 0 16px;border-radius:14px;background:color-mix(in srgb,var(--surface-2) 80%,transparent);border:1px solid var(--line);width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.subnav::-webkit-scrollbar{display:none}
+.subnav > button{display:inline-flex;align-items:center;gap:8px;flex:none;white-space:nowrap;border:0;background:transparent;padding:8px 14px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:background-color .2s,color .2s,box-shadow .2s}
+.subnav > button .ico{opacity:.75}
+.subnav > button:hover{color:var(--ink,#0F172A);background:color-mix(in srgb,var(--surface,#fff) 70%,transparent)}
+.subnav > button[aria-current="page"]{background:var(--surface,#fff);color:var(--rust,#D95D39);box-shadow:0 1px 2px rgba(15,23,42,.08),0 4px 12px -6px rgba(15,23,42,.18)}
+.subnav > button[aria-current="page"] .ico{opacity:1}
+.subnav .tab-b{margin-left:2px}
+html[data-theme=dark] .subnav{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+html[data-theme=dark] .subnav > button:hover{color:#E8EAED;background:rgba(255,255,255,.05)}
+html[data-theme=dark] .subnav > button[aria-current="page"]{background:#2A2D33;color:#F3A47F;box-shadow:0 1px 0 rgba(255,255,255,.06) inset}
+html[data-theme=frost] .subnav{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.22);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+html[data-theme=frost] .subnav > button{color:rgba(255,255,255,.78)}
+html[data-theme=frost] .subnav > button:hover{color:#fff;background:rgba(255,255,255,.10)}
+html[data-theme=frost] .subnav > button[aria-current="page"]{background:rgba(255,255,255,.26);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+@media (max-width:640px){.subnav{display:grid;grid-template-columns:1fr 1fr;width:100%;overflow:visible}.subnav > button{justify-content:center;padding:9px 8px;font-size:12.5px;gap:6px}}

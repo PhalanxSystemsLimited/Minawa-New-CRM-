@@ -1,6 +1,6 @@
 'use client';
 // Printed vouchers (20 Nov 2026): tick the customers, print their vouchers in one PDF, deliver them, then mark them
-// delivered. A customer with nothing new waiting can still get a printed statement of dues.
+// delivered. A customer with nothing new waiting can still get a printed statement of dues (same list, below a divider).
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deliveredVouchersAction } from '@/lib/actions-send';
@@ -24,28 +24,32 @@ export function VoucherBatch({ pid, rows }: { pid: string; rows: VRow[] }) {
     if (!r.ok) { setErr(r.error || 'Not saved. Try again.'); return; }
     setMsg(`${r.n} customer${r.n === 1 ? '' : 's'} marked as delivered.`); router.refresh();
   };
-  return <>
-    <div className="card vb-card"><div className="card-row"><h3 data-hic="print" data-tone="violet">To deliver <small>{waiting.length} customer{waiting.length === 1 ? '' : 's'} without WhatsApp · {waiting.reduce((a, r) => a + r.items.length, 0)} paper{waiting.reduce((a, r) => a + r.items.length, 0) === 1 ? '' : 's'}</small></h3>
+  const nPapers = waiting.reduce((a, r) => a + r.items.length, 0), nTicked = picked.length + pickedOthers.length;
+  const fix = (r: VRow) => <a className="btn sm" href={`/p/${pid}/apartments/${r.oid}?m=fix`} onClick={e => e.stopPropagation()}>{r.why === 'No WhatsApp number' ? 'Add number' : 'Fix number'}</a>;
+  // 26 Nov 2026: one list. Customers with a paper waiting come first (ticked, and "Mark delivered" counts only them);
+  // the rest follow under a divider, unticked: tick any of them to print a statement of dues too.
+  return <div className="card vb-card">
+    <div className="card-row"><h3 data-hic="print" data-tone="violet">Customers without WhatsApp <small>{rows.length} customer{rows.length === 1 ? '' : 's'} · {nPapers} paper{nPapers === 1 ? '' : 's'} waiting</small></h3>
       <div className="vb-acts">
-        <a className={'btn sm primary' + (selParam ? '' : ' disabled')} aria-disabled={!selParam} href={selParam ? `/api/pdf/${pid}/vouchers?sel=${encodeURIComponent(selParam)}` : undefined} target="_blank" rel="noopener"><Ic n="print" s={15} /> Print {picked.length + pickedOthers.length || ''} (PDF)</a>
+        <a className={'btn sm primary' + (selParam ? '' : ' disabled')} aria-disabled={!selParam} href={selParam ? `/api/pdf/${pid}/vouchers?sel=${encodeURIComponent(selParam)}` : undefined} target="_blank" rel="noopener"><Ic n="print" s={15} /> Print {nTicked || ''} (PDF)</a>
         <button type="button" className="btn sm" disabled={!picked.length || busy} onClick={delivered}><Ic n="tick" s={15} /> {busy ? 'Saving…' : `Mark ${picked.length || ''} delivered`}</button></div></div>
-      {msg ? <div className="callout good" style={{ marginBottom: 10 }}><div>{msg}</div></div> : null}
-      {err ? <div className="callout bad" style={{ marginBottom: 10 }}><div>{err}</div></div> : null}
-      {waiting.length ? <div className="list vb-list">
-        <label className="li vb-all"><input type="checkbox" checked={picked.length === waiting.length} onChange={e => setSel(new Set(e.target.checked ? waiting.map(r => r.oid) : []))} /> <b>All {waiting.length}</b></label>
+    {msg ? <div className="callout good" style={{ marginBottom: 10 }}><div>{msg}</div></div> : null}
+    {err ? <div className="callout bad" style={{ marginBottom: 10 }}><div>{err}</div></div> : null}
+    <div className="list vb-list">
+      {waiting.length ? <>
+        <label className="li vb-all"><input type="checkbox" checked={picked.length === waiting.length} onChange={e => setSel(new Set(e.target.checked ? waiting.map(r => r.oid) : []))} /> <b>Paper waiting · all {waiting.length}</b></label>
         {waiting.map(r => <label className="li vb-li" key={r.oid}><input type="checkbox" checked={sel.has(r.oid)} onChange={() => flip(sel, setSel, r.oid)} />
           <div className="t"><div className="a"><span className="apt-t">{r.apt}</span> · {r.name} <span className="tag warn">{r.why}</span></div>
             <div className="b">{r.items.map(i => i.what).join('; ')} · waiting since {r.items.map(i => i.since).sort()[0]}</div></div>
-          <span className="num vb-bal">{r.bal}</span>
-          <a className="btn sm" href={`/p/${pid}/apartments/${r.oid}?m=fix`} onClick={e => e.stopPropagation()}>{r.why === 'No WhatsApp number' ? 'Add number' : 'Fix number'}</a></label>)}</div>
-        : <p className="empty">Nothing waiting: every customer without WhatsApp has their papers.</p>}
-      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Print, deliver by hand (or leave at the flat), then mark them delivered: they leave this list and the customer&apos;s history shows &quot;printed and delivered&quot;. Once a customer&apos;s WhatsApp number is added, their messages go on WhatsApp again.</p>
+          <span className="num vb-bal">{r.bal}</span>{fix(r)}</label>)}
+      </> : <p className="empty">Nothing waiting: every customer without WhatsApp has their papers.</p>}
+      {others.length ? <>
+        <div className="vb-div"><span>Nothing new waiting · tick to print a statement of dues</span></div>
+        {others.map(r => <label className="li vb-li vb-opt" key={r.oid}><input type="checkbox" checked={extra.has(r.oid)} onChange={() => flip(extra, setExtra, r.oid)} />
+          <div className="t"><div className="a"><span className="apt-t">{r.apt}</span> · {r.name} <span className="tag">{r.why}</span></div><div className="b">{r.owes ? 'Statement of dues' : 'Nothing owed'}</div></div>
+          <span className="num vb-bal">{r.bal}</span>{fix(r)}</label>)}
+      </> : null}
     </div>
-    {others.length ? <div className="card"><div className="card-row"><h3 data-hic="file" data-tone="slate">Print a statement <small>customers without WhatsApp, nothing new waiting</small></h3></div>
-      <div className="list vb-list">{others.map(r => <label className="li vb-li" key={r.oid}><input type="checkbox" checked={extra.has(r.oid)} onChange={() => flip(extra, setExtra, r.oid)} />
-        <div className="t"><div className="a"><span className="apt-t">{r.apt}</span> · {r.name} <span className="tag">{r.why}</span></div><div className="b">{r.owes ? 'Owes ' + r.bal : 'Nothing owed'}</div></div>
-        <a className="btn sm" href={`/p/${pid}/apartments/${r.oid}?m=fix`}>{r.why === 'No WhatsApp number' ? 'Add number' : 'Fix number'}</a></label>)}</div>
-      <p className="cell-sub" style={{ margin: '10px 0 0' }}>Ticked ones are added to the PDF as a statement of dues (nothing is marked delivered for them).</p>
-    </div> : null}
-  </>;
+    <p className="cell-sub" style={{ margin: '10px 0 0' }}>Print, deliver by hand (or leave at the flat), then mark them delivered: they leave the top of this list and the customer&apos;s history shows &quot;printed and delivered&quot;. Statements printed for the others are not marked delivered. Once a customer&apos;s WhatsApp number is added, their messages go on WhatsApp again.</p>
+  </div>;
 }
