@@ -17,7 +17,7 @@ import { enterRequestAction } from '@/lib/actions-requests';
 import { PhotoField } from '@/components/PhotoField';
 import { NavProgress } from '@/components/NavProgress';
 import { Suspense } from 'react';
-import { ThemeSwitch } from '@/components/Shell';
+import { ThemeSwitch, ManagerBell } from '@/components/Shell';
 import { photoStore } from '@/lib/images';
 import { LivePayments } from '@/components/LivePayments';
 
@@ -28,6 +28,8 @@ export async function ManagerShell({ staff, signOut, children }: { staff: Staff;
   const projs = await liveProjects(staff);
   const where = projs.length === 1 ? projs[0].name : projs.length ? `${projs.length} buildings` : 'No building yet';
   const ini = staff.name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'BM';
+  // 26 Nov 2026: the bell counts the payment requests waiting for him (open ones, his own).
+  const waiting = (await Promise.all(projs.map(p => load(p.id, staff)))).reduce((a, s) => a + (s.requests || []).filter(r => r.managerId === staff.id && r.status === 'open').length, 0);
   return <>
     <div className="lv-aurora mgr-aurora" aria-hidden="true"><i className="a1"></i><i className="a2"></i><i className="a3"></i></div>
     <div className="mgr-app">
@@ -35,6 +37,7 @@ export async function ManagerShell({ staff, signOut, children }: { staff: Staff;
         <Go href="/" className="mgr-logo" ariaLabel="Home"><img src="/assets/minawa-mark.png" alt="" /></Go>
         <div className="mgr-who"><b>{where}</b><small>Minawa Group · Maintenance</small></div>
         <div className="mgr-thm"><ThemeSwitch /></div>
+        <ManagerBell n={waiting} />
         <div className="mgr-me"><span className="mgr-av" aria-hidden="true">{ini}</span><span className="mgr-me-t"><b>{staff.name}</b><small>{roleName(staff)}</small></span></div>
         <form action={signOut}><button type="submit" className="mgr-out"><Ic n="logout" s={16} /><span>Sign out</span></button></form>
       </header>

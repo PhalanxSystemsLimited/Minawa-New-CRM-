@@ -50,6 +50,11 @@ export function LivePayments({ counts, me, revOnly, more: moreHref = '/tasks' }:
       }
     };
     window.addEventListener('pointerdown', unlock); window.addEventListener('keydown', unlock);
+    // 26 Nov 2026: after signing in (a click on this same page) the sound can start straight away; and the building
+    // manager's "Turn on sound" button plays it once to check (event 'minawa:testsound').
+    try { if ((navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive) unlock(); } catch { /* old browser */ }
+    const test = () => { unlock(); setTimeout(chime, 150); };
+    window.addEventListener('minawa:testsound', test);
     const KEY = `minawa.notes.${me}`, baseTitle = document.title.replace(/^\(\d+\) /, '');
     const typing = () => { const a = document.activeElement as HTMLElement | null; return !!a && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit'].includes((a as HTMLInputElement).type)) || a.isContentEditable); };
     const refresh = () => { if (typing()) { pending.current = true; return; } pending.current = false; router.refresh(); };
@@ -100,7 +105,7 @@ export function LivePayments({ counts, me, revOnly, more: moreHref = '/tasks' }:
     const vis = () => { if (document.visibilityState === 'visible') { unseen = 0; document.title = baseTitle; const h = held.current.splice(0); if (h.length) show(h); if (pending.current && !typing()) refresh(); tick(true); } };
     const blur = () => { if (pending.current) setTimeout(() => { if (pending.current && !typing()) refresh(); }, 300); };
     document.addEventListener('visibilitychange', vis); window.addEventListener('focus', vis); document.addEventListener('focusout', blur);
-    return () => { window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); try { void ctx?.close(); } catch { /* closed */ } clearInterval(t); clearTimeout(first); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); document.removeEventListener('focusout', blur); };
+    return () => { window.removeEventListener('minawa:testsound', test); window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); try { void ctx?.close(); } catch { /* closed */ } clearInterval(t); clearTimeout(first); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); document.removeEventListener('focusout', blur); };
   }, [router, me, revOnly]);
   // Each popup slides out by itself after SHOW_MS (not while the mouse is over the stack), or when closed.
   useEffect(() => {

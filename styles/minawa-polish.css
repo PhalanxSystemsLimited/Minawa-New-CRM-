@@ -1291,3 +1291,17 @@ html[data-theme=dark] .subnav .sn-ic{color:var(--sn-a);background:color-mix(in s
 }
 html[data-theme=frost] .mgr-rq-sum b,html[data-theme=frost] .mgr-rq-head{color:#fff}
 html[data-theme=frost] .mgr-rq-sum{color:rgba(240,246,244,.8)}
+/* ===== Update 149: building manager's bell and sound switch ===== */
+.mgr-bellbox{display:flex;align-items:center;gap:8px;flex:none}
+.mgr-bellbox .bell-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border-radius:12px;border:1px solid #FDE68A}
+.mgr-bellbox .dot-n{position:absolute;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center}
+.mgr-snd{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.mgr-snd:hover{color:var(--fg)}
+.mgr-snd.off{opacity:.8}
+.mgr-snd.locked{border-color:#F59E0B;color:#B45309;background:#FFFBEB;animation:mgrSnd 1.6s ease-in-out infinite}
+@keyframes mgrSnd{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.45)}50%{box-shadow:0 0 0 6px rgba(245,158,11,0)}}
+@media (max-width:900px){.mgr-snd:not(.locked) span{display:none}.mgr-snd:not(.locked){width:36px;padding:0;justify-content:center}}
+@media (max-width:520px){.mgr-snd span{display:none}.mgr-snd{width:36px;padding:0;justify-content:center}.mgr-bellbox{gap:6px}.mgr-bellbox .bell-btn{width:38px;height:38px}}
+@media (prefers-reduced-motion:reduce){.mgr-snd.locked{animation:none}}
+html[data-theme=dark] .mgr-snd.locked{background:rgba(245,158,11,.12);color:#FCD34D}
+html[data-theme=frost] .mgr-snd{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:#fff}

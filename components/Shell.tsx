@@ -75,7 +75,7 @@ export function Topbar({ todo, firstTodo, bell, roleLabel, initials, name, defau
 }
 
 /** The bell: the body swings, the clapper swings the other way, and two sound waves spread out while it rings. */
-function Bell() {
+export function Bell() {
   return <svg className="ico bell" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path className="bl-w bl-w1" d="M3.2 9.500a9.500 9.500 0 0 1 2.400-5.200" /><path className="bl-w bl-w2" d="M20.800 9.500a9.500 9.500 0 0 0-2.400-5.200" />
     <g className="bl-body"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /></g>
@@ -168,4 +168,39 @@ export function SoundToggle() {
   useEffect(() => { try { setOn(localStorage.getItem('minawa.sound') !== 'off'); } catch { /* private mode */ } }, []);
   const flip = () => { const v = !on; setOn(v); try { localStorage.setItem('minawa.sound', v ? 'on' : 'off'); } catch { /* private mode */ } };
   return <button type="button" className="menu-link" onClick={flip} aria-pressed={on}>Notification sound: {on ? 'on' : 'off'}</button>;
+}
+
+/** The building manager's bell (26 Nov 2026): how many payment requests are waiting for him; it rings when a new one
+ *  arrives (with the sound from LivePayments). Browsers only play sound after the page has been clicked once, so until
+ *  then a "Turn on sound" button shows beside it; pressing it turns the sound on and plays it once to check. */
+export function ManagerBell({ n }: { n: number }) {
+  const prev = useRef<number | null>(null), [locked, setLocked] = useState(false), [on, setOn] = useState(true);
+  useEffect(() => {
+    let was = prev.current;
+    if (was === null) { try { const v = sessionStorage.getItem('minawa.bell.mgr'); was = v === null ? n : +v; } catch { was = n; } }
+    prev.current = n;
+    try { sessionStorage.setItem('minawa.bell.mgr', String(n)); } catch { /* private mode */ }
+    if (n > was) { const t = setTimeout(() => ringBell(), 400); return () => clearTimeout(t); }
+  }, [n]);
+  useEffect(() => {
+    try { setOn(localStorage.getItem('minawa.sound') !== 'off'); } catch { /* private mode */ }
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    setLocked(!(ua && ua.hasBeenActive));
+    const free = (e: Event) => { if ((e.target as Element | null)?.closest?.('.mgr-snd')) return; setLocked(false); };   // the sound button decides itself
+    window.addEventListener('pointerdown', free); window.addEventListener('keydown', free);
+    return () => { window.removeEventListener('pointerdown', free); window.removeEventListener('keydown', free); };
+  }, []);
+  const sound = () => {
+    const v = locked ? true : !on; setOn(v); setLocked(false);
+    try { localStorage.setItem('minawa.sound', v ? 'on' : 'off'); } catch { /* private mode */ }
+    if (v) setTimeout(() => window.dispatchEvent(new Event('minawa:testsound')), 120);
+  };
+  return <div className="mgr-bellbox">
+    <button type="button" className={'mgr-snd' + (locked ? ' locked' : on ? '' : ' off')} onClick={sound} aria-pressed={on && !locked}
+      title={locked ? 'Turn on the notification sound' : on ? 'Notification sound on (press to turn off)' : 'Notification sound off (press to turn on)'}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4V5z" />{on && !locked ? <><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></> : <path d="m16 9 5 6M21 9l-5 6" />}
+      </svg><span>{locked ? 'Turn on sound' : on ? 'Sound on' : 'Sound off'}</span></button>
+    <Go href="/" className={'icon-btn bell-btn' + (n ? ' has' : '')} title="Payment requests to collect" ariaLabel={`Payment requests${n ? `, ${n} waiting` : ''}`}><Bell />{n ? <span className="dot-n" key={n}>{n}</span> : null}</Go>
+  </div>;
 }
