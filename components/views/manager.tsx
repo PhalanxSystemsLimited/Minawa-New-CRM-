@@ -76,19 +76,21 @@ export async function ManagerHome({ staff, sp }: { staff: Staff; sp: Record<stri
       <a href="/" className={v === 'open' ? 'on' : ''} aria-current={v === 'open' ? 'page' : undefined}>To collect <span className="mgr-cnt">{open.length}</span></a>
       <a href="/?v=done" className={v === 'done' ? 'on' : ''} aria-current={v === 'done' ? 'page' : undefined}>Entered <span className="mgr-cnt">{done.length}</span></a>
     </nav>
-    {v === 'open' ? (open.length ? <div className="mgr-rq-list">{open.map(({ r, s, apt, name, pname }) => <article className={'mgr-rq' + (r.reply ? ' back' : '')} key={s.project + r.id}>
-      <div className="mgr-rq-top">
+    {v === 'open' ? (open.length ? <section className="mgr-rq-wrap" aria-label="Payment requests to collect">
+      {/* 26 Nov 2026: one list across the screen (a row per request on wide screens, a card per request on phones). */}
+      <div className="mgr-rq-sum"><b>{open.length} request{open.length === 1 ? '' : 's'}</b><span>{rs(open.reduce((a, x) => a + x.r.amount, 0))} to collect{open.some(x => x.r.method === 'Cash') && open.some(x => x.r.method !== 'Cash') ? ` · ${open.filter(x => x.r.method === 'Cash').length} cash, ${open.filter(x => x.r.method !== 'Cash').length} bank transfer` : ''}</span></div>
+      <div className="mgr-rq-head" aria-hidden="true"><span>Flat</span><span>Customer</span><span>For</span><span className="r">Amount</span><span></span></div>
+      <div className="mgr-rq-list">{open.map(({ r, s, apt, name, pname }) => <article className={'mgr-rq' + (r.reply ? ' back' : '')} key={s.project + r.id}>
         <span className="mgr-apt">{apt}</span>
         <div className="mgr-rq-who"><b>{name}</b><small>{multi ? `${pname} · ` : ''}Request {r.id} · from {r.byName}, {ago(r.d, r.t, today)}</small></div>
+        <div className="mgr-rq-meta">
+          <span><Ic n="cal" s={14} /> <span><b>{periodText(r.periodFrom, r.periodTo)}</b>{r.forWhat === 'electricity' ? ' · electricity' : ' · maintenance'}</span></span>
+          {r.note ? <span className="mgr-rq-note"><Ic n="msg" s={14} /> <span>{r.note}</span></span> : null}
+        </div>
         <div className="mgr-rq-amt"><b className="num">{rs(r.amount)}</b>{mtag(r.method)}</div>
-      </div>
-      <div className="mgr-rq-meta">
-        <span><Ic n="cal" s={14} /> For <b>{periodText(r.periodFrom, r.periodTo)}</b>{r.forWhat === 'electricity' ? ' · electricity' : ' · maintenance'}</span>
-        {r.note ? <span><Ic n="msg" s={14} /> {r.note}</span> : null}
-      </div>
-      {r.reply ? <div className="callout bad mgr-rq-back"><div><b>Came back:</b> {r.reply}. Put it right with the customer and enter it again.</div></div> : null}
-      <a href={`/?r=${encodeURIComponent(`${s.project}:${r.id}`)}`} className="mgr-save mgr-rq-go"><Ic n="plus" s={16} /> Enter payment</a>
-    </article>)}</div>
+        <a href={`/?r=${encodeURIComponent(`${s.project}:${r.id}`)}`} className="mgr-save mgr-rq-go"><Ic n="plus" s={16} /> Enter payment</a>
+        {r.reply ? <div className="callout bad mgr-rq-back"><div><b>Came back:</b> {r.reply}. Put it right with the customer and enter it again.</div></div> : null}
+      </article>)}</div></section>
       : <div className="mgr-empty mgr-rq-empty"><span className="mgr-rq-ok"><Ic n="okc" s={26} /></span><b>No payment requests right now</b><p>When your accountant asks you to collect a payment, it shows here.</p></div>)
     : (done.length ? <div className="mgr-card mgr-hist">{done.map(({ r, s, apt, name, pname, pr }) => <div className="mgr-hl" key={s.project + r.id}>
         <span><b className="num">{rs(pr?.amount ?? r.amount)}</b> {r.method === 'Cash' ? 'cash' : 'bank transfer'} · {apt} {name}

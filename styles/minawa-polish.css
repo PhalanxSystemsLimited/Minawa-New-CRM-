@@ -1254,3 +1254,40 @@ html[data-theme=frost] .subnav > button:hover,html[data-theme=frost] .subnav > b
 @media (prefers-reduced-motion:reduce){.subnav .sn-ic .ico{animation:none!important}}
 html[data-theme=dark] .subnav .sn-ic{color:var(--sn-a);background:color-mix(in srgb,var(--sn-a) 16%,transparent)}html[data-theme=dark] .subnav > button[aria-current="page"] .sn-ic,html[data-theme=dark] .subnav > button:hover .sn-ic{color:#fff}
 .cell-sub.warn-t{color:var(--warn,#B45309);font-weight:600}
+/* ===== Update 148: the building manager's payment requests as one list across the screen ===== */
+.mgr-rq-wrap{display:flex;flex-direction:column;gap:8px}
+.mgr-rq-sum{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);padding:0 4px}
+.mgr-rq-sum b{color:var(--fg);font-size:14.5px}
+.mgr-rq-list{display:flex!important;flex-direction:column;gap:10px}
+.mgr-rq{display:grid!important;align-items:center;gap:6px 16px;padding:14px 16px 14px 20px!important;
+  grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"apt who amt" "meta meta meta" "back back back" "go go go"}
+.mgr-rq > .mgr-apt{grid-area:apt}
+.mgr-rq > .mgr-rq-who{grid-area:who}
+.mgr-rq > .mgr-rq-meta{grid-area:meta}
+.mgr-rq > .mgr-rq-amt{grid-area:amt}
+.mgr-rq > .mgr-rq-go{grid-area:go;margin-top:4px!important}
+.mgr-rq > .mgr-rq-back{grid-area:back}
+.mgr-rq-meta > span > span{min-width:0}
+.mgr-rq-note span{overflow-wrap:anywhere}
+.mgr-rq-head{display:none}
+/* tablets: two lines per request, the button on the right */
+@media (min-width:700px){
+  .mgr-rq{grid-template-columns:auto minmax(0,1.3fr) minmax(0,1fr) auto;grid-template-areas:"apt who meta amt" "back back back back" "go go go go"}
+  .mgr-rq-meta{font-size:13px}
+}
+/* desktop: one row per request, with column headings */
+@media (min-width:1024px){
+  .mgr-rq-head{display:grid;grid-template-columns:72px minmax(0,1.4fr) minmax(0,1.2fr) 170px 190px;gap:16px;padding:0 16px 0 20px;
+    font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .mgr-rq-head .r{text-align:right}
+  .mgr-rq{grid-template-columns:72px minmax(0,1.4fr) minmax(0,1.2fr) 170px 190px;grid-template-areas:"apt who meta amt go" "back back back back back";padding:12px 16px 12px 20px!important}
+  .mgr-rq > .mgr-rq-go{margin-top:0!important;padding:11px 14px!important;font-size:14.5px!important}
+  .mgr-rq > .mgr-apt{justify-self:start}
+  .mgr-rq-amt b{font-size:19px}
+}
+@media (max-width:420px){
+  .mgr-rq{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"apt who" "amt amt" "meta meta" "back back" "go go";padding:12px 12px 12px 16px!important}
+  .mgr-rq > .mgr-rq-amt{flex-direction:row;align-items:center;justify-content:space-between;width:100%}
+}
+html[data-theme=frost] .mgr-rq-sum b,html[data-theme=frost] .mgr-rq-head{color:#fff}
+html[data-theme=frost] .mgr-rq-sum{color:rgba(240,246,244,.8)}
