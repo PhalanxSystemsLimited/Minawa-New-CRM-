@@ -19,6 +19,7 @@ import { NavProgress } from '@/components/NavProgress';
 import { Suspense } from 'react';
 import { ThemeSwitch } from '@/components/Shell';
 import { photoStore } from '@/lib/images';
+import { LivePayments } from '@/components/LivePayments';
 
 
 /** The slim shell around a building manager's pages: logo, building, his name, the theme (Light, Dark or Frost, his
@@ -40,6 +41,9 @@ export async function ManagerShell({ staff, signOut, children }: { staff: Staff;
       <main id="main" className="mgr-main">{children}</main>
     </div>
     <Suspense><NavProgress /></Suspense>
+    {/* 26 Nov 2026: live, as for everyone else: a new payment request pops up with the bell sound and the list updates
+        without a refresh. */}
+    <LivePayments me={staff.id} counts={{}} revOnly more="/" />
   </>;
 }
 

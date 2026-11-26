@@ -7,12 +7,14 @@
 //  · Accountant (25 Nov 2026): also new work in To do (bills, reminders, notices to send; numbers to fix; follow-ups).
 //  · Building manager: their entered payments once the Accountant confirms the money or marks it not received.
 //  · Cash: the Accountant hears about each hand-over; the building manager hears when it is received or sent back.
-//  · Everyone: payments received in their buildings.
+//  · Building manager (26 Nov 2026): each new payment request from his accountant, and one cancelled; his only screen
+//    is '/', so his notes all open it. He doesn't get "Payment received" for the building.
+//  · Everyone else: payments received in their buildings.
 import type { Staff, State } from './types';
 import { use, ownerById } from './engine';
 import { KIND_LABEL } from './approvals';
 import { projectTasks, myTasks } from './tasks';
-import { addDays, rs } from './fmt';
+import { addDays, rs, periodText } from './fmt';
 
 export interface Note { id: string; at: string; tone: 'info' | 'good' | 'warn' | 'bad'; title: string; text: string; href: string }
 
@@ -41,7 +43,7 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
       if (staff.role === 'manager' && p.kind === 'cash' && p.byId === staff.id && p.status !== 'pending' && (p.doneOn || '') >= since)
         out.push({ id: `proofd:${s.project}:${p.id}:${p.status}`, at: `${p.doneOn} 23:59`, tone: p.status === 'verified' ? 'good' : 'bad',
           title: p.status === 'verified' ? 'Money confirmed' : p.status === 'cancelled' ? 'Entry cancelled' : p.payId ? 'Not received: payment taken back' : 'Payment not confirmed',
-          text: `${apt(p.ownerId)} · ${rs(p.amount)}${p.status === 'verified' ? ` received by ${p.checkedBy || 'the Accountant'}` : p.reply ? `: ${p.reply}` : ''}`, href: p.status === 'rejected' && p.payId ? `${P}/todo` : `${P}/apartments/${p.ownerId}` });
+          text: `${apt(p.ownerId)} · ${rs(p.amount)}${p.status === 'verified' ? ` received by ${p.checkedBy || 'the Accountant'}` : p.reply ? `: ${p.reply}` : ''}`, href: p.status === 'verified' ? '/?v=done' : '/' });
     }
     // Cash hand-overs: the Accountant hears about new ones; the building manager hears the answer.
     for (const h of s.handovers || []) {
@@ -49,10 +51,17 @@ export function notesFor(staff: Staff, states: State[]): Note[] {
         out.push({ id: `ho:${s.project}:${h.id}`, at: `${h.d} ${h.t}`, tone: 'info', title: 'Cash handed over', text: `${h.fromName} · ${s.proj.name} · ${rs(h.amount)}: count it and confirm`, href: '/payments?via=Cash#receive' });
       if (staff.role === 'manager' && h.fromId === staff.id && h.status !== 'pending' && (h.receivedD || '') >= since)
         out.push({ id: `hod:${s.project}:${h.id}:${h.status}`, at: `${h.receivedD} 23:58`, tone: h.status === 'received' ? 'good' : 'bad',
-          title: h.status === 'received' ? 'Cash received' : 'Hand-over sent back', text: `${s.proj.name} · ${rs(h.amount)}${h.status === 'received' ? ` received by ${h.receivedBy}` : `: ${h.reply || ''}`}`, href: '/payments?via=Cash' });
+          title: h.status === 'received' ? 'Cash received' : 'Hand-over sent back', text: `${s.proj.name} · ${rs(h.amount)}${h.status === 'received' ? ` received by ${h.receivedBy}` : `: ${h.reply || ''}`}`, href: '/' });
+    }
+    // Payment requests for the building manager (26 Nov 2026): new ones straight away, and ones taken back.
+    if (staff.role === 'manager') for (const r of s.requests || []) {
+      if (r.managerId !== staff.id) continue;
+      const who = `${apt(r.ownerId)} · ${ownerById(r.ownerId)?.name || ''}`, what = `${rs(r.amount)} ${r.method === 'Cash' ? 'cash' : 'bank transfer'} · for ${periodText(r.periodFrom, r.periodTo)}`;
+      if (r.status === 'open') out.push({ id: `req:${s.project}:${r.id}`, at: `${r.d} ${r.t}`, tone: 'info', title: 'New payment request', text: `${who} · ${what} · from ${r.byName}`, href: `/?r=${encodeURIComponent(`${s.project}:${r.id}`)}` });
+      if (r.status === 'cancelled' && (r.doneD || '') >= since) out.push({ id: `reqx:${s.project}:${r.id}`, at: `${r.doneD} ${r.doneT || ''}`, tone: 'warn', title: 'Payment request cancelled', text: `${who} · ${rs(r.amount)}${r.reply ? `: ${r.reply}` : ''}`, href: '/' });
     }
     // Payments received.
-    for (const p of s.payments) if (p.d >= since && !(p.entryId && s.proofs.some(x => x.id === p.entryId && x.byId === staff.id)))
+    if (staff.role !== 'manager') for (const p of s.payments) if (p.d >= since && !(p.entryId && s.proofs.some(x => x.id === p.entryId && x.byId === staff.id)))
       out.push({ id: `pay:${s.project}:${p.id}`, at: `${p.d} ${p.t}`, tone: 'good', title: 'Payment received', text: `${apt(p.ownerId)} · ${s.proj.name} · ${rs(p.amount)} · ${p.method}`, href: `${P}/payments` });
   });
   // The Accountant's To do (since 25 Nov 2026 all of it is his): a task is news when it is new, or when more owners are

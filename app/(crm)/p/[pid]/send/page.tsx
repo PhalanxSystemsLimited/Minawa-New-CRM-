@@ -39,10 +39,10 @@ export default async function SendPage({ params, searchParams }: { params: Promi
     const S = cur(), mode = sp.mode === 'notice' || sp.mode === 'announce' || sp.mode === 'print' ? sp.mode : 'send', base = `/p/${pid}/send`;
     const vrows = voucherRows(), vN = vrows.filter(r => r.items.length).length;
     const modes = <nav className="subnav" aria-label="Send on WhatsApp">
-      <Go href={base} current={mode === 'send' ? 'page' : false} replace><Ic n="send" s={16} /><span>Send to owners</span></Go>
-      <Go href={`${base}?mode=notice`} current={mode === 'notice' ? 'page' : false} replace><Ic n="tool" s={16} /><span>Maintenance notice</span></Go>
-      <Go href={`${base}?mode=announce`} current={mode === 'announce' ? 'page' : false} replace><Ic n="megaphone" s={16} /><span>Announcement</span></Go>
-      <Go href={`${base}?mode=print`} current={mode === 'print' ? 'page' : false} replace><Ic n="print" s={16} /><span>Printed vouchers</span>{vN ? <span className="tab-b">{vN}</span> : null}</Go>
+      <Go href={base} className="sn-send" current={mode === 'send' ? 'page' : false} replace><span className="sn-ic"><Ic n="send" s={15} /></span><span>Send to owners</span></Go>
+      <Go href={`${base}?mode=notice`} className="sn-notice" current={mode === 'notice' ? 'page' : false} replace><span className="sn-ic"><Ic n="tool" s={15} /></span><span>Maintenance notice</span></Go>
+      <Go href={`${base}?mode=announce`} className="sn-announce" current={mode === 'announce' ? 'page' : false} replace><span className="sn-ic"><Ic n="megaphone" s={15} /></span><span>Announcement</span></Go>
+      <Go href={`${base}?mode=print`} className="sn-print" current={mode === 'print' ? 'page' : false} replace><span className="sn-ic"><Ic n="print" s={15} /></span><span>Printed vouchers</span>{vN ? <span className="tab-b">{vN}</span> : null}</Go>
     </nav>;
     if (mode === 'print') return <>
       {projHead('send')}{modes}

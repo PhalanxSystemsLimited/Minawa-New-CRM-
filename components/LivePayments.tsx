@@ -22,7 +22,9 @@ import { ringBell } from './Shell';
 const EVERY = 5000, HIDDEN_EVERY = 30000, SHOW_MS = 9000, OUT_MS = 380, MAX_SHOWN = 3;
 type Toast = Note & { key: number; born: number; out?: number };
 
-export function LivePayments({ counts, me }: { counts: Record<string, number>; me: string }) {
+/** revOnly: refresh only when the data's revision changes (the building manager's screen has no payment counters);
+ *  more: where "+N more" points. */
+export function LivePayments({ counts, me, revOnly, more: moreHref = '/tasks' }: { counts: Record<string, number>; me: string; revOnly?: boolean; more?: string }) {
   const router = useRouter(), last = useRef(counts), rev = useRef<number | null>(null), pending = useRef(false);
   const held = useRef<Note[]>([]), hover = useRef(false);
   const [toasts, setToasts] = useState<Toast[]>([]), [more, setMore] = useState(0), [ask, setAsk] = useState(false);
@@ -88,7 +90,7 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
           const revChanged = typeof j.rev === 'number' && rev.current !== null && j.rev !== rev.current;
           if (typeof j.rev === 'number') rev.current = j.rev;
           if (j.notes) announce(j.notes);
-          const changed = revChanged || (j.ran || 0) > 0 || Object.keys(j.counts).some(k => (j.counts[k] || 0) !== (last.current[k] || 0));
+          const changed = revChanged || (j.ran || 0) > 0 || (!revOnly && Object.keys(j.counts).some(k => (j.counts[k] || 0) !== (last.current[k] || 0)));
           if (changed && !hidden) refresh(); else if (changed) pending.current = true;
         }
       } catch { /* offline: try again next time */ }
@@ -99,7 +101,7 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
     const blur = () => { if (pending.current) setTimeout(() => { if (pending.current && !typing()) refresh(); }, 300); };
     document.addEventListener('visibilitychange', vis); window.addEventListener('focus', vis); document.addEventListener('focusout', blur);
     return () => { window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); try { void ctx?.close(); } catch { /* closed */ } clearInterval(t); clearTimeout(first); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); document.removeEventListener('focusout', blur); };
-  }, [router, me]);
+  }, [router, me, revOnly]);
   // Each popup slides out by itself after SHOW_MS (not while the mouse is over the stack), or when closed.
   useEffect(() => {
     if (!toasts.length) { setMore(0); setAsk(false); return; }
@@ -119,7 +121,7 @@ export function LivePayments({ counts, me }: { counts: Record<string, number>; m
       <button type="button" className="ntf-x" aria-label="Close" onClick={() => close(n.key)}>×</button>
       <span className="ntf-life" aria-hidden="true"></span>
     </div>)}
-    {more ? <div className="ntf-more">+{more} more · <a href="/tasks" onClick={() => setMore(0)}>see your To do</a></div> : null}
+    {more ? <div className="ntf-more">+{more} more · <a href={moreHref} onClick={() => setMore(0)}>{moreHref === '/tasks' ? 'see your To do' : 'see them'}</a></div> : null}
     {ask ? <div className="ntf-more"><button type="button" className="link-btn" onClick={() => { setAsk(false); try { Notification.requestPermission(); } catch { /* old browser */ } }}>Turn on desktop alerts</button> so you hear about these when the CRM is in the background.</div> : null}
   </div>;
 }
