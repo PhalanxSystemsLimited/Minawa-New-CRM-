@@ -15,7 +15,7 @@ import { keepCustIds, nextCustId, flatByApt } from './people';
 import { finalElec, billFinal, meterMode, hasFine, addElecFine } from './meter';
 
 export const KIND_LABEL: Record<ApprovalKind, string> = { elecfine: 'Electricity late fine', discount: 'Discount', generator: 'Generator charges', plan: 'Billing plan', rate: 'Monthly fee', adjust: 'Adjustment',
-  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance', leave: 'Customer left' };
+  rates: 'Monthly fees', rules: 'Billing schedule', fine: 'Fine', announce: 'Announcement', possession: 'New possession', instalments: 'Instalment plan', due: 'Due date', posdate: 'Possession date', reverse: 'Reverse a payment', discontinue: 'Discontinue maintenance', leave: 'Customer left', apttype: 'Apartment type' };
 /** Changes for the whole project (not one owner). */
 export const PROJECT_KINDS: ApprovalKind[] = ['rates', 'rules', 'fine', 'announce', 'possession'];
 export const isProjectKind = (k: ApprovalKind) => PROJECT_KINDS.includes(k);
@@ -65,7 +65,7 @@ function describeRaw(o: Owner | null, kind: ApprovalKind, c: Record<string, unkn
       return { summary: `Monthly fees from ${fd(from)}: ${(ch.length ? ch : list).map(([ty, v]) => `${ty} ${rs(v)}`).join(', ')}`,
         before: (ch.length ? ch : list).map(([ty]) => `${ty} ${rateFor(ty, from) ? rs(rateFor(ty, from)) : 'no rate'}`).join(', ') };
     }
-    case 'possession': return { summary: `New possession: ${String(c.apt)} (${String(c.type)}) to ${String(c.name)}${c.cnic ? ` (CNIC ${String(c.cnic)}${c.cnicExpiry ? `, expires ${fd(String(c.cnicExpiry))}` : ''})` : ''} on ${fd(String(c.possession))}, ${PLAN_LABEL[(c.plan as Plan) || 'monthly'].toLowerCase()} billing`, before: 'Not possessed: not billed' };
+    case 'possession': return { summary: `New possession: ${String(c.apt)} (${String(c.type)}${flatByApt(String(c.apt))?.type && flatByApt(String(c.apt))!.type !== String(c.type) ? `, changed from the apartment's ${flatByApt(String(c.apt))!.type}` : ''}) to ${String(c.name)}${c.cnic ? ` (CNIC ${String(c.cnic)}${c.cnicExpiry ? `, expires ${fd(String(c.cnicExpiry))}` : ''})` : ''} on ${fd(String(c.possession))}, ${PLAN_LABEL[(c.plan as Plan) || 'monthly'].toLowerCase()} billing`, before: 'Not possessed: not billed' };
     case 'instalments': { const it = (c.items || []) as { amount: number; due: string }[], tot = it.reduce((a, x) => a + num(x.amount), 0);
       return { summary: `Old arrears of ${rs(tot)} in ${plural(it.length, 'instalment')}: ${it.map(x => `${rs(num(x.amount))} by ${fd(x.due)}`).join(', ')}`,
         before: o ? (o.instalments ? `A plan of ${plural(o.instalments.items.length, 'instalment')} (${rs(o.instalments.total)})` : `${rs(o.openingLeft || 0)} old arrears, due in full`) : '' }; }
@@ -98,6 +98,8 @@ function describeRaw(o: Owner | null, kind: ApprovalKind, c: Record<string, unkn
         before: `${o.generator ? 'On' : 'Not on'} the list, ${rs(a.fee)} a month` };
     }
     case 'plan': return { summary: `${PLAN_LABEL[c.plan as Plan]} billing`, before: `${PLAN_LABEL[o.plan || 'monthly']} billing` };
+    case 'apttype': { const ty = String(c.type), a = feeNow(o), n = feeNow(o, { type: ty });
+      return { summary: `Apartment type ${ty}${o.rate ? '' : `: ${rs(n.fee)} a month`} from the ${fm(a.p)} bill`, before: `${o.type || 'not set'}${o.rate ? ` (own monthly fee of ${rs(o.rate)})` : `, ${rs(a.fee)} a month`}` }; }
     case 'rate': {
       const r = num(c.rate) || null, a = feeNow(o), card = cardRate(o, billDateOf(a.p));
       return { summary: r ? `Own monthly fee of ${rs(r)} from the ${fm(a.p)} bill` : `Back to the rate card, ${rs(card)} a month from the ${fm(a.p)} bill`,
@@ -126,6 +128,7 @@ function noChange(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown
   if (kind === 'discount') { const d = c as unknown as Disc, x = o.discount; return (d.kind === 'none' || !d.value) ? !x || !x.value : !!x && x.kind === d.kind && x.value === d.value && (x.until || null) === (d.until || null); }
   if (kind === 'generator') return !!o.generator === !!c.on;
   if (kind === 'plan') return (o.plan || 'monthly') === c.plan;
+  if (kind === 'apttype') return o.type === String(c.type);
   if (kind === 'rate') return (o.rate || null) === (num(c.rate) || null);
   return false;
 }
@@ -158,6 +161,7 @@ function check(o: Owner | null, kind: ApprovalKind, c: Record<string, unknown>) 
   if (kind === 'discount' && c.kind === 'pct' && num(c.value) > 100) throw new Error('A percentage discount can be at most 100');
   if (kind === 'generator' && !hasGenerator()) throw new Error(`${cur().proj.name} has no generator rate card.`);
   if (kind === 'plan' && !['monthly', 'quarterly', 'sixmonthly', 'annual'].includes(String(c.plan))) throw new Error('Pick a billing plan');
+  if (kind === 'apttype' && !rateTypes().includes(String(c.type))) throw new Error('Pick an apartment type that has a monthly fee');
   if (kind === 'adjust' && (!(num(c.amount) > 0) || !String(c.reason || '').trim())) throw new Error('Enter an amount and the reason');
   if (kind === 'posdate' && (!/^\d{4}-\d{2}-\d{2}$/.test(String(c.possession)) || String(c.possession) > cur().today)) throw new Error('The possession date must be a real date, not in the future');
   if (kind === 'due' && !(num(c.dueDay) >= 1 && num(c.dueDay) <= 28)) throw new Error('Pick a due day between the 1st and the 28th');
@@ -283,6 +287,17 @@ export function applyChange(o: Owner | null, kind: ApprovalKind, c: Record<strin
       const text = `Instalment plan for old arrears set by ${who}: ${items.map(x => `${rs(x.amount)} by ${fd(x.due)}`).join(', ')}. Monthly bills carry on as usual.`;
       o.notes.push({ d, by: who, text }); log(d, t, 'admin', `${o.apt}: ${text}`, o.id);
       return `Instalment plan of ${plural(items.length, 'instalment')} saved`;
+    }
+    case 'apttype': {
+      // 26 Nov 2026: the type is the apartment's; the customer in it is billed by it from the next bill.
+      const ty = String(c.type), was = o.type || 'not set'; o.type = ty;
+      const f = flatByApt(o.apt), list = S.settings.flats = S.settings.flats || [], i = list.findIndex(x => x.apt.toUpperCase() === o.apt.toUpperCase());
+      if (i >= 0) list[i] = { ...list[i], type: ty, editedBy: who, editedD: d };
+      else list.push({ apt: o.apt, block: f?.block || o.block, floor: f?.floor || o.floor || '', type: ty, d, by: who, plan: f?.plan || null, note: f?.note || null, editedBy: who, editedD: d });
+      const { p, fee } = feeNow(o);
+      const text = `Apartment type changed by ${who}: ${was} → ${ty}${o.rate ? '' : ` (${rs(fee)} a month)`}, from the ${fm(p)} bill. Bills already made don't change.`;
+      o.notes.push({ d, by: who, text }); log(d, t, 'admin', `${o.apt}: ${text}`, o.id);
+      return `${o.apt} is now ${ty}${o.rate ? '' : `, ${rs(fee)} a month`} from the ${fm(p)} bill`;
     }
     case 'rate': {
       const r = num(c.rate) || null, was = o.rate; o.rate = r;
@@ -431,6 +446,9 @@ export function addPossession(c: Record<string, unknown>, who: string) {
     ...(prev ? { unit: unitOf(prev), prevOwnerId: prev.id, floor: prev.floor } : {}), meterIn: rd,
     notes: [{ d: S.today, by: who, text: `Possession handed over on ${fd(possession)}.${c.note ? ' ' + String(c.note) : ''}` }] });
   S.owners.push(o);
+  // 26 Nov 2026: the type chosen at possession (the apartment's, or a change the Admin approved) becomes the apartment's.
+  const fl = S.settings.flats?.find(x => x.apt.toUpperCase() === o.apt.toUpperCase());
+  if (fl && fl.type !== o.type) { fl.type = o.type; fl.editedBy = who; fl.editedD = S.today; }
   const next = nextBillFor(o);
   log(S.today, at(15), 'admin', `New possession: ${apt} (${String(c.type)}) handed over to ${String(c.name)} (customer ${cid}${c.cnic ? `, CNIC ${String(c.cnic)}` : ''}) on ${fd(possession)}, recorded by ${who}. ${PLAN_LABEL[plan]} billing; first bill on ${fd(next)}`, o.id);
   return { id: o.id, apt, next, cid };

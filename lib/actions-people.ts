@@ -44,8 +44,8 @@ export async function addAptAction(fdata: FormData) {
   back(fdata, fallback, err ? `Not saved: ${err}` : msg);
 }
 
-/** Change an apartment's details. Its number can change only while nobody has ever had it. The current customer's
- *  own charges don't change here (that's Edit on the customer, approved by the Admin). */
+/** Change an apartment's details. Its number can change only while nobody has ever had it. A new type applies to the
+ *  current customer from the next bill (26 Nov 2026; an accountant asks for it with Edit on the customer). */
 export async function editAptAction(fdata: FormData) {
   const staff = await requireAdmin(), pid = S(fdata, 'pid'), apt = S(fdata, 'apt');
   const fallback = `/apartments/${pid}/${encodeURIComponent(apt)}`;
@@ -72,9 +72,12 @@ export async function editAptAction(fdata: FormData) {
       const def: FlatDef = { ...(f.def || { d: s.today, by: who }), apt: newApt, block, floor, type: type || f.type, plan, note, editedBy: who, editedD: s.today };
       const i = list.findIndex(x => flatKey(x.apt) === flatKey(f.apt));
       if (i >= 0) list[i] = def; else list.push(def);
+      // 26 Nov 2026: the customer in it is billed by the apartment's type from the next bill.
+      const o = f.owner, newType = type && type !== f.type && o && o.type !== type ? type : '';
+      if (newType && o) { const was = o.type; o.type = newType; o.notes.push({ d: s.today, by: who, text: `Apartment type changed by ${who}: ${was || 'not set'} → ${newType}, from the next bill. Bills already made don't change.` }); }
       log(s.today, at(15), 'admin', `Apartment ${f.apt} (${s.proj.name}) edited by ${who}: ${ch.join('; ')}`, f.owner?.id || null);
       to = `/apartments/${pid}/${encodeURIComponent(newApt)}`;
-      return `${newApt} saved${f.owner && type && type !== f.type ? `. ${f.owner.name}'s monthly fee doesn't change here: change it with Edit on the customer` : ''}`;
+      return `${newApt} saved${newType && o ? `. ${o.name} is billed as ${newType} from the next bill${o.rate ? ' (own monthly fee stays)' : ''}` : ''}`;
     }, { send: false });
   } catch (e) { err = (e as Error).message; }
   redirect(`${err ? fallback + '?m=editapt&' : to + '?'}t=${encodeURIComponent(err ? `Not saved: ${err}` : msg)}`);

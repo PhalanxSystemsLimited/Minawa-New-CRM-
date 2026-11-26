@@ -167,6 +167,8 @@ export async function editOwnerAction(fdata: FormData) {
     // What the flat is charged (billing plan, own monthly fee): an accountant's change waits for an admin's approval.
     const out: ChangeResult[] = [], why = S(fdata, 'why');
     const plan = S(fdata, 'plan');
+    const ty = S(fdata, 'type');
+    if (ty && ty !== o.type) out.push(changeOrRequest(o, 'apttype', { type: ty }, why));
     if (pos && (pos !== o.possession || !o.possessionKnown)) out.push(changeOrRequest(o, 'posdate', { possession: pos }, why));
     if (plan && ['monthly', 'quarterly', 'sixmonthly', 'annual'].includes(plan)) out.push(changeOrRequest(o, 'plan', { plan }, why));
     if (fdata.has('ownRate')) { const r = Math.max(0, Math.round(+S(fdata, 'ownRate').replace(/[,\s]/g, '') || 0)); out.push(changeOrRequest(o, 'rate', { rate: r || null, apply: S(fdata, 'apply') === 'current' ? 'current' : 'next' }, why)); }

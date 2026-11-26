@@ -276,7 +276,7 @@ export interface State {
  *  rate: { rate } (null = rate card) · adjust: { kind: 'charge' | 'credit', amount, reason }.
  *  For the whole project (ownerId null): rates: { from, rates: { type: amount } } · rules: the billing schedule fields ·
  *  fine: { feePct, fineArrears, apply, send } · announce: { aud, text }. */
-export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue' | 'leave' | 'elecfine';
+export type ApprovalKind = 'discount' | 'generator' | 'plan' | 'rate' | 'adjust' | 'rates' | 'rules' | 'fine' | 'announce' | 'possession' | 'instalments' | 'due' | 'posdate' | 'reverse' | 'discontinue' | 'leave' | 'elecfine' | 'apttype';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'changes';
 export interface Approval {
   id: string; project: string; ownerId: string | null; kind: ApprovalKind; change: Record<string, unknown>;

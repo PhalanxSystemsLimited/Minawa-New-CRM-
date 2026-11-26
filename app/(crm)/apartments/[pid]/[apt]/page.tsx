@@ -43,7 +43,7 @@ export default async function Apartment({ params, searchParams }: { params: Prom
       <div className="cus-acts no-print">
         {isFree(f) ? <Go href={`${path}?m=possession`} className="btn primary"><Ic n="key" s={16} /> New possession of {f.apt}</Go> : null}
         {o ? <Go href={`/customers/${pid}/${o.id}`} className="btn primary"><Ic n="users" s={16} /> {o.name}&apos;s details</Go> : null}
-        {admin ? <Go href={`${path}?m=editapt`} className="btn"><Ic n="edit" s={15} /> Edit apartment</Go> : null}
+        {admin ? <Go href={`${path}?m=editapt`} className="btn"><Ic n="edit" s={15} /> Edit apartment</Go> : o && o.status === 'active' ? <Go href={`/customers/${pid}/${o.id}?m=edit`} className="btn"><Ic n="edit" s={15} /> Change type</Go> : null}
         {admin && !f.customers.length && !w && f.def ? <form action={removeAptAction} style={{ display: 'inline' }}><input type="hidden" name="pid" value={pid} /><input type="hidden" name="apt" value={f.apt} /><Submit className="btn ghost" pendingText="Removing…">Remove apartment</Submit></form> : null}
         <Go href={`/apartments?p=${pid}`} className="btn ghost">← All apartments</Go>
       </div>

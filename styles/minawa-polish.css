@@ -1253,3 +1253,4 @@ html[data-theme=frost] .subnav > button:hover,html[data-theme=frost] .subnav > b
 @media (max-width:640px){.subnav > button{padding:5px 8px 5px 5px;justify-content:flex-start}.subnav .sn-ic{width:26px;height:26px}}
 @media (prefers-reduced-motion:reduce){.subnav .sn-ic .ico{animation:none!important}}
 html[data-theme=dark] .subnav .sn-ic{color:var(--sn-a);background:color-mix(in srgb,var(--sn-a) 16%,transparent)}html[data-theme=dark] .subnav > button[aria-current="page"] .sn-ic,html[data-theme=dark] .subnav > button:hover .sn-ic{color:#fff}
+.cell-sub.warn-t{color:var(--warn,#B45309);font-weight:600}

@@ -2,6 +2,7 @@
 // New possession's flat (21 Nov 2026): "Choose a flat" opens a small window (not full screen) with a search box and
 // the building's EMPTY flats only (nobody has them now, and no possession is waiting for them). Picking one fills the
 // flat, its block and floor, and its type. A flat that's taken can't be picked here, and the server checks it again.
+// 26 Nov 2026: the type comes from the apartment; choosing another type is shown, and goes to the Admin with the possession.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ic } from './icons';
@@ -29,7 +30,9 @@ export function FlatPicker({ flats, types, total, admin, initial = null }: { fla
       {!flats.length ? <div className="cell-sub">Every apartment here is possessed or booked{admin ? '. Add the building\'s other apartments on the Apartments screen.' : '. The Admin adds new apartments on the Apartments screen.'}</div> : null}
     </div>
     <div className="form-row"><label htmlFor="np-t">Type</label><select id="np-t" name="type" required value={type} onChange={e => setType(e.target.value)}>{types.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-      {pick && pick.type && !types.some(([v]) => v === pick.type) ? <div className="cell-sub">This flat was a {pick.type}; that type has no rate now, so pick its type.</div> : null}</div>
+      {pick && pick.type && !types.some(([v]) => v === pick.type) ? <div className="cell-sub">This flat was a {pick.type}; that type has no rate now, so pick its type.</div>
+        : pick && pick.type && type !== pick.type ? <div className="cell-sub warn-t">{pick.apt} is a {pick.type}. {admin ? 'Saving changes the apartment\'s type to ' + type + '.' : 'Changing it to ' + type + ' needs the Admin\'s approval (sent with this possession).'}</div>
+        : pick ? <div className="cell-sub">From the apartment&apos;s details.</div> : null}</div>
     {open ? <PickBox flats={flats} total={total} current={pick?.apt || ''} onPick={choose} onClose={() => setOpen(false)} /> : null}
   </>;
 }

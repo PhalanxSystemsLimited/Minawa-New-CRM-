@@ -12,7 +12,7 @@ import { PersonFields, IdBox } from '@/components/PersonFields';
 import { reverseAction, cancelCashAction } from '@/lib/actions-cash';
 import { bankOf } from '@/lib/bank';
 import { billDoc, receiptDoc, statementDoc, clearanceDoc, type DocData } from '@/lib/docdata';
-import { addDays, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
+import { addDays, addMonths, dayIn, fd, fm, rs, MONL, first, ord } from '@/lib/fmt';
 import { SERVICES } from '@/lib/defaults';
 import { ModalShell, CloseBtn, Submit, CopyOpen, PrintBtn, Go, ActionCheck } from '../client';
 import { Ic, Wa } from '../icons';
@@ -234,12 +234,13 @@ export function OwnerModal({ m, o }: { m: string; o: Owner }) {
       <IdBox label="Customer ID" value={custId(o)} />
       <PersonFields prefix="eo" today={cur().today} required={false} nameLabel="Full name (as on the CNIC)" phoneLabel="WhatsApp number" values={{ name: o.name, cnic: o.cnic, cnicExpiry: o.cnicExpiry, cnicAddress: o.cnicAddress, phone: o.phone }} />
       <div className="form-row"><label htmlFor="eo-e">Email</label><input id="eo-e" name="email" type="email" defaultValue={o.email} /></div>
+      <div className="form-row"><label htmlFor="eo-ty">Apartment type</label><select id="eo-ty" name="type" defaultValue={o.type || ''}>{!baseTypes().includes(o.type) ? <option value="">{o.type ? `${o.type} (no monthly fee)` : 'Not set'}</option> : null}{baseTypes().map(t => <option key={t} value={t}>{t} · {rs(rateFor(t, cur().today))} a month</option>)}</select><div className="cell-sub">The apartment&apos;s type sets the monthly fee from the next bill.</div></div>
       <div className="form-row"><label htmlFor="eo-ps">Possession date (billing day)</label><input id="eo-ps" name="possession" type="date" required defaultValue={o.possessionKnown ? o.possession : ''} /></div>
       <div className="form-row"><label htmlFor="eo-pl">Billing plan (owner&apos;s choice)</label><select id="eo-pl" name="plan" defaultValue={o.plan || 'monthly'}>{Object.entries(PLAN_LABEL).filter(([k]) => k !== 'quarterly' || o.plan === 'quarterly').map(([k, l]) => <option key={k} value={k}>{l}{k === 'quarterly' ? ' (every 3 months, kept for this customer)' : k === 'sixmonthly' ? ' (due every 6 months on the possession day)' : k === 'annual' ? ' (due once a year on the possession day)' : ' (due every month on the possession day)'}</option>)}</select></div>
       <div className="form-row"><label htmlFor="eo-r">Own monthly fee (Rs)</label><input id="eo-r" name="ownRate" type="number" min="0" step="1" defaultValue={o.rate || ''} placeholder={`Empty: rate card, ${rs(cardRate(o, billDateOf(nextPeriodFor(o))))} a month`} /><div className="cell-sub">Only for a flat with its own agreed fee. Counts from the {fm(nextPeriodFor(o))} bill.</div></div>
       <ApplyTo />
-      {isAdmin() ? null : <><div className="callout warn"><div>A change to the possession date, the billing plan or the monthly fee needs an admin&apos;s approval. The other details save straight away.</div></div>
-        <div className="form-row"><label htmlFor="eo-w">Reason for the admin <span className="req">(required if you change the possession date, plan or fee)</span></label><input id="eo-w" name="why" type="text" placeholder="e.g. Owner asked to pay quarterly" /></div></>}
+      {isAdmin() ? null : <><div className="callout warn"><div>A change to the apartment type, the possession date, the billing plan or the monthly fee needs an admin&apos;s approval. The other details save straight away.</div></div>
+        <div className="form-row"><label htmlFor="eo-w">Reason for the admin <span className="req">(required if you change the type, possession date, plan or fee)</span></label><input id="eo-w" name="why" type="text" placeholder="e.g. Owner asked to pay quarterly" /></div></>}
       <div className="form-row"><label htmlFor="eo-ab"><input id="eo-ab" name="abroad" type="checkbox" defaultChecked={o.abroad} /> Owner lives abroad</label></div>
       {isAdmin() ? <div className="form-row"><label htmlFor="eo-x"><input id="eo-x" name="exempt" type="checkbox" defaultChecked={o.exempt} /> Exempt from billing (directors&apos; flats)</label></div> : null}
       <div className="m-actions"><CloseBtn /><Submit>Save</Submit></div></form></ModalShell>;
@@ -337,13 +338,14 @@ export { sortedPayments };
 /** New possession (21 Nov 2026): the customer takes an EMPTY flat picked from the building's list (a small window
  *  with a search box), with their details from the CNIC. Billing starts from the possession date. */
 export function PossessionModal({ preset = '', back = '' }: { preset?: string; back?: string } = {}) {
-  const S = cur(), types = baseTypes(), g = S.settings.rules.graceDays ?? 25, ex = addDays(S.today, g);
+  // 26 Nov 2026: the wording follows the billing rule (due on the possession day, each bill billLead days before it).
+  const S = cur(), types = baseTypes(), lead = S.settings.rules.billLead, due1 = dayIn(addMonths(S.today.slice(0, 7), 1), +S.today.slice(8)), ex = addDays(due1, -lead);
   const all = flatList(), empty = emptyFlats().map(f => ({ apt: f.apt, block: f.block, floor: f.floor, type: f.type, plan: f.plan || '', status: f.status === 'new' ? 'new' as const : 'vacant' as const,
     note: f.status === 'new' ? 'never possessed' : `${f.lastName ? `${f.lastName} left` : 'empty'}${f.leftOn ? ` on ${fd(f.leftOn)}` : ''}` }));
   const pre = empty.find(f => f.apt.toUpperCase() === preset.toUpperCase()) || null;
   const closeKeys = ['m', 'flat', 'pp'];
   return <ModalShell title={`New possession · ${S.proj.name}`} wide closeKeys={closeKeys}><form action={possessionAction} style={col}><input type="hidden" name="pid" value={S.project} />{back ? <input type="hidden" name="back" value={back} /> : null}
-    <div className="callout">The customer takes an available apartment. Billing starts on the possession date: the first month is charged from that day. The first bill goes out {g} days after possession and then on that date every month, 6 months or year (possession today: first bill {fd(ex)}, due on the {ord(S.settings.rules.dueDays)} of the month after).</div>
+    <div className="callout">The customer takes an available apartment. Billing starts on the possession date: the first month is charged from that day. It is due on the possession day every month (or every 3, 6 or 12 months, by the plan), and each bill goes out {lead} days before its due date (possession today, monthly: first bill {fd(ex)}, due {fd(due1)}). The apartment type comes from the apartment; another type needs the Admin&apos;s approval.</div>
     {isAdmin() ? null : <div className="callout warn"><div>The Admin approves the possession first. Until then the apartment shows as booked, isn&apos;t billed and gets no reminders.</div></div>}
     <h4 className="form-h">1 · The apartment</h4>
     <FlatPicker flats={empty} total={all.length} admin={isAdmin()} initial={pre} types={types.map(t => [t, `${t} · ${rs(rateFor(t, S.today))} a month`] as [string, string])} />
